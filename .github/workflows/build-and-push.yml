@@ -29,5 +29,3 @@ jobs:
             ./src
             ./go.mod
             ./go.sum
-          tags: |
-            ${{ GITHUB_SHA::6 }}
