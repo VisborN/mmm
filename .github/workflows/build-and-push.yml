@@ -23,7 +23,7 @@ jobs:
           function-name: 'mmm'
           runtime: 'golang123'
           memory: '128Mb'
-          entrypoint: 'src/mmm/index.handler'
+          entrypoint: 'cmd/mmm/index.handler'
           include: |
             ./cmd/mmm
             ./src
