@@ -1,8 +1,0 @@
-# Ignore everything
-**
-
-# Allow only what we need
-!cmd/
-!src/
-!go.mod
-!go.sum
