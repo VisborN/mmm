@@ -29,3 +29,4 @@ jobs:
             ./src
             ./go.mod
             ./go.sum
+          log-level: debug
