@@ -1,11 +1,14 @@
-FROM golang:latest AS build
+FROM golang:1.24-alpine AS build
 
 WORKDIR /app
-COPY cmd/ ./
-ADD go.mod .
-ADD go.sum .
-COPY src/ ./
-RUN GOARCH=amd64 go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o server-app ./cmd/server
+
+# 1. Copy go.mod and sum first to leverage Docker caching for dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 2. Copy the rest of the source code (maintaining directory structure)
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -tags netgo -ldflags '-w -extldflags "-static"' -o server-app ./cmd/server
 
 FROM scratch
 COPY --from=build /app/server-app /server-app
