@@ -1,0 +1,7 @@
+{
+  "version": 3,
+  "sources": ["../web_src/app.ts"],
+  "sourcesContent": ["class App {\n  private container: HTMLElement;\n\n  constructor(containerId: string) {\n    const el = document.getElementById(containerId);\n    if (!el) {\n      throw new Error(`Container with id '${containerId}' not found.`);\n    }\n    this.container = el;\n  }\n\n  public render(): void {\n    this.container.innerHTML = `\n      <h1>Hello from Strict TypeScript!</h1>\n      <p>App is successfully bundled via esbuild.</p>\n    `;\n  }\n}\n\ndocument.addEventListener('DOMContentLoaded', () => {\n  const app = new App('app');\n  app.render();\n});"],
+  "mappings": "mBAAA,IAAMA,EAAN,KAAU,CACA,UAER,YAAYC,EAAqB,CAC/B,IAAMC,EAAK,SAAS,eAAeD,CAAW,EAC9C,GAAI,CAACC,EACH,MAAM,IAAI,MAAM,sBAAsBD,CAAW,cAAc,EAEjE,KAAK,UAAYC,CACnB,CAEO,QAAe,CACpB,KAAK,UAAU,UAAY;AAAA;AAAA;AAAA,KAI7B,CACF,EAEA,SAAS,iBAAiB,mBAAoB,IAAM,CACtC,IAAIF,EAAI,KAAK,EACrB,OAAO,CACb,CAAC",
+  "names": ["App", "containerId", "el"]
+}
