@@ -15,6 +15,15 @@
                 "PORT": "8080"
             },
             "console": "integratedTerminal"
+        }, {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Launch PWA (Chrome)",
+            "url": "http://localhost:8080",
+            "webRoot": "${workspaceFolder}/public",
+            "sourceMapPathOverrides": {
+                "../web_src/*": "${webRoot}/../web_src/*"
+            }
         }
     ]
 }

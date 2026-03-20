@@ -2,3 +2,7 @@
 /server
 /cmd/**/__*
 /server-app
+/node_modules
+/yarn-error.log
+/public/**/*.js
+/public/**/*.js.map

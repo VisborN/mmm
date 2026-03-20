@@ -1,0 +1,20 @@
+{
+	"name": "mmm",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"dev": "esbuild web_src/app.ts web_src/sw.ts --bundle --sourcemap --outdir=public --watch",
+		"build": "esbuild web_src/app.ts web_src/sw.ts --bundle --minify --sourcemap --outdir=public",
+		"serve": "http-server public -p 8080 -c-1",
+		"lint": "eslint .",
+		"type-check": "tsc --noEmit"
+	},
+	"devDependencies": {
+		"@eslint/js": "^10.0.1",
+		"esbuild": "^0.20.0",
+		"eslint": "^10.1.0",
+		"http-server": "^14.1.1",
+		"typescript": "^5.3.3",
+		"typescript-eslint": "^8.57.1"
+	}
+}
