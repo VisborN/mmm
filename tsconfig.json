@@ -2,12 +2,19 @@
     "compilerOptions": {
         "target": "ES2022",
         "module": "ES2022",
+        "useDefineForClassFields": true,
         "lib": [ "ES2022", "DOM", "DOM.Iterable", "WebWorker" ],
         "strict": true,
         "esModuleInterop": true,
+        "allowJs": false,
         "skipLibCheck": true,
+        "allowSyntheticDefaultImports": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node"
+        "moduleResolution": "node",
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx"
     },
     "include": [ "web_src/**/*" ]
 }

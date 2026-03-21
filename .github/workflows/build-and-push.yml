@@ -22,6 +22,7 @@ jobs:
           folder-id: 'b1gu6ki730mglrb8c54t'
           function-name: 'mmm'
           runtime: 'golang123'
+          networkId: 'enp0a07mf9e1o23ktfs9'
           memory: '128Mb'
           entrypoint: 'cmd/mmm/index.Handler'
           include: |
