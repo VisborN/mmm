@@ -1,4 +1,4 @@
-name: Build and Push Docker Image
+name: Deploy Web App
 on:
   push:
     branches: [master]
@@ -8,29 +8,6 @@ permissions:
   contents: write
 
 jobs:
-  go-functions:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Deploy Function
-        id: sls-func
-        uses: yc-actions/yc-sls-function@v4
-        with:
-          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
-          folder-id: 'b1gu6ki730mglrb8c54t'
-          function-name: 'mmm'
-          runtime: 'golang123'
-          network-id: 'enp0a07mf9e1o23ktfs9'
-          memory: '128Mb'
-          entrypoint: 'cmd/mmm/index.Handler'
-          include: |
-            ./cmd/mmm
-            ./src
-            ./go.mod
-            ./go.sum
-          log-level: debug
   web:
     runs-on: ubuntu-latest
     steps:
@@ -40,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '25'
+          node-version: '20'
           cache: 'yarn'
 
       - name: Install dependencies

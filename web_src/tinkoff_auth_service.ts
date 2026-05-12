@@ -35,7 +35,7 @@ export class TinkoffAuthService {
    */
   async refreshSession(): Promise<string> {
     let wuid = await this.getWuid();
-    let session = await this.getSession();
+    const session = await this.getSession();
 
     if (!wuid) {
       const res = await tinkoff_server.getWebUser();

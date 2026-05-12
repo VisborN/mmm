@@ -3,8 +3,8 @@
 	"version": "1.0.0",
 	"private": true,
 	"scripts": {
-		"dev": "esbuild web_src/app.ts web_src/sw.ts --bundle --sourcemap --outdir=public --watch",
-		"build": "esbuild web_src/app.ts web_src/sw.ts --bundle --minify --sourcemap --outdir=public",
+		"dev": "esbuild web_src/app.tsx web_src/sw.ts --bundle --sourcemap --outdir=public --watch",
+		"build": "esbuild web_src/app.tsx web_src/sw.ts --bundle --minify --sourcemap --outdir=public",
 		"serve": "http-server public -p 8080 -c-1",
 		"lint": "eslint .",
 		"type-check": "tsc --noEmit"
@@ -19,10 +19,13 @@
 	},
 	"dependencies": {
 		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3",
+		"idb": "^8.0.3",
 		"idb-keyval": "^6.2.2",
 		"mobx": "^6.15.0",
 		"mobx-react-lite": "^4.1.1",
-		"react": "^19.2.4",
+		"react": "19.2.6",
+		"react-dom": "^19.2.6",
 		"ts-error-as-value": "^0.4.207"
 	}
 }
