@@ -1,7 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Account, Transaction } from '../domain/types';
 
-interface MoneyAppDB extends DBSchema {
+export interface MoneyAppDB extends DBSchema {
     transactions: {
         key: string;
         value: Transaction;
