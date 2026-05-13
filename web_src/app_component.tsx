@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { Transaction } from './domain/types';
+import { AccountsView } from './accounts_view';
 
 // Utility for Russian locale formatting
 const formatDate = (dateStr: string) => {
@@ -106,11 +107,7 @@ export const TransactionModal = observer(() => {
     );
 });
 
-export const AppMain = observer(() => {
-    useEffect(() => {
-        store.loadData();
-    }, []);
-
+export const TransactionsView = observer(() => {
     // Group transactions by date
     const groupedTransactions = store.transactions.reduce((acc, tx) => {
         if (!acc[tx.date]) acc[tx.date] = [];
@@ -121,19 +118,76 @@ export const AppMain = observer(() => {
     // Sort dates descending
     const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
 
+    return (
+        <main>
+            {sortedDates.map(dateStr => (
+                <div key={dateStr}>
+                    <div style={{
+                        backgroundColor: '#e3f2fd',
+                        padding: '8px 20px',
+                        textAlign: 'right',
+                        fontSize: '14px',
+                        color: '#555'
+                    }}>
+                        {formatDate(dateStr)}
+                    </div>
+                    <div style={{ backgroundColor: 'white' }}>
+                        {groupedTransactions[dateStr].map(tx => {
+                            const isPositive = tx.type === 'deposit';
+                            const color = isPositive ? '#2e7d32' : '#c62828';
+                            const arrow = isPositive ? '▼' : '▲';
+
+                            return (
+                                <div
+                                    key={tx.id}
+                                    onClick={() => store.openTransactionModal(tx)}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        padding: '12px 20px',
+                                        borderBottom: '1px solid #f0f0f0',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                        <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{tx.accountId.slice(-4)}</span>
+                                        <span style={{ fontSize: '16px' }}>{tx.description || tx.category}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '16px' }}>{formatAmount(tx.amountRubles)}</span>
+                                        <span style={{ color, fontSize: '12px' }}>{arrow}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+            <TransactionModal />
+        </main>
+    );
+});
+
+export const AppMain = observer(() => {
+    useEffect(() => {
+        store.loadData();
+    }, []);
+
     if (store.isLoading) {
         return <div style={{padding: '20px'}}>Загрузка...</div>;
     }
 
     return (
-        <div style={{ fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+        <div style={{ fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', backgroundColor: '#f8f9fa', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
             <header style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '16px 20px', backgroundColor: 'white', borderBottom: '1px solid #eee'
             }}>
                 <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
                 <div style={{ display: 'flex', gap: '16px' }}>
-                    <button onClick={() => store.openTransactionModal()} style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: 0}}>➕</button>
+                    {store.currentView === 'transactions' && (
+                        <button onClick={() => store.openTransactionModal()} style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: 0}}>➕</button>
+                    )}
                     <span style={{ fontSize: '24px', cursor: 'pointer' }}>⚙️</span>
                 </div>
             </header>
@@ -144,53 +198,24 @@ export const AppMain = observer(() => {
                 </div>
             )}
 
-            <main>
-                {sortedDates.map(dateStr => (
-                    <div key={dateStr}>
-                        <div style={{
-                            backgroundColor: '#e3f2fd',
-                            padding: '8px 20px',
-                            textAlign: 'right',
-                            fontSize: '14px',
-                            color: '#555'
-                        }}>
-                            {formatDate(dateStr)}
-                        </div>
-                        <div style={{ backgroundColor: 'white' }}>
-                            {groupedTransactions[dateStr].map(tx => {
-                                const isPositive = tx.type === 'deposit';
-                                const color = isPositive ? '#2e7d32' : '#c62828';
-                                const arrow = isPositive ? '▼' : '▲';
+            <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid #ddd' }}>
+                <button
+                    onClick={() => store.setView('transactions')}
+                    style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'transactions' ? 'bold' : 'normal', borderBottom: store.currentView === 'transactions' ? '2px solid #007bff' : '2px solid transparent' }}
+                >
+                    Операции
+                </button>
+                <button
+                    onClick={() => store.setView('accounts')}
+                    style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'accounts' ? 'bold' : 'normal', borderBottom: store.currentView === 'accounts' ? '2px solid #007bff' : '2px solid transparent' }}
+                >
+                    Счета
+                </button>
+            </div>
 
-                                return (
-                                    <div
-                                        key={tx.id}
-                                        onClick={() => store.openTransactionModal(tx)}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            padding: '12px 20px',
-                                            borderBottom: '1px solid #f0f0f0',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                            <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{tx.accountId.slice(-4)}</span>
-                                            <span style={{ fontSize: '16px' }}>{tx.description || tx.category}</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                            <span style={{ fontSize: '16px' }}>{formatAmount(tx.amountRubles)}</span>
-                                            <span style={{ color, fontSize: '12px' }}>{arrow}</span>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                ))}
-            </main>
-
-            <TransactionModal />
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+                {store.currentView === 'transactions' ? <TransactionsView /> : <AccountsView />}
+            </div>
         </div>
     );
 });

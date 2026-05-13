@@ -6,8 +6,13 @@ export class AppStore {
     transactions: Transaction[] = [];
     accounts: Account[] = [];
 
+    currentView: 'transactions' | 'accounts' = 'transactions';
+
     isTransactionModalOpen: boolean = false;
     currentTransaction: Transaction | null = null;
+
+    isAccountModalOpen: boolean = false;
+    currentAccount: Account | null = null;
 
     isLoading: boolean = true;
     error: Error | null = null;
@@ -66,6 +71,33 @@ export class AppStore {
 
         await this.loadData();
         this.closeTransactionModal();
+    }
+
+    openAccountModal(account?: Account): void {
+        this.currentAccount = account || null;
+        this.isAccountModalOpen = true;
+    }
+
+    closeAccountModal(): void {
+        this.currentAccount = null;
+        this.isAccountModalOpen = false;
+    }
+
+    async saveAccount(account: Account): Promise<void> {
+        const { error } = await indexedDBRepository.saveAccount(account);
+        if (error) {
+            runInAction(() => {
+                this.error = error;
+            });
+            return;
+        }
+
+        await this.loadData();
+        this.closeAccountModal();
+    }
+
+    setView(view: 'transactions' | 'accounts'): void {
+        this.currentView = view;
     }
 }
 
