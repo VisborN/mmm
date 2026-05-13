@@ -40,7 +40,7 @@ export class JsonStore {
       // 3. Parse and return
       return JSON.parse(jsonValue) as T;
     } catch (e) {
-      throw new Error(`FormatException: Invalid JSON text for key "${key}"`);
+      throw new Error(`FormatException: Invalid JSON text for key "${key}"`, { cause: e });
     }
   }
 }
