@@ -30,6 +30,6 @@ export default defineConfig(
 
     // Ignore build artifacts and public folder
     {
-        ignores: ['src/**/*', 'cmd/**/*', '.vscode/**/*', 'public/**/*', 'node_modules/**/*', 'build_scripts/**/*']
+        ignores: ['src/**/*', 'cmd/**/*', '.vscode/**/*', 'public/**/*', 'node_modules/**/*', 'esbuild.mjs']
     }
 );
