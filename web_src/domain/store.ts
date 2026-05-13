@@ -39,8 +39,8 @@ export class AppStore {
         }
 
         runInAction(() => {
-            this.accounts = accountsData || [];
-            this.transactions = txData || [];
+            this.accounts = accountsData;
+            this.transactions = txData;
             this.isLoading = false;
         });
     }
