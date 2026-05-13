@@ -1,12 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
+<!DOCTYPE html><html lang="en"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Strict TS PWA</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#317EFB" />
+    <meta name="theme-color" content="#317EFB">
     <style>
         dialog {
             border: none;
@@ -62,13 +59,13 @@
     <dialog id="auth-dialog">
         <div class="dialog-header">
             <span id="dialog-title">Login</span>
-            <button id="close-dialog" type="button">&times;</button>
+            <button id="close-dialog" type="button">×</button>
         </div>
 
         <form id="auth-form" method="dialog">
             <div class="field-container">
                 <label id="input-label" for="auth-input">Enter your phone</label>
-                <input type="text" id="auth-input" required>
+                <input type="text" id="auth-input" required="">
             </div>
 
             <div class="actions">
@@ -78,16 +75,18 @@
     </dialog>
 
     <button id="open-auth">Open Tinkoff Login</button>
-    <script src="app-X2VZGZBP.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw-VALJIOYX.js')
+                // Find the dynamic SW filename from the injected script tags
+                const swScript = document.querySelector('script[src^="sw-"]');
+                const swUrl = swScript ? swScript.getAttribute('src') : './sw.js';
+                navigator.serviceWorker.register('./' + swUrl)
                     .then(reg => console.log('SW registered:', reg))
                     .catch(err => console.error('SW registration failed:', err));
             });
         }
     </script>
-</body>
 
-</html>
+
+<script src="app-X2VZGZBP.js"></script><script src="sw-VALJIOYX.js"></script></body></html>
