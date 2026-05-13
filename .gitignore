@@ -5,6 +5,7 @@
 /node_modules
 /yarn-error.log
 *.log
+/public/index.html
 /public/**/*.js
 /public/**/*.js.map
 /money_flow
