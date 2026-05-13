@@ -191,7 +191,12 @@ export const AppMain = observer(() => {
                     >
                         ➕
                     </button>
-                    <span style={{ fontSize: '24px', cursor: 'pointer' }}>⚙️</span>
+                    <button
+                        onClick={() => store.setView('settings')}
+                        style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: 0}}
+                    >
+                        ⚙️
+                    </button>
                 </div>
             </header>
 
@@ -201,23 +206,34 @@ export const AppMain = observer(() => {
                 </div>
             )}
 
-            <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid #ddd' }}>
-                <button
-                    onClick={() => store.setView('transactions')}
-                    style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'transactions' ? 'bold' : 'normal', borderBottom: store.currentView === 'transactions' ? '2px solid #007bff' : '2px solid transparent' }}
-                >
-                    Операции
-                </button>
-                <button
-                    onClick={() => store.setView('accounts')}
-                    style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'accounts' ? 'bold' : 'normal', borderBottom: store.currentView === 'accounts' ? '2px solid #007bff' : '2px solid transparent' }}
-                >
-                    Счета
-                </button>
-            </div>
+            {store.currentView !== 'settings' && (
+                <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid #ddd' }}>
+                    <button
+                        onClick={() => store.setView('transactions')}
+                        style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'transactions' ? 'bold' : 'normal', borderBottom: store.currentView === 'transactions' ? '2px solid #007bff' : '2px solid transparent' }}
+                    >
+                        Операции
+                    </button>
+                    <button
+                        onClick={() => store.setView('accounts')}
+                        style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'accounts' ? 'bold' : 'normal', borderBottom: store.currentView === 'accounts' ? '2px solid #007bff' : '2px solid transparent' }}
+                    >
+                        Счета
+                    </button>
+                </div>
+            )}
 
             <div style={{ flex: 1, overflowY: 'auto' }}>
-                {store.currentView === 'transactions' ? <TransactionsView /> : <AccountsView />}
+                {store.currentView === 'transactions' && <TransactionsView />}
+                {store.currentView === 'accounts' && <AccountsView />}
+                {store.currentView === 'settings' && (
+                    <div style={{ padding: '20px' }}>
+                        <h2>Настройки</h2>
+                        <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                            Open Tinkoff Login
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
