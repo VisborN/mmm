@@ -71,27 +71,10 @@ export const AccountModal = observer(() => {
 export const AccountsView = observer(() => {
     return (
         <div>
-            <div style={{
-                backgroundColor: '#e3f2fd',
-                padding: '8px 20px',
-                display: 'flex',
-                justifyContent: 'flex-end',
-                alignItems: 'center',
-                fontSize: '14px',
-                color: '#555'
-            }}>
-                <button
-                    onClick={() => store.openAccountModal()}
-                    style={{padding: '4px 12px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px'}}
-                >
-                    Добавить
-                </button>
-            </div>
-
             {store.accounts.length === 0 ? (
                 <p style={{ color: '#777', paddingLeft: '20px' }}>Нет добавленных счетов.</p>
             ) : (
-                <div style={{ backgroundColor: 'white' }}>
+                <div style={{ backgroundColor: 'white', marginTop: '10px' }}>
                     {store.accounts.map(acc => (
                         <div
                             key={acc.id}

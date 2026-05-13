@@ -185,9 +185,12 @@ export const AppMain = observer(() => {
             }}>
                 <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
                 <div style={{ display: 'flex', gap: '16px' }}>
-                    {store.currentView === 'transactions' && (
-                        <button onClick={() => store.openTransactionModal()} style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: 0}}>➕</button>
-                    )}
+                    <button
+                        onClick={() => store.currentView === 'transactions' ? store.openTransactionModal() : store.openAccountModal()}
+                        style={{background: 'none', border: 'none', fontSize: '24px', cursor: 'pointer', padding: 0}}
+                    >
+                        ➕
+                    </button>
                     <span style={{ fontSize: '24px', cursor: 'pointer' }}>⚙️</span>
                 </div>
             </header>
