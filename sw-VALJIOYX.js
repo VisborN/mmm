@@ -1,2 +1,0 @@
-"use strict";(()=>{var l=null,s="pwa-cache-v1",r=["./","./index.html","./app.js","./manifest.json"];self.addEventListener("install",e=>{e.waitUntil(caches.open(s).then(t=>(console.log("Service Worker: Caching files"),t.addAll(r))))});self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(t=>Promise.all(t.map(n=>{if(n!==s)return console.log("Service Worker: Clearing Old Cache"),caches.delete(n)}))))});self.addEventListener("fetch",e=>{e.respondWith(caches.match(e.request).then(t=>t||fetch(e.request)))});})();
-//# sourceMappingURL=sw-VALJIOYX.js.map
