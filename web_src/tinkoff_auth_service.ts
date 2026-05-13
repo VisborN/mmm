@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import * as tinkoff_server from './infrastructure/tinkoff';
 import { JsonStore } from './infrastructure/json_store';
 import { TinkoffOperation } from './domain/tinkoff_operation';

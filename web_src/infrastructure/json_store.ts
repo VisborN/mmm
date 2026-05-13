@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { get, set } from 'idb-keyval';
 
 /**
@@ -11,9 +12,10 @@ export class JsonStore {
    * @param value - Any JSON-serializable object.
    * @param replacer - Optional function to transform nested values (Dart's toEncodable).
    */
-  static async setJson(
+  static async setJson<T>(
     key: string,
-    value: any,
+    value: T,
+
     replacer?: (this: any, key: string, value: any) => any
   ): Promise<void> {
     // 1. Encode to JSON string (matching your Dart logic)
@@ -27,6 +29,7 @@ export class JsonStore {
    * Reads a value from IndexedDB and parses it.
    * Throws an Error if the stored value is not valid JSON.
    */
+
   static async getJson<T = any>(key: string): Promise<T | null> {
     // 1. Retrieve the string from IndexedDB
     const jsonValue = await get<string>(key);

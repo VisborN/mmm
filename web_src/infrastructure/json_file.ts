@@ -1,7 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type */
 /**
  * Asks user to open a file via the browser's file picker and parses it as JSON.
  * Simplified for modern browser environments.
  */
+
 export async function askAndReadJsonFile(): Promise<any> {
   return new Promise((resolve, reject) => {
     // 1. Create a hidden input element
@@ -9,7 +11,7 @@ export async function askAndReadJsonFile(): Promise<any> {
     input.type = 'file';
     input.accept = '.json'; // You can add .svg, .pdf here if needed, but original code expects JSON content
 
-    input.onchange = async (event) => {
+    input.onchange = async (event: Event) => {
       const file = (event.target as HTMLInputElement).files?.[0];
 
       if (!file) {

@@ -1,3 +1,4 @@
+
 import "ts-error-as-value/lib/globals";
 import { getDB, MoneyAppDB } from "./db";
 import { err, Result } from "ts-error-as-value";

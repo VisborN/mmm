@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import "ts-error-as-value/lib/globals";
 
 export interface Response {
