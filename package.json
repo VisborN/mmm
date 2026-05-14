@@ -10,6 +10,7 @@
 		"type-check": "tsc --noEmit"
 	},
 	"devDependencies": {
+		"@build-script/esbuild-html-entry": "^0.1.26",
 		"@craftamap/esbuild-plugin-html": "^0.9.0",
 		"@eslint/js": "^10.0.1",
 		"esbuild": "^0.20.0",
