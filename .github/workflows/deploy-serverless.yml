@@ -1,0 +1,30 @@
+name: Deploy Serverless
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+
+jobs:
+  go-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy Function
+        id: sls-func
+        uses: yc-actions/yc-sls-function@v4
+        with:
+          yc-sa-json-credentials: ${{ secrets.YC_SA_JSON_CREDENTIALS }}
+          folder-id: 'b1gu6ki730mglrb8c54t'
+          function-name: 'mmm'
+          runtime: 'golang123'
+          network-id: 'enp0a07mf9e1o23ktfs9'
+          memory: '128Mb'
+          entrypoint: 'cmd/mmm/index.Handler'
+          include: |
+            ./cmd/mmm
+            ./src
+            ./go.mod
+            ./go.sum
+          log-level: debug

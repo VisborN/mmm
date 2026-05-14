@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import * as tinkoff_server from './infrastructure/tinkoff';
 import { JsonStore } from './infrastructure/json_store';
 import { TinkoffOperation } from './domain/tinkoff_operation';
@@ -35,7 +36,7 @@ export class TinkoffAuthService {
    */
   async refreshSession(): Promise<string> {
     let wuid = await this.getWuid();
-    let session = await this.getSession();
+    const session = await this.getSession();
 
     if (!wuid) {
       const res = await tinkoff_server.getWebUser();

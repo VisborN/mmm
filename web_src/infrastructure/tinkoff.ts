@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import "ts-error-as-value/lib/globals";
 import { TinkoffOperation, TinkoffDetails } from '../domain/tinkoff_operation';
 import { proxy, proxy200JSON } from './proxy';

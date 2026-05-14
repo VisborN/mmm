@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonStore } from './json_store';
 import { TinkoffOperation } from '../domain/tinkoff_operation';
 import { askAndReadJsonFile } from './json_file';

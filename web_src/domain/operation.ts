@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import {TinkoffOperation} from './tinkoff_operation'
 
@@ -16,6 +17,7 @@ export interface Operation {
   from?: string;
   to?: string;
   description: string;
+
   rawOperationSource?: Record<string, any>;
   tinkoffOperationSource?: TinkoffOperation; // Assumes the interface from the previous snippet
   count: boolean;

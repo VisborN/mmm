@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type */
 import { makeAutoObservable, runInAction } from "mobx";
 import { TinkoffAuthService } from "./tinkoff_auth_service";
 import { TinkoffOperation } from "./domain/tinkoff_operation";

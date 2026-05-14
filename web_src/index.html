@@ -77,17 +77,20 @@
         </form>
     </dialog>
 
-    <button id="open-auth">Open Tinkoff Login</button>
-    <script src="app.js"></script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js')
+                // Find the dynamic SW filename from the injected script tags
+                const swScript = document.querySelector('script[src^="sw-"]');
+                const swUrl = swScript ? swScript.getAttribute('src') : './sw.js';
+                navigator.serviceWorker.register('./' + swUrl)
                     .then(reg => console.log('SW registered:', reg))
                     .catch(err => console.error('SW registration failed:', err));
             });
         }
     </script>
+    <script type="module" src="app.tsx"></script><script type="module" src="sw.ts"></script>
+    <!-- here will be added scripts entries -->
 </body>
 
 </html>

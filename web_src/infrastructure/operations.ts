@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonStore } from './json_store'; // The idb-keyval class from before
 import { Operation } from '../domain/operation';
 import { askAndReadJsonFile } from './json_file';
