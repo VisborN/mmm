@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild';
-import { esbuildPluginHtmlEntry } from "esbuild-plugin-html-entry";
+import { HtmlEntryPlugin } from '@build-script/esbuild-html-entry';
 
 const buildMode = process.argv.includes('--watch');
 
@@ -14,7 +14,10 @@ const buildOptions = {
     '.tsx': 'tsx',
     '.ts': 'ts',
   },
-  plugins: [esbuildPluginHtmlEntry({ integrity: "sha256" })],
+    metafile: true, // <-- this is required
+	plugins: [
+		new ESBuildHtmlEntry(), // should be first in most case
+	],
 };
 
 async function run() {
