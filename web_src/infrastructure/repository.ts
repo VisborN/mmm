@@ -32,7 +32,7 @@ export const indexedDBRepository: Repository = {
         const result = await withDB(async db => {
             await db.put('transactions', transaction);
         });
-        if (result.error) return err(result.error);
+        if (result.error) return result.error;
         return ok<void>(undefined);
     },
 
@@ -40,7 +40,7 @@ export const indexedDBRepository: Repository = {
         const result = await withDB(async db => {
             await db.delete('transactions', id);
         });
-        if (result.error) return err(result.error);
+        if (result.error) return result.error;
         return ok<void>(undefined);
     },
 
@@ -56,7 +56,7 @@ export const indexedDBRepository: Repository = {
         const result = await withDB(async db => {
             await db.put('accounts', account);
         });
-        if (result.error) return err(result.error);
+        if (result.error) return result.error;
         return ok<void>(undefined);
     },
 
@@ -64,7 +64,7 @@ export const indexedDBRepository: Repository = {
         const result = await withDB(async db => {
             await db.delete('accounts', id);
         });
-        if (result.error) return err(result.error);
+        if (result.error) return result.error;
         return ok<void>(undefined);
     }
 };
