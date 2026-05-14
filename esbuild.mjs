@@ -1,9 +1,10 @@
 import * as esbuild from 'esbuild';
+import { esbuildPluginHtmlEntry } from "esbuild-plugin-html-entry";
 
 const buildMode = process.argv.includes('--watch');
 
 const buildOptions = {
-  entryPoints: ['web_src/app.tsx', 'web_src/sw.ts'],
+  entryPoints: ['web_src/index.html'],
   bundle: true,
   minify: !buildMode,
   sourcemap: true,
@@ -13,25 +14,8 @@ const buildOptions = {
     '.tsx': 'tsx',
     '.ts': 'ts',
   },
+  plugins: [esbuildPluginHtmlEntry({ integrity: "sha256" })],
 };
-
-import { htmlPlugin } from '@craftamap/esbuild-plugin-html';
-
-buildOptions.plugins = [
-    htmlPlugin({
-        files: [
-            {
-                entryPoints: [
-                    'web_src/app.tsx',
-                    'web_src/sw.ts'
-                ],
-                filename: 'index.html',
-                htmlTemplate: 'web_src/index.html',
-                scriptLoading: 'blocking'
-            }
-        ]
-    })
-];
 
 async function run() {
     if (buildMode) {
