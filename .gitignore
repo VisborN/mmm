@@ -10,3 +10,4 @@
 /public/**/*.js.map
 /money_flow
 /public
+venv/
