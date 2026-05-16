@@ -4,89 +4,12 @@
     <title>Strict TS PWA</title>
     <link rel="manifest" href="manifest.json" integrity="sha256-XUxuRq5o1j3wSpoR+jGxqR/BTRSBdXZk7Uu0KcnPPEs=">
     <meta name="theme-color" content="#317EFB">
-    <style>
-        dialog {
-            border: none;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            width: 350px;
-        }
-
-        dialog::backdrop {
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(2px);
-        }
-
-        .dialog-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            font-weight: bold;
-        }
-
-        #auth-input {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
-        .actions button {
-            width: 100%;
-            padding: 12px;
-            background: #ffdd2d;
-            /* Tinkoff Yellow */
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-
-        #close-dialog {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-        }
-    </style>
 </head>
 
 <body>
     <div id="app"></div>
-    <dialog id="auth-dialog">
-        <div class="dialog-header">
-            <span id="dialog-title">Login</span>
-            <button id="close-dialog" type="button">×</button>
-        </div>
-
-        <form id="auth-form" method="dialog">
-            <div class="field-container">
-                <label id="input-label" for="auth-input">Enter your phone</label>
-                <input type="text" id="auth-input" required="">
-            </div>
-
-            <div class="actions">
-                <button type="submit" id="submit-btn">Submit</button>
-            </div>
-        </form>
-    </dialog>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                // Find the dynamic SW filename from the injected script tags
-                const swScript = document.querySelector('script[src^="sw-"]');
-                const swUrl = swScript ? swScript.getAttribute('src') : './sw.js';
-                navigator.serviceWorker.register('./' + swUrl)
-                    .then(reg => console.log('SW registered:', reg))
-                    .catch(err => console.error('SW registration failed:', err));
-            });
-        }
-    </script>
-    <script type="module" src="app-PXNQQFJO.js" integrity="sha256-yQHWY6iAxiDzq54Y6abquEYL/jvlIy1q06hwU8Zrer8="></script><script type="module" src="sw-ACXKHARP.js" integrity="sha256-BBl/0pe0sHk+5YD6/dlEwacTQa6uMHqzqQL/Rxy+kvo="></script>
+    <script type="module" src="app-F3K4F7GV.js" integrity="sha256-8PEx67DiyqE5B9DcCKqLsnfHQ0U9tROSBSvRx2KqzxY="></script>
+    <script src="/sw.ts.js"></script>
     <!-- here will be added scripts entries -->
 
 

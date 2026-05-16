@@ -27746,6 +27746,11 @@ document.addEventListener("DOMContentLoaded", () => {
   const root = (0, import_client.createRoot)(el);
   root.render(/* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AppMain, {}));
 });
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.ts.js").then((reg) => console.log("SW registered:", reg)).catch((err2) => console.error("SW registration failed:", err2));
+  });
+}
 /*! Bundled license information:
 
 scheduler/cjs/scheduler.development.js:
@@ -27814,4 +27819,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-PXNQQFJO.js.map
+//# sourceMappingURL=app-F3K4F7GV.js.map
