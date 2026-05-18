@@ -26,7 +26,7 @@ function subStrings(a: string, b: string): string {
 self.onmessage = async (e: MessageEvent): Promise<void> => {
     if (e.data === 'recalculate') {
         try {
-            const db = await openDB<MoneyAppDB>('money-management-app', 1);
+            const db = await openDB<MoneyAppDB>('money-management-app', 2);
 
             // Fetch all transactions and accounts
             const [transactions, accounts] = await Promise.all([
