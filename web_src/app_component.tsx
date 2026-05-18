@@ -170,7 +170,11 @@ export const TransactionsView = observer(() => {
 
 export const AppMain = observer(() => {
     useEffect(() => {
-        store.loadData();
+        store.loadData().then(() => {
+            if (store.currentView === 'accounts') {
+                store.recalculateBalances();
+            }
+        });
     }, []);
 
     if (store.isLoading) {
@@ -215,7 +219,10 @@ export const AppMain = observer(() => {
                         Операции
                     </button>
                     <button
-                        onClick={() => store.setView('accounts')}
+                        onClick={() => {
+                            store.setView('accounts');
+                            store.recalculateBalances();
+                        }}
                         style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'accounts' ? 'bold' : 'normal', borderBottom: store.currentView === 'accounts' ? '2px solid #007bff' : '2px solid transparent' }}
                     >
                         Счета

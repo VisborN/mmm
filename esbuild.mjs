@@ -35,6 +35,13 @@ configure([
     absWorkingDir: import.meta.dirname + "/web_src",
   },
   {
+    entryPoints: ['domain/recalculate_worker.ts'],
+    outdir: '../public',
+    absWorkingDir: import.meta.dirname + "/web_src",
+    bundle: true,
+    entryNames: 'domain/recalculate_worker',
+  },
+  {
     entryPoints: ['index.html'],
     outdir: '../public',
     absWorkingDir: import.meta.dirname + "/web_src",

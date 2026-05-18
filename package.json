@@ -11,16 +11,18 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^10.0.1",
+		"@types/big.js": "^6.2.2",
 		"esbd": "^3.3.11",
+		"esbuild": ">=0.20.0",
 		"eslint": "^10.1.0",
 		"http-server": "^14.1.1",
 		"typescript": "^5.3.3",
-		"typescript-eslint": "^8.57.1",
-		"esbuild": ">=0.20.0"
+		"typescript-eslint": "^8.57.1"
 	},
 	"dependencies": {
 		"@types/react": "^19.2.14",
 		"@types/react-dom": "^19.2.3",
+		"big.js": "^7.0.1",
 		"idb": "^8.0.3",
 		"idb-keyval": "^6.2.2",
 		"mobx": "^6.15.0",
