@@ -4,7 +4,7 @@ import { store } from './domain/store';
 import { getDB } from './infrastructure/db';
 
 export const DatabaseExplorer = observer(() => {
-    const [dbData, setDbData] = useState<Record<string, Record<string, unknown>[]>>({});
+    const [dbData, setDbData] = useState<Record<string, any[]>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -12,7 +12,7 @@ export const DatabaseExplorer = observer(() => {
             try {
                 const db = await getDB();
                 const storeNames = db.objectStoreNames;
-                const allData: Record<string, Record<string, unknown>[]> = {};
+                const allData: Record<string, any[]> = {};
 
                 for (let i = 0; i < storeNames.length; i++) {
                     const storeName = storeNames[i];
