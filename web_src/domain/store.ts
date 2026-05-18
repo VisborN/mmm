@@ -2,6 +2,8 @@ import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
 
+declare const __WORKER_URL__: string;
+
 export class AppStore {
     transactions: Transaction[] = [];
     accounts: Account[] = [];
@@ -27,7 +29,8 @@ export class AppStore {
         if (this.isRecalculating) return;
         this.isRecalculating = true;
 
-        const worker = new Worker('/domain/recalculate_worker.js');
+        const workerUrl = typeof __WORKER_URL__ !== 'undefined' ? __WORKER_URL__ : '/domain/recalculate_worker.js';
+        const worker = new Worker(workerUrl);
         worker.onmessage = (e: MessageEvent): void => {
             if (e.data.status === 'done') {
                 this.loadData().then(() => {
