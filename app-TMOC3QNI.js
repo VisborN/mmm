@@ -27695,7 +27695,15 @@ var TransactionModal = observer(() => {
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "accountId", value: formData.accountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "accountId", value: formData.accountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: acc.id, children: [
+            acc.name,
+            " (",
+            acc.currency,
+            ")"
+          ] }, acc.id))
+        ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:",
@@ -27703,7 +27711,15 @@ var TransactionModal = observer(() => {
       ] }),
       formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "transferReceiveAccountId", value: formData.transferReceiveAccountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "transferReceiveAccountId", value: formData.transferReceiveAccountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: acc.id, children: [
+            acc.name,
+            " (",
+            acc.currency,
+            ")"
+          ] }, `recv-${acc.id}`))
+        ] })
       ] }) }),
       /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
@@ -27939,4 +27955,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-UWETN2JP.js.map
+//# sourceMappingURL=app-TMOC3QNI.js.map
