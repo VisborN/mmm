@@ -756,40 +756,40 @@
           }
           return a.date > b.date ? 1 : a.date < b.date ? -1 : 0;
         });
-        const balances = {};
+        const balancesByName = {};
         for (const acc of accounts) {
-          balances[acc.id] = "0";
+          balancesByName[acc.name] = "0";
         }
-        for (const tx2 of transactions) {
-          const amount = tx2.amountAccountCurrency || "0";
-          if (tx2.accountId && balances[tx2.accountId] === void 0) {
-            balances[tx2.accountId] = "0";
+        for (const tx of transactions) {
+          const amount = tx.amountAccountCurrency || "0";
+          if (tx.accountName && balancesByName[tx.accountName] === void 0) {
+            balancesByName[tx.accountName] = "0";
           }
-          if (tx2.type === "deposit") {
-            balances[tx2.accountId] = addStrings(balances[tx2.accountId], amount);
-          } else if (tx2.type === "withdraw") {
-            balances[tx2.accountId] = subStrings(balances[tx2.accountId], amount);
-          } else if (tx2.type === "transfer") {
-            balances[tx2.accountId] = subStrings(balances[tx2.accountId], amount);
-            if (tx2.transferReceiveAccountId) {
-              if (balances[tx2.transferReceiveAccountId] === void 0) {
-                balances[tx2.transferReceiveAccountId] = "0";
+          if (tx.type === "deposit") {
+            balancesByName[tx.accountName] = addStrings(balancesByName[tx.accountName], amount);
+          } else if (tx.type === "withdraw") {
+            balancesByName[tx.accountName] = subStrings(balancesByName[tx.accountName], amount);
+          } else if (tx.type === "transfer") {
+            balancesByName[tx.accountName] = subStrings(balancesByName[tx.accountName], amount);
+            if (tx.transferReceiveAccountName) {
+              if (balancesByName[tx.transferReceiveAccountName] === void 0) {
+                balancesByName[tx.transferReceiveAccountName] = "0";
               }
-              const receiveAmount = tx2.transferReceiveAmountAccountCurrency || "0";
-              balances[tx2.transferReceiveAccountId] = addStrings(balances[tx2.transferReceiveAccountId], receiveAmount);
+              const receiveAmount = tx.transferReceiveAmountAccountCurrency || "0";
+              balancesByName[tx.transferReceiveAccountName] = addStrings(balancesByName[tx.transferReceiveAccountName], receiveAmount);
             }
-          } else if (tx2.type === "balance_correct") {
-            balances[tx2.accountId] = amount;
+          } else if (tx.type === "balance_correct") {
+            balancesByName[tx.accountName] = amount;
           }
         }
-        const tx = db.transaction("accounts", "readwrite");
+        const txStore = db.transaction("accounts", "readwrite");
         for (const acc of accounts) {
-          if (acc.balance !== balances[acc.id]) {
-            acc.balance = balances[acc.id];
-            tx.store.put(acc);
+          if (acc.balance !== balancesByName[acc.name]) {
+            acc.balance = balancesByName[acc.name];
+            txStore.store.put(acc);
           }
         }
-        await tx.done;
+        await txStore.done;
         self.postMessage({ status: "done" });
       } catch (error) {
         self.postMessage({ status: "error", error: error instanceof Error ? error.message : String(error) });
