@@ -89,7 +89,12 @@ export const TransactionModal = observer(() => {
                     </label>
                     <label>
                         Счет:
-                        <input type="text" name="accountId" value={formData.accountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
+                        <select name="accountId" value={formData.accountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                            <option value="" disabled>Выберите счет</option>
+                            {store.accounts.map(acc => (
+                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
+                            ))}
+                        </select>
                     </label>
                     <label>
                         Категория / Описание:
@@ -100,7 +105,12 @@ export const TransactionModal = observer(() => {
                         <>
                             <label>
                                 Счет зачисления:
-                                <input type="text" name="transferReceiveAccountId" value={formData.transferReceiveAccountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
+                                <select name="transferReceiveAccountId" value={formData.transferReceiveAccountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                                    <option value="" disabled>Выберите счет</option>
+                                    {store.accounts.map(acc => (
+                                        <option key={`recv-${acc.id}`} value={acc.id}>{acc.name} ({acc.currency})</option>
+                                    ))}
+                                </select>
                             </label>
                         </>
                     )}
