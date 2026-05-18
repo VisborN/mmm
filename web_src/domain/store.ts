@@ -2,11 +2,13 @@ import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
 
+declare const __WORKER_URL__: string;
+
 export class AppStore {
     transactions: Transaction[] = [];
     accounts: Account[] = [];
 
-    currentView: 'transactions' | 'accounts' | 'settings' = 'transactions';
+    currentView: 'transactions' | 'accounts' | 'settings' | 'db_explorer' = 'transactions';
 
     isTransactionModalOpen: boolean = false;
     currentTransaction: Transaction | null = null;
@@ -17,8 +19,45 @@ export class AppStore {
     isLoading: boolean = true;
     error: Error | null = null;
 
+    isRecalculating: boolean = false;
+
     constructor() {
         makeAutoObservable(this);
+    }
+
+    recalculateBalances(): void {
+        if (this.isRecalculating) return;
+        this.isRecalculating = true;
+
+        const workerUrl = typeof __WORKER_URL__ !== 'undefined' ? __WORKER_URL__ : '/domain/recalculate_worker.js';
+        const worker = new Worker(workerUrl);
+        worker.onmessage = (e: MessageEvent): void => {
+            if (e.data.status === 'done') {
+                this.loadData().then(() => {
+                    runInAction(() => {
+                        this.isRecalculating = false;
+                    });
+                });
+            } else if (e.data.status === 'error') {
+                console.error('Error recalculating balances:', e.data.error);
+                runInAction(() => {
+                    this.error = new Error(e.data.error);
+                    this.isRecalculating = false;
+                });
+            }
+            worker.terminate();
+        };
+
+        worker.onerror = (e: ErrorEvent): void => {
+            console.error('Worker error:', e);
+            runInAction(() => {
+                this.error = new Error('Worker error during recalculation');
+                this.isRecalculating = false;
+            });
+            worker.terminate();
+        };
+
+        worker.postMessage('recalculate');
     }
 
     async loadData(): Promise<void> {
@@ -71,6 +110,7 @@ export class AppStore {
 
         await this.loadData();
         this.closeTransactionModal();
+        this.recalculateBalances();
     }
 
     openAccountModal(account?: Account): void {
@@ -96,7 +136,7 @@ export class AppStore {
         this.closeAccountModal();
     }
 
-    setView(view: 'transactions' | 'accounts' | 'settings'): void {
+    setView(view: 'transactions' | 'accounts' | 'settings' | 'db_explorer'): void {
         this.currentView = view;
     }
 }

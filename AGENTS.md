@@ -7,6 +7,7 @@ When working on this repository, please adhere to the following guidelines:
 - Prefer using `interfaces` and `type` aliases (or `structs` in Go) over `classes`.
 - Minimize the use of third-party libraries. Stick to native APIs or lightweight, well-known libraries when necessary.
 - **Do not touch any code in the `money_flow` directory.**
+- **Always run `yarn type-check` and `yarn lint` to ensure there are no errors before committing any code.**
 
 ## Error Handling
 - Use the `ts-error-as-value` library for error handling in TypeScript.

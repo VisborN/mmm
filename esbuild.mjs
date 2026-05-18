@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { configure } from 'esbd';
+import * as esbuild from 'esbuild';
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -28,18 +29,50 @@ const copyConfig = assetFiles.map(file => {
   return [`./${relativePath}`, relativePath];
 });
 
-configure([
-  {
-    entryPoints: ['sw.ts'],
-    outdir: '../public',
-    absWorkingDir: import.meta.dirname + "/web_src",
-  },
-  {
-    entryPoints: ['index.html'],
-    outdir: '../public',
-    absWorkingDir: import.meta.dirname + "/web_src",
-    integrity: "sha256",
-    entryNames: '[name]-[hash]',
-    copy: copyConfig,
+async function buildWorkerAndConfigure() {
+  const domainDir = path.join(import.meta.dirname, 'public', 'domain');
+  if (fs.existsSync(domainDir)) {
+    fs.readdirSync(domainDir).forEach(f => {
+      if (f.startsWith('recalculate_worker')) fs.unlinkSync(path.join(domainDir, f));
+    });
   }
-]);
+
+  const workerResult = await esbuild.build({
+    entryPoints: ['web_src/domain/recalculate_worker.ts'],
+    outdir: 'public',
+    bundle: true,
+    entryNames: 'domain/recalculate_worker-[hash]',
+    metafile: true,
+    write: true,
+    sourcemap: true,
+  });
+
+  let workerPath = '/domain/recalculate_worker.js';
+  for (const output in workerResult.metafile.outputs) {
+    if (output.includes('recalculate_worker-') && output.endsWith('.js')) {
+      workerPath = '/' + output.replace('public/', '');
+      break;
+    }
+  }
+
+  configure([
+    {
+      entryPoints: ['index.html'],
+      outdir: '../public',
+      absWorkingDir: path.join(import.meta.dirname, 'web_src'),
+      integrity: "sha256",
+      entryNames: '[name]-[hash]',
+      copy: copyConfig,
+      define: {
+        '__WORKER_URL__': JSON.stringify(workerPath)
+      }
+    },
+    {
+      entryPoints: ['sw.ts'],
+      outdir: '../public',
+      absWorkingDir: path.join(import.meta.dirname, 'web_src'),
+    }
+  ]);
+}
+
+buildWorkerAndConfigure();

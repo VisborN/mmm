@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { Transaction } from './domain/types';
 import { AccountsView } from './accounts_view';
+import { DatabaseExplorer } from './db_explorer_view';
 
 // Utility for Russian locale formatting
 const formatDate = (dateStr: string) => {
@@ -27,11 +28,11 @@ export const TransactionModal = observer(() => {
         date: new Date().toISOString().split('T')[0],
         amountRubles: 0,
         amountAccountCurrency: '0',
-        accountId: '',
+        accountName: '',
         category: '',
         description: '',
         type: 'withdraw',
-        transferReceiveAccountId: null,
+        transferReceiveAccountName: null,
         transferReceiveAmountAccountCurrency: null
     });
 
@@ -39,7 +40,14 @@ export const TransactionModal = observer(() => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await store.saveTransaction(formData as Transaction);
+        const txToSave = { ...formData } as Transaction;
+        if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === '0') {
+            txToSave.amountAccountCurrency = String(txToSave.amountRubles);
+        }
+        if (txToSave.type === 'transfer' && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === '0')) {
+            txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
+        }
+        await store.saveTransaction(txToSave);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -81,7 +89,12 @@ export const TransactionModal = observer(() => {
                     </label>
                     <label>
                         Счет:
-                        <input type="text" name="accountId" value={formData.accountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
+                        <select name="accountName" value={formData.accountName || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                            <option value="" disabled>Выберите счет</option>
+                            {store.accounts.map(acc => (
+                                <option key={acc.id} value={acc.name}>{acc.name} ({acc.currency})</option>
+                            ))}
+                        </select>
                     </label>
                     <label>
                         Категория / Описание:
@@ -92,7 +105,12 @@ export const TransactionModal = observer(() => {
                         <>
                             <label>
                                 Счет зачисления:
-                                <input type="text" name="transferReceiveAccountId" value={formData.transferReceiveAccountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
+                                <select name="transferReceiveAccountName" value={formData.transferReceiveAccountName || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                                    <option value="" disabled>Выберите счет</option>
+                                    {store.accounts.map(acc => (
+                                        <option key={`recv-${acc.id}`} value={acc.name}>{acc.name} ({acc.currency})</option>
+                                    ))}
+                                </select>
                             </label>
                         </>
                     )}
@@ -150,7 +168,7 @@ export const TransactionsView = observer(() => {
                                     }}
                                 >
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                        <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{tx.accountId.slice(-4)}</span>
+                                        <span style={{ color: '#777', width: '40px', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.accountName}</span>
                                         <span style={{ fontSize: '16px' }}>{tx.description || tx.category}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -170,7 +188,11 @@ export const TransactionsView = observer(() => {
 
 export const AppMain = observer(() => {
     useEffect(() => {
-        store.loadData();
+        store.loadData().then(() => {
+            if (store.currentView === 'accounts') {
+                store.recalculateBalances();
+            }
+        });
     }, []);
 
     if (store.isLoading) {
@@ -206,7 +228,7 @@ export const AppMain = observer(() => {
                 </div>
             )}
 
-            {store.currentView !== 'settings' && (
+            {store.currentView !== 'settings' && store.currentView !== 'db_explorer' && (
                 <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid #ddd' }}>
                     <button
                         onClick={() => store.setView('transactions')}
@@ -215,7 +237,10 @@ export const AppMain = observer(() => {
                         Операции
                     </button>
                     <button
-                        onClick={() => store.setView('accounts')}
+                        onClick={() => {
+                            store.setView('accounts');
+                            store.recalculateBalances();
+                        }}
                         style={{ flex: 1, padding: '12px', background: 'none', border: 'none', cursor: 'pointer', fontWeight: store.currentView === 'accounts' ? 'bold' : 'normal', borderBottom: store.currentView === 'accounts' ? '2px solid #007bff' : '2px solid transparent' }}
                     >
                         Счета
@@ -228,12 +253,27 @@ export const AppMain = observer(() => {
                 {store.currentView === 'accounts' && <AccountsView />}
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
-                        <h2>Настройки</h2>
-                        <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                            Open Tinkoff Login
+                        <button
+                            onClick={() => store.setView('transactions')}
+                            style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
+                        >
+                            &larr; Назад
                         </button>
+                        <h2>Настройки</h2>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+                            <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                Open Tinkoff Login
+                            </button>
+                            <button
+                                onClick={() => store.setView('db_explorer')}
+                                style={{ padding: '10px 20px', backgroundColor: '#eee', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                                Database Explorer
+                            </button>
+                        </div>
                     </div>
                 )}
+                {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
         </div>
     );

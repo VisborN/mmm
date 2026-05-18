@@ -12,12 +12,12 @@ export interface Transaction {
     date: string; // YYYY-MM-DD
     amountRubles: number; // precision 2 digits
     amountAccountCurrency: string; // Stored as string to support any precision
-    accountId: string;
+    accountName: string;
     category: string;
     description: string;
     type: TransactionType;
 
     // Non-null only for transfer
-    transferReceiveAccountId: string | null;
+    transferReceiveAccountName: string | null;
     transferReceiveAmountAccountCurrency: string | null;
 }

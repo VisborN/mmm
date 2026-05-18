@@ -3,7 +3,7 @@
 export default null;
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE_NAME: string = 'pwa-cache-v2';
+const CACHE_NAME: string = 'pwa-cache-v3';
 
 self.addEventListener('install', (event: ExtendableEvent) => {
   event.waitUntil(
@@ -34,27 +34,47 @@ self.addEventListener('activate', (event: ExtendableEvent) => {
 });
 
 self.addEventListener('fetch', (event: FetchEvent) => {
-  // Cache-first strategy for static assets, network-first for index
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request).then((cachedResponse: Response | undefined) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
+    new Promise((resolve, reject) => {
+      let networkHandled = false;
 
-      return fetch(event.request).then((networkResponse) => {
-        // Don't cache non-successful responses or non-GET requests
-        if (!networkResponse || networkResponse.status !== 200 || event.request.method !== 'GET') {
-          return networkResponse;
-        }
-
-        // Cache the dynamically fetched assets (like hashed JS files)
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
+      const timeoutId = setTimeout(() => {
+        caches.match(event.request).then((cachedResponse) => {
+          if (!networkHandled && cachedResponse) {
+            resolve(cachedResponse);
+          }
         });
+      }, 200);
 
-        return networkResponse;
-      });
+      fetch(event.request)
+        .then((networkResponse) => {
+          networkHandled = true;
+          clearTimeout(timeoutId);
+
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+
+          resolve(networkResponse);
+        })
+        .catch((error) => {
+          if (!networkHandled) {
+            caches.match(event.request).then((cachedResponse) => {
+              if (cachedResponse) {
+                resolve(cachedResponse);
+              } else {
+                reject(error);
+              }
+            });
+          }
+        });
     })
   );
 });
