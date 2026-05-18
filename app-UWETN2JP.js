@@ -27830,6 +27830,14 @@ var AppMain = observer(() => {
       store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(TransactionsView, {}),
       store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AccountsView, {}),
       store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "20px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "button",
+          {
+            onClick: () => store.setView("transactions"),
+            style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
+            children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
+          }
+        ),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
         /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" }),
@@ -27931,4 +27939,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-YG2BAGJX.js.map
+//# sourceMappingURL=app-UWETN2JP.js.map

@@ -2,7 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = "pwa-cache-v2";
+  var CACHE_NAME = "pwa-cache-v3";
   self.addEventListener("install", (event) => {
     event.waitUntil(
       caches.open(CACHE_NAME).then((cache) => {
@@ -28,20 +28,39 @@
     );
   });
   self.addEventListener("fetch", (event) => {
+    if (event.request.method !== "GET") {
+      return;
+    }
     event.respondWith(
-      caches.match(event.request).then((cachedResponse) => {
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-        return fetch(event.request).then((networkResponse) => {
-          if (!networkResponse || networkResponse.status !== 200 || event.request.method !== "GET") {
-            return networkResponse;
-          }
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+      new Promise((resolve, reject) => {
+        let networkHandled = false;
+        const timeoutId = setTimeout(() => {
+          caches.match(event.request).then((cachedResponse) => {
+            if (!networkHandled && cachedResponse) {
+              resolve(cachedResponse);
+            }
           });
-          return networkResponse;
+        }, 200);
+        fetch(event.request).then((networkResponse) => {
+          networkHandled = true;
+          clearTimeout(timeoutId);
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          resolve(networkResponse);
+        }).catch((error) => {
+          if (!networkHandled) {
+            caches.match(event.request).then((cachedResponse) => {
+              if (cachedResponse) {
+                resolve(cachedResponse);
+              } else {
+                reject(error);
+              }
+            });
+          }
         });
       })
     );
