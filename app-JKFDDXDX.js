@@ -1362,7 +1362,7 @@ var require_react_dom_development = __commonJS({
         return dispatcher;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React4 = require_react(), Internals = {
+      var React5 = require_react(), Internals = {
         d: {
           f: noop3,
           r: function() {
@@ -1380,7 +1380,7 @@ var require_react_dom_development = __commonJS({
         },
         p: 0,
         findDOMNode: null
-      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React4.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
         "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
       );
@@ -2915,7 +2915,7 @@ var require_react_dom_client_development = __commonJS({
         "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
       }
       function validateOptionProps(element, props) {
-        null == props.value && ("object" === typeof props.children && null !== props.children ? React4.Children.forEach(props.children, function(child) {
+        null == props.value && ("object" === typeof props.children && null !== props.children ? React5.Children.forEach(props.children, function(child) {
           null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
             "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
           ));
@@ -18547,14 +18547,14 @@ var require_react_dom_client_development = __commonJS({
         ));
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var Scheduler = require_scheduler(), React4 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
+      var Scheduler = require_scheduler(), React5 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
       /* @__PURE__ */ Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity");
       /* @__PURE__ */ Symbol.for("react.legacy_hidden");
       /* @__PURE__ */ Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       /* @__PURE__ */ Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React4.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
         pending: false,
         data: null,
         method: null,
@@ -21342,7 +21342,7 @@ var require_react_dom_client_development = __commonJS({
         }
       };
       (function() {
-        var isomorphicReactPackageVersion = React4.version;
+        var isomorphicReactPackageVersion = React5.version;
         if ("19.2.6" !== isomorphicReactPackageVersion)
           throw Error(
             'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.2.6\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -21491,7 +21491,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
       function useSyncExternalStore$2(subscribe, getSnapshot) {
-        didWarnOld18Alpha || void 0 === React4.startTransition || (didWarnOld18Alpha = true, console.error(
+        didWarnOld18Alpha || void 0 === React5.startTransition || (didWarnOld18Alpha = true, console.error(
           "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
         ));
         var value = getSnapshot();
@@ -21501,7 +21501,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
             "The result of getSnapshot should be cached to avoid an infinite loop"
           ), didWarnUncachedGetSnapshot = true);
         }
-        cachedValue = useState7({
+        cachedValue = useState8({
           inst: { value, getSnapshot }
         });
         var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
@@ -21513,7 +21513,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
           },
           [subscribe, value, getSnapshot]
         );
-        useEffect2(
+        useEffect3(
           function() {
             checkIfSnapshotChanged(inst) && forceUpdate({ inst });
             return subscribe(function() {
@@ -21539,8 +21539,8 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return getSnapshot();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React4 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState7 = React4.useState, useEffect2 = React4.useEffect, useLayoutEffect = React4.useLayoutEffect, useDebugValue = React4.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-      exports.useSyncExternalStore = void 0 !== React4.useSyncExternalStore ? React4.useSyncExternalStore : shim;
+      var React5 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState8 = React5.useState, useEffect3 = React5.useEffect, useLayoutEffect = React5.useLayoutEffect, useDebugValue = React5.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      exports.useSyncExternalStore = void 0 !== React5.useSyncExternalStore ? React5.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
   }
@@ -21947,18 +21947,18 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object2) {
         return "object" === typeof object2 && null !== object2 && object2.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React4 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React4.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React5 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React4 = {
+      React5 = {
         react_stack_bottom_frame: function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React4.react_stack_bottom_frame.bind(
-        React4,
+      var unknownOwnerDebugStack = React5.react_stack_bottom_frame.bind(
+        React5,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -22006,7 +22006,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client());
 
 // app_component.tsx
-var import_react8 = __toESM(require_react());
+var import_react9 = __toESM(require_react());
 
 // ../node_modules/mobx/dist/mobx.esm.js
 var niceErrors = {
@@ -27351,7 +27351,38 @@ var AppStore = class {
     __publicField(this, "currentAccount", null);
     __publicField(this, "isLoading", true);
     __publicField(this, "error", null);
+    __publicField(this, "isRecalculating", false);
     makeAutoObservable(this);
+  }
+  recalculateBalances() {
+    if (this.isRecalculating) return;
+    this.isRecalculating = true;
+    const worker = new Worker("/domain/recalculate_worker.js");
+    worker.onmessage = (e) => {
+      if (e.data.status === "done") {
+        this.loadData().then(() => {
+          runInAction(() => {
+            this.isRecalculating = false;
+          });
+        });
+      } else if (e.data.status === "error") {
+        console.error("Error recalculating balances:", e.data.error);
+        runInAction(() => {
+          this.error = new Error(e.data.error);
+          this.isRecalculating = false;
+        });
+      }
+      worker.terminate();
+    };
+    worker.onerror = (e) => {
+      console.error("Worker error:", e);
+      runInAction(() => {
+        this.error = new Error("Worker error during recalculation");
+        this.isRecalculating = false;
+      });
+      worker.terminate();
+    };
+    worker.postMessage("recalculate");
   }
   async loadData() {
     this.isLoading = true;
@@ -27396,6 +27427,7 @@ var AppStore = class {
     }
     await this.loadData();
     this.closeTransactionModal();
+    this.recalculateBalances();
   }
   openAccountModal(account) {
     this.currentAccount = account || null;
@@ -27520,8 +27552,63 @@ var AccountsView = observer(() => {
   ] });
 });
 
-// app_component.tsx
+// db_explorer_view.tsx
+var import_react8 = __toESM(require_react());
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
+var DatabaseExplorer = observer(() => {
+  const [dbData, setDbData] = (0, import_react8.useState)({});
+  const [loading, setLoading] = (0, import_react8.useState)(true);
+  (0, import_react8.useEffect)(() => {
+    const loadData = async () => {
+      try {
+        const db = await getDB();
+        const storeNames = db.objectStoreNames;
+        const allData = {};
+        for (let i = 0; i < storeNames.length; i++) {
+          const storeName = storeNames[i];
+          allData[storeName] = await db.getAll(storeName);
+        }
+        setDbData(allData);
+      } catch (err2) {
+        console.error("Failed to load DB data", err2);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+  if (loading) return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { padding: "20px" }, children: "Loading DB Data..." });
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "20px" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      "button",
+      {
+        onClick: () => store.setView("settings"),
+        style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
+        children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
+      }
+    ),
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { children: "Database Explorer" }),
+    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "40px", overflowX: "auto" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { children: [
+        "Table: ",
+        storeName,
+        " (",
+        dbData[storeName].length,
+        " rows)"
+      ] }),
+      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { border: "1px solid #ddd", padding: "8px", backgroundColor: "#f2f2f2", textAlign: "left" }, children: key }, key)) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => {
+          const val = row[key];
+          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { border: "1px solid #ddd", padding: "8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
+        }) }, idx)) })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "No rows found." })
+    ] }, storeName))
+  ] });
+});
+
+// app_component.tsx
+var import_jsx_runtime3 = __toESM(require_jsx_runtime());
 var formatDate = (dateStr) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("ru-RU", {
@@ -27537,7 +27624,7 @@ var formatAmount2 = (amount) => {
   }) + " \u20BD";
 };
 var TransactionModal = observer(() => {
-  const [formData, setFormData] = (0, import_react8.useState)(store.currentTransaction || {
+  const [formData, setFormData] = (0, import_react9.useState)(store.currentTransaction || {
     id: crypto.randomUUID(),
     date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
     amountRubles: 0,
@@ -27552,7 +27639,14 @@ var TransactionModal = observer(() => {
   if (!store.isTransactionModalOpen) return null;
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await store.saveTransaction(formData);
+    const txToSave = __spreadValues({}, formData);
+    if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === "0") {
+      txToSave.amountAccountCurrency = String(txToSave.amountRubles);
+    }
+    if (txToSave.type === "transfer" && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === "0")) {
+      txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
+    }
+    await store.saveTransaction(txToSave);
   };
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27560,7 +27654,7 @@ var TransactionModal = observer(() => {
       [name]: name === "amountRubles" ? parseFloat(value) : value
     }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
     position: "fixed",
     top: 0,
     left: 0,
@@ -27571,7 +27665,7 @@ var TransactionModal = observer(() => {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1e3
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: {
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
     backgroundColor: "white",
     padding: "20px",
     borderRadius: "8px",
@@ -27580,40 +27674,40 @@ var TransactionModal = observer(() => {
     maxHeight: "90vh",
     overflowY: "auto"
   }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h3", { style: { marginTop: 0 }, children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginTop: 0 }, children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0414\u0430\u0442\u0430:",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0421\u0443\u043C\u043C\u0430 (\u20BD):",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0422\u0438\u043F:",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
-          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442:",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "text", name: "accountId", value: formData.accountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "accountId", value: formData.accountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(import_jsx_runtime2.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("label", { children: [
+      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:",
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("input", { type: "text", name: "transferReceiveAccountId", value: formData.transferReceiveAccountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "transferReceiveAccountId", value: formData.transferReceiveAccountId || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
       ] })
     ] })
   ] }) });
@@ -27625,20 +27719,20 @@ var TransactionsView = observer(() => {
     return acc;
   }, {});
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("main", { children: [
-    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("main", { children: [
+    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
         backgroundColor: "#e3f2fd",
         padding: "8px 20px",
         textAlign: "right",
         fontSize: "14px",
         color: "#555"
       }, children: formatDate(dateStr) }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { backgroundColor: "white" }, children: groupedTransactions[dateStr].map((tx) => {
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { backgroundColor: "white" }, children: groupedTransactions[dateStr].map((tx) => {
         const isPositive = tx.type === "deposit";
         const color = isPositive ? "#2e7d32" : "#c62828";
         const arrow = isPositive ? "\u25BC" : "\u25B2";
-        return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)(
+        return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
           "div",
           {
             onClick: () => store.openTransactionModal(tx),
@@ -27650,13 +27744,13 @@ var TransactionsView = observer(() => {
               cursor: "pointer"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px" }, children: tx.accountId.slice(-4) }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { fontSize: "16px" }, children: tx.description || tx.category })
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px" }, children: tx.accountId.slice(-4) }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "16px" }, children: tx.description || tx.category })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { fontSize: "16px" }, children: formatAmount2(tx.amountRubles) }),
-                /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color, fontSize: "12px" }, children: arrow })
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "16px" }, children: formatAmount2(tx.amountRubles) }),
+                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color, fontSize: "12px" }, children: arrow })
               ] })
             ]
           },
@@ -27664,18 +27758,22 @@ var TransactionsView = observer(() => {
         );
       }) })
     ] }, dateStr)),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(TransactionModal, {})
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(TransactionModal, {})
   ] });
 });
 var AppMain = observer(() => {
-  (0, import_react8.useEffect)(() => {
-    store.loadData();
+  (0, import_react9.useEffect)(() => {
+    store.loadData().then(() => {
+      if (store.currentView === "accounts") {
+        store.recalculateBalances();
+      }
+    });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
+    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("header", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { style: {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
@@ -27683,9 +27781,9 @@ var AppMain = observer(() => {
       backgroundColor: "white",
       borderBottom: "1px solid #eee"
     }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           "button",
           {
             onClick: () => store.currentView === "transactions" ? store.openTransactionModal() : store.openAccountModal(),
@@ -27693,7 +27791,7 @@ var AppMain = observer(() => {
             children: "\u2795"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
           "button",
           {
             onClick: () => store.setView("settings"),
@@ -27703,12 +27801,12 @@ var AppMain = observer(() => {
         )
       ] })
     ] }),
-    store.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "10px", backgroundColor: "#ffcccc", color: "red" }, children: [
+    store.error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "10px", backgroundColor: "#ffcccc", color: "red" }, children: [
       "\u041E\u0448\u0438\u0431\u043A\u0430: ",
       store.error.message
     ] }),
-    store.currentView !== "settings" && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", backgroundColor: "white", borderBottom: "1px solid #ddd" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", backgroundColor: "white", borderBottom: "1px solid #ddd" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         "button",
         {
           onClick: () => store.setView("transactions"),
@@ -27716,35 +27814,49 @@ var AppMain = observer(() => {
           children: "\u041E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         "button",
         {
-          onClick: () => store.setView("accounts"),
+          onClick: () => {
+            store.setView("accounts");
+            store.recalculateBalances();
+          },
           style: { flex: 1, padding: "12px", background: "none", border: "none", cursor: "pointer", fontWeight: store.currentView === "accounts" ? "bold" : "normal", borderBottom: store.currentView === "accounts" ? "2px solid #007bff" : "2px solid transparent" },
           children: "\u0421\u0447\u0435\u0442\u0430"
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { flex: 1, overflowY: "auto" }, children: [
-      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(TransactionsView, {}),
-      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(AccountsView, {}),
-      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "20px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" })
-      ] })
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { flex: 1, overflowY: "auto" }, children: [
+      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(TransactionsView, {}),
+      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AccountsView, {}),
+      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "20px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              onClick: () => store.setView("db_explorer"),
+              style: { padding: "10px 20px", backgroundColor: "#eee", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+              children: "Database Explorer"
+            }
+          )
+        ] })
+      ] }),
+      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(DatabaseExplorer, {})
     ] })
   ] });
 });
 
 // app.tsx
-var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("app");
   if (!el) {
     throw new Error(`Container with id 'app' not found.`);
   }
   const root = (0, import_client.createRoot)(el);
-  root.render(/* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AppMain, {}));
+  root.render(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AppMain, {}));
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -27819,4 +27931,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-F3K4F7GV.js.map
+//# sourceMappingURL=app-JKFDDXDX.js.map
