@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { Transaction } from './domain/types';
 import { AccountsView } from './accounts_view';
+import { DatabaseExplorer } from './db_explorer_view';
 
 // Utility for Russian locale formatting
 const formatDate = (dateStr: string) => {
@@ -217,7 +218,7 @@ export const AppMain = observer(() => {
                 </div>
             )}
 
-            {store.currentView !== 'settings' && (
+            {store.currentView !== 'settings' && store.currentView !== 'db_explorer' && (
                 <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid #ddd' }}>
                     <button
                         onClick={() => store.setView('transactions')}
@@ -243,11 +244,20 @@ export const AppMain = observer(() => {
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
                         <h2>Настройки</h2>
-                        <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                            Open Tinkoff Login
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+                            <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                                Open Tinkoff Login
+                            </button>
+                            <button
+                                onClick={() => store.setView('db_explorer')}
+                                style={{ padding: '10px 20px', backgroundColor: '#eee', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                            >
+                                Database Explorer
+                            </button>
+                        </div>
                     </div>
                 )}
+                {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
         </div>
     );

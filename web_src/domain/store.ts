@@ -6,7 +6,7 @@ export class AppStore {
     transactions: Transaction[] = [];
     accounts: Account[] = [];
 
-    currentView: 'transactions' | 'accounts' | 'settings' = 'transactions';
+    currentView: 'transactions' | 'accounts' | 'settings' | 'db_explorer' = 'transactions';
 
     isTransactionModalOpen: boolean = false;
     currentTransaction: Transaction | null = null;
@@ -133,7 +133,7 @@ export class AppStore {
         this.closeAccountModal();
     }
 
-    setView(view: 'transactions' | 'accounts' | 'settings'): void {
+    setView(view: 'transactions' | 'accounts' | 'settings' | 'db_explorer'): void {
         this.currentView = view;
     }
 }
