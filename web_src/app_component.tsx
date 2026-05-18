@@ -39,7 +39,14 @@ export const TransactionModal = observer(() => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        await store.saveTransaction(formData as Transaction);
+        const txToSave = { ...formData } as Transaction;
+        if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === '0') {
+            txToSave.amountAccountCurrency = String(txToSave.amountRubles);
+        }
+        if (txToSave.type === 'transfer' && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === '0')) {
+            txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
+        }
+        await store.saveTransaction(txToSave);
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
