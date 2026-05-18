@@ -30,23 +30,23 @@ const copyConfig = assetFiles.map(file => {
 
 configure([
   {
+    entryPoints: ['index.html'],
+    outdir: '../public',
+    absWorkingDir: path.join(import.meta.dirname, 'web_src'),
+    integrity: "sha256",
+    entryNames: '[name]-[hash]',
+    copy: copyConfig,
+  },
+  {
     entryPoints: ['sw.ts'],
     outdir: '../public',
-    absWorkingDir: import.meta.dirname + "/web_src",
+    absWorkingDir: path.join(import.meta.dirname, 'web_src'),
   },
   {
     entryPoints: ['domain/recalculate_worker.ts'],
     outdir: '../public',
-    absWorkingDir: import.meta.dirname + "/web_src",
+    absWorkingDir: path.join(import.meta.dirname, 'web_src'),
     bundle: true,
     entryNames: 'domain/recalculate_worker',
-  },
-  {
-    entryPoints: ['index.html'],
-    outdir: '../public',
-    absWorkingDir: import.meta.dirname + "/web_src",
-    integrity: "sha256",
-    entryNames: '[name]-[hash]',
-    copy: copyConfig,
   }
 ]);
