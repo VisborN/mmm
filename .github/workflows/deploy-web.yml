@@ -1,7 +1,7 @@
 name: Deploy Web App
 on:
   push:
-    branches: ["*"]
+    branches: ["**"]
     tags: ["v*"]
 
 permissions:
