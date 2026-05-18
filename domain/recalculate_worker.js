@@ -745,7 +745,7 @@
   self.onmessage = async (e) => {
     if (e.data === "recalculate") {
       try {
-        const db = await openDB("money-management-app", 1);
+        const db = await openDB("money-management-app", 2);
         const [transactions, accounts] = await Promise.all([
           db.getAllFromIndex("transactions", "by-date"),
           db.getAll("accounts")
