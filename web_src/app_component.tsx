@@ -28,11 +28,11 @@ export const TransactionModal = observer(() => {
         date: new Date().toISOString().split('T')[0],
         amountRubles: 0,
         amountAccountCurrency: '0',
-        accountId: '',
+        accountName: '',
         category: '',
         description: '',
         type: 'withdraw',
-        transferReceiveAccountId: null,
+        transferReceiveAccountName: null,
         transferReceiveAmountAccountCurrency: null
     });
 
@@ -89,10 +89,10 @@ export const TransactionModal = observer(() => {
                     </label>
                     <label>
                         Счет:
-                        <select name="accountId" value={formData.accountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                        <select name="accountName" value={formData.accountName || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
                             <option value="" disabled>Выберите счет</option>
                             {store.accounts.map(acc => (
-                                <option key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</option>
+                                <option key={acc.id} value={acc.name}>{acc.name} ({acc.currency})</option>
                             ))}
                         </select>
                     </label>
@@ -105,10 +105,10 @@ export const TransactionModal = observer(() => {
                         <>
                             <label>
                                 Счет зачисления:
-                                <select name="transferReceiveAccountId" value={formData.transferReceiveAccountId || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
+                                <select name="transferReceiveAccountName" value={formData.transferReceiveAccountName || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}}>
                                     <option value="" disabled>Выберите счет</option>
                                     {store.accounts.map(acc => (
-                                        <option key={`recv-${acc.id}`} value={acc.id}>{acc.name} ({acc.currency})</option>
+                                        <option key={`recv-${acc.id}`} value={acc.name}>{acc.name} ({acc.currency})</option>
                                     ))}
                                 </select>
                             </label>
@@ -168,7 +168,7 @@ export const TransactionsView = observer(() => {
                                     }}
                                 >
                                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                        <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{tx.accountId.slice(-4)}</span>
+                                        <span style={{ color: '#777', width: '40px', fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.accountName}</span>
                                         <span style={{ fontSize: '16px' }}>{tx.description || tx.category}</span>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

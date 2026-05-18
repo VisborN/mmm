@@ -43,9 +43,9 @@ self.onmessage = async (e: MessageEvent): Promise<void> => {
             });
 
             // Initialize balances
-            const balances: Record<string, string> = {};
+            const balancesByName: Record<string, string> = {};
             for (const acc of accounts) {
-                balances[acc.id] = '0';
+                balancesByName[acc.name] = '0';
             }
 
             // Recalculate
@@ -53,37 +53,37 @@ self.onmessage = async (e: MessageEvent): Promise<void> => {
                 const amount = tx.amountAccountCurrency || '0';
 
                 // If account doesn't exist in our map (e.g. deleted but transactions remain), just ignore it
-                if (tx.accountId && balances[tx.accountId] === undefined) {
-                    balances[tx.accountId] = '0';
+                if (tx.accountName && balancesByName[tx.accountName] === undefined) {
+                    balancesByName[tx.accountName] = '0';
                 }
 
                 if (tx.type === 'deposit') {
-                    balances[tx.accountId] = addStrings(balances[tx.accountId], amount);
+                    balancesByName[tx.accountName] = addStrings(balancesByName[tx.accountName], amount);
                 } else if (tx.type === 'withdraw') {
-                    balances[tx.accountId] = subStrings(balances[tx.accountId], amount);
+                    balancesByName[tx.accountName] = subStrings(balancesByName[tx.accountName], amount);
                 } else if (tx.type === 'transfer') {
-                    balances[tx.accountId] = subStrings(balances[tx.accountId], amount);
-                    if (tx.transferReceiveAccountId) {
-                        if (balances[tx.transferReceiveAccountId] === undefined) {
-                            balances[tx.transferReceiveAccountId] = '0';
+                    balancesByName[tx.accountName] = subStrings(balancesByName[tx.accountName], amount);
+                    if (tx.transferReceiveAccountName) {
+                        if (balancesByName[tx.transferReceiveAccountName] === undefined) {
+                            balancesByName[tx.transferReceiveAccountName] = '0';
                         }
                         const receiveAmount = tx.transferReceiveAmountAccountCurrency || '0';
-                        balances[tx.transferReceiveAccountId] = addStrings(balances[tx.transferReceiveAccountId], receiveAmount);
+                        balancesByName[tx.transferReceiveAccountName] = addStrings(balancesByName[tx.transferReceiveAccountName], receiveAmount);
                     }
                 } else if (tx.type === 'balance_correct') {
-                    balances[tx.accountId] = amount;
+                    balancesByName[tx.accountName] = amount;
                 }
             }
 
             // Update database
-            const tx = db.transaction('accounts', 'readwrite');
+            const txStore = db.transaction('accounts', 'readwrite');
             for (const acc of accounts) {
-                if (acc.balance !== balances[acc.id]) {
-                    acc.balance = balances[acc.id];
-                    tx.store.put(acc);
+                if (acc.balance !== balancesByName[acc.name]) {
+                    acc.balance = balancesByName[acc.name];
+                    txStore.store.put(acc);
                 }
             }
-            await tx.done;
+            await txStore.done;
 
             self.postMessage({ status: 'done' });
         } catch (error) {
