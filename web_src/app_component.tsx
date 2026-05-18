@@ -243,6 +243,12 @@ export const AppMain = observer(() => {
                 {store.currentView === 'accounts' && <AccountsView />}
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
+                        <button
+                            onClick={() => store.setView('transactions')}
+                            style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
+                        >
+                            &larr; Назад
+                        </button>
                         <h2>Настройки</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
                             <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
