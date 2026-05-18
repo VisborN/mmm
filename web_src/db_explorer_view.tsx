@@ -3,8 +3,10 @@ import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { getDB } from './infrastructure/db';
 
+type DbRow = Record<string, unknown>;
+
 export const DatabaseExplorer = observer(() => {
-    const [dbData, setDbData] = useState<Record<string, any[]>>({});
+    const [dbData, setDbData] = useState<Record<string, DbRow[]>>({});
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -12,11 +14,11 @@ export const DatabaseExplorer = observer(() => {
             try {
                 const db = await getDB();
                 const storeNames = db.objectStoreNames;
-                const allData: Record<string, any[]> = {};
+                const allData: Record<string, DbRow[]> = {};
 
                 for (let i = 0; i < storeNames.length; i++) {
                     const storeName = storeNames[i];
-                    allData[storeName] = await db.getAll(storeName);
+                    allData[storeName] = (await db.getAll(storeName)) as unknown as DbRow[];
                 }
 
                 setDbData(allData);
