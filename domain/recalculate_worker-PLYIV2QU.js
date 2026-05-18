@@ -1,6 +1,6 @@
 "use strict";
 (() => {
-  // ../node_modules/idb/build/index.js
+  // node_modules/idb/build/index.js
   var instanceOfAny = (object, constructors) => constructors.some((c) => object instanceof c);
   var idbProxyableTypes;
   var cursorAdvanceMethods;
@@ -235,7 +235,7 @@
     }
   }));
 
-  // ../node_modules/big.js/big.mjs
+  // node_modules/big.js/big.mjs
   var DP = 20;
   var RM = 1;
   var MAX_DP = 1e6;
@@ -723,7 +723,7 @@
   var Big = _Big_();
   var big_default = Big;
 
-  // domain/recalculate_worker.ts
+  // web_src/domain/recalculate_worker.ts
   function addStrings(a, b) {
     try {
       const bigA = new big_default(a || "0");
@@ -797,4 +797,4 @@
     }
   };
 })();
-//# sourceMappingURL=recalculate_worker.js.map
+//# sourceMappingURL=recalculate_worker-PLYIV2QU.js.map

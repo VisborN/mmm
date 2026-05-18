@@ -27362,7 +27362,8 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const worker = new Worker("/domain/recalculate_worker.js");
+    const workerUrl = true ? "/domain/recalculate_worker-PLYIV2QU.js" : "/domain/recalculate_worker.js";
+    const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
         this.loadData().then(() => {
@@ -27960,4 +27961,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-M4JUBELM.js.map
+//# sourceMappingURL=app-WBM35Q63.js.map
