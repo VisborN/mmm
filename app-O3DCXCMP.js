@@ -27375,7 +27375,7 @@ var import_globals4 = __toESM(require_globals());
 
 // infrastructure/google_drive.ts
 var import_globals3 = __toESM(require_globals());
-var CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+var CLIENT_ID = "26384778878-6ev9883mob866lnecidhqeudl4461pvd.apps.googleusercontent.com";
 var SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets";
 var GoogleDriveService = class {
   constructor() {
@@ -28269,4 +28269,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-D5HSCFXT.js.map
+//# sourceMappingURL=app-O3DCXCMP.js.map
