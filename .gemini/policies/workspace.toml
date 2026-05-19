@@ -1,3 +1,13 @@
+# Require confirmation for force pushes
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "git push -f",
+  "git push --force"
+]
+decision = "ask_user"
+priority = 200
+
 # Allow specific read-only and utility git commands
 [[rule]]
 toolName = "run_shell_command"

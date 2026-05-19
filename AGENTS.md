@@ -5,7 +5,7 @@ When working on this repository, please adhere to the following guidelines:
 ## Project Configuration
 - This file (`AGENTS.md`) is the primary instruction file for Gemini CLI in this project, as configured in `.gemini/settings.json`.
 - The following tools are allowed to run without manual confirmation:
-  - Git commands (`status`, `log`, `diff`, `show`, `add`, `commit`, `push`, etc.).
+  - Git commands (`status`, `log`, `diff`, `show`, `add`, `commit`, `push`, etc.). Note: force pushes (`-f`, `--force`) always require manual confirmation.
   - Common bash commands (`ls`, `grep`, `cat`, `head`, etc.).
   - File editing tools (`write_file`, `replace`).
 
