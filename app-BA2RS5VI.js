@@ -27466,15 +27466,29 @@ var GoogleDriveService = class {
     if (data.error) return err(data.error);
     return ok(data.data.spreadsheetId);
   }
-  async updateSpreadsheetValues(spreadsheetId, values) {
+  async getSpreadsheet(spreadsheetId) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
-    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:Z1000:clear`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
+    const response = await withResult(fetch)(url, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (response.error) return err(response.error);
+    if (!response.data.ok) return err(new Error(`Sheets API get error: ${response.data.statusText}`));
+    const data = await withResult(() => response.data.json())();
+    if (data.error) return err(data.error);
+    return ok(data.data);
+  }
+  async updateSpreadsheetValues(spreadsheetId, values) {
+    const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
+    if (spreadsheetRes.error) return err(spreadsheetRes.error);
+    const sheetName = spreadsheetRes.data.sheets[0].properties.title;
+    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000:clear`;
     await fetch(clearUrl, {
       method: "POST",
       headers: { Authorization: `Bearer ${this.accessToken}` }
     });
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1?valueInputOption=RAW`;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1?valueInputOption=RAW`;
     const response = await withResult(fetch)(url, {
       method: "PUT",
       headers: {
@@ -27492,9 +27506,10 @@ var GoogleDriveService = class {
     return ok(void 0);
   }
   async getSpreadsheetValues(spreadsheetId) {
-    const authRes = await this.ensureAuthenticated();
-    if (authRes.error) return err(authRes.error);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:Z1000`;
+    const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
+    if (spreadsheetRes.error) return err(spreadsheetRes.error);
+    const sheetName = spreadsheetRes.data.sheets[0].properties.title;
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000`;
     const response = await withResult(fetch)(url, {
       headers: { Authorization: `Bearer ${this.accessToken}` }
     });
@@ -28270,4 +28285,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-T6NTBRMX.js.map
+//# sourceMappingURL=app-BA2RS5VI.js.map
