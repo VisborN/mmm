@@ -1362,7 +1362,7 @@ var require_react_dom_development = __commonJS({
         return dispatcher;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React5 = require_react(), Internals = {
+      var React6 = require_react(), Internals = {
         d: {
           f: noop3,
           r: function() {
@@ -1380,7 +1380,7 @@ var require_react_dom_development = __commonJS({
         },
         p: 0,
         findDOMNode: null
-      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
         "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
       );
@@ -1637,9 +1637,9 @@ var require_react_dom_client_development = __commonJS({
       }
       function warnForMissingKey() {
       }
-      function setToSortedString(set4) {
+      function setToSortedString(set5) {
         var array2 = [];
-        set4.forEach(function(value) {
+        set5.forEach(function(value) {
           array2.push(value);
         });
         return array2.sort().join(", ");
@@ -2797,16 +2797,16 @@ var require_react_dom_client_development = __commonJS({
           valueField
         );
         if (!node.hasOwnProperty(valueField) && "undefined" !== typeof descriptor && "function" === typeof descriptor.get && "function" === typeof descriptor.set) {
-          var get3 = descriptor.get, set4 = descriptor.set;
+          var get4 = descriptor.get, set5 = descriptor.set;
           Object.defineProperty(node, valueField, {
             configurable: true,
             get: function() {
-              return get3.call(this);
+              return get4.call(this);
             },
             set: function(value) {
               checkFormFieldValueStringCoercion(value);
               currentValue = "" + value;
-              set4.call(this, value);
+              set5.call(this, value);
             }
           });
           Object.defineProperty(node, valueField, {
@@ -2915,7 +2915,7 @@ var require_react_dom_client_development = __commonJS({
         "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
       }
       function validateOptionProps(element, props) {
-        null == props.value && ("object" === typeof props.children && null !== props.children ? React5.Children.forEach(props.children, function(child) {
+        null == props.value && ("object" === typeof props.children && null !== props.children ? React6.Children.forEach(props.children, function(child) {
           null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
             "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
           ));
@@ -18547,14 +18547,14 @@ var require_react_dom_client_development = __commonJS({
         ));
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var Scheduler = require_scheduler(), React5 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
+      var Scheduler = require_scheduler(), React6 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
       /* @__PURE__ */ Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity");
       /* @__PURE__ */ Symbol.for("react.legacy_hidden");
       /* @__PURE__ */ Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       /* @__PURE__ */ Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
         pending: false,
         data: null,
         method: null,
@@ -21342,7 +21342,7 @@ var require_react_dom_client_development = __commonJS({
         }
       };
       (function() {
-        var isomorphicReactPackageVersion = React5.version;
+        var isomorphicReactPackageVersion = React6.version;
         if ("19.2.6" !== isomorphicReactPackageVersion)
           throw Error(
             'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.2.6\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -21491,7 +21491,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
       function useSyncExternalStore$2(subscribe, getSnapshot) {
-        didWarnOld18Alpha || void 0 === React5.startTransition || (didWarnOld18Alpha = true, console.error(
+        didWarnOld18Alpha || void 0 === React6.startTransition || (didWarnOld18Alpha = true, console.error(
           "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
         ));
         var value = getSnapshot();
@@ -21501,7 +21501,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
             "The result of getSnapshot should be cached to avoid an infinite loop"
           ), didWarnUncachedGetSnapshot = true);
         }
-        cachedValue = useState8({
+        cachedValue = useState9({
           inst: { value, getSnapshot }
         });
         var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
@@ -21513,7 +21513,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
           },
           [subscribe, value, getSnapshot]
         );
-        useEffect3(
+        useEffect4(
           function() {
             checkIfSnapshotChanged(inst) && forceUpdate({ inst });
             return subscribe(function() {
@@ -21539,8 +21539,8 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return getSnapshot();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React5 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState8 = React5.useState, useEffect3 = React5.useEffect, useLayoutEffect = React5.useLayoutEffect, useDebugValue = React5.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-      exports.useSyncExternalStore = void 0 !== React5.useSyncExternalStore ? React5.useSyncExternalStore : shim;
+      var React6 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState9 = React6.useState, useEffect4 = React6.useEffect, useLayoutEffect = React6.useLayoutEffect, useDebugValue = React6.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      exports.useSyncExternalStore = void 0 !== React6.useSyncExternalStore ? React6.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
   }
@@ -21947,18 +21947,18 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object2) {
         return "object" === typeof object2 && null !== object2 && object2.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React5 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React5.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React6 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React5 = {
+      React6 = {
         react_stack_bottom_frame: function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React5.react_stack_bottom_frame.bind(
-        React5,
+      var unknownOwnerDebugStack = React6.react_stack_bottom_frame.bind(
+        React6,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -22006,7 +22006,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client());
 
 // app_component.tsx
-var import_react9 = __toESM(require_react());
+var import_react10 = __toESM(require_react());
 
 // ../node_modules/mobx/dist/mobx.esm.js
 var niceErrors = {
@@ -22433,26 +22433,26 @@ var Atom = /* @__PURE__ */ (function() {
   };
   return _createClass(Atom2, [{
     key: "isBeingObserved",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Atom2.isBeingObservedMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Atom2.isBeingObservedMask_, newValue);
     }
   }, {
     key: "isPendingUnobservation",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Atom2.isPendingUnobservationMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Atom2.isPendingUnobservationMask_, newValue);
     }
   }, {
     key: "diffValue",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Atom2.diffValueMask_) ? 1 : 0;
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Atom2.diffValueMask_, newValue === 1 ? true : false);
     }
   }]);
@@ -22789,7 +22789,7 @@ function extend_$3(adm, key, descriptor, proxyTrap) {
     set: descriptor.set
   }), proxyTrap);
 }
-function decorate_20223_$3(get3, context) {
+function decorate_20223_$3(get4, context) {
   if (true) {
     assert20223DecoratorType(context, ["getter"]);
   }
@@ -22798,7 +22798,7 @@ function decorate_20223_$3(get3, context) {
   addInitializer(function() {
     var adm = asObservableObject(this)[$mobx];
     var options = _extends({}, ann.options_, {
-      get: get3,
+      get: get4,
       context: this
     });
     options.name || (options.name = true ? adm.name_ + "." + key.toString() : "ObservableObject." + key.toString());
@@ -22810,8 +22810,8 @@ function decorate_20223_$3(get3, context) {
 }
 function assertComputedDescriptor(adm, _ref, key, _ref2) {
   var annotationType_ = _ref.annotationType_;
-  var get3 = _ref2.get;
-  if (!get3) {
+  var get4 = _ref2.get;
+  if (!get4) {
     die("Cannot apply '" + annotationType_ + "' to '" + adm.name_ + "." + key.toString() + "':" + ("\n'" + annotationType_ + "' can only be used on getter(+setter) properties."));
   }
 }
@@ -22851,13 +22851,13 @@ function decorate_20223_$4(desc, context) {
   }
   if (kind == "accessor") {
     return {
-      get: function get3() {
+      get: function get4() {
         if (!initializedObjects.has(this)) {
           initializeObservable(this, desc.get.call(this));
         }
         return this[$mobx].getObservablePropValue_(name);
       },
-      set: function set4(value) {
+      set: function set5(value) {
         if (!initializedObjects.has(this)) {
           initializeObservable(this, value);
         }
@@ -22896,16 +22896,16 @@ function make_$5(adm, key, descriptor, source) {
     return computed.make_(adm, key, descriptor, source);
   }
   if (descriptor.set) {
-    var set4 = isAction(descriptor.set) ? descriptor.set : createAction(key.toString(), descriptor.set);
+    var set5 = isAction(descriptor.set) ? descriptor.set : createAction(key.toString(), descriptor.set);
     if (source === adm.target_) {
       return adm.defineProperty_(key, {
         configurable: globalState.safeDescriptors ? adm.isPlainObject_ : true,
-        set: set4
+        set: set5
       }) === null ? 0 : 2;
     }
     defineProperty(source, key, {
       configurable: true,
-      set: set4
+      set: set5
     });
     return 2;
   }
@@ -23229,7 +23229,7 @@ var ObservableValue = /* @__PURE__ */ (function(_Atom) {
     }
     return value;
   };
-  _proto.set = function set4(newValue) {
+  _proto.set = function set5(newValue) {
     var oldValue = this.value_;
     newValue = this.prepareNewValue_(newValue);
     if (newValue !== globalState.UNCHANGED) {
@@ -23279,7 +23279,7 @@ var ObservableValue = /* @__PURE__ */ (function(_Atom) {
       });
     }
   };
-  _proto.get = function get3() {
+  _proto.get = function get4() {
     this.reportObserved();
     return this.dehanceValue(this.value_);
   };
@@ -23370,7 +23370,7 @@ var ComputedValue = /* @__PURE__ */ (function() {
       });
     }
   };
-  _proto.get = function get3() {
+  _proto.get = function get4() {
     if (this.isComputing) {
       die(32, this.name_, this.derivation);
     }
@@ -23401,7 +23401,7 @@ var ComputedValue = /* @__PURE__ */ (function() {
     }
     return result;
   };
-  _proto.set = function set4(value) {
+  _proto.set = function set5(value) {
     if (this.setter_) {
       if (this.isRunningSetter) {
         die(33, this.name_);
@@ -23513,42 +23513,42 @@ var ComputedValue = /* @__PURE__ */ (function() {
   };
   return _createClass(ComputedValue2, [{
     key: "isComputing",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, ComputedValue2.isComputingMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, ComputedValue2.isComputingMask_, newValue);
     }
   }, {
     key: "isRunningSetter",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, ComputedValue2.isRunningSetterMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, ComputedValue2.isRunningSetterMask_, newValue);
     }
   }, {
     key: "isBeingObserved",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, ComputedValue2.isBeingObservedMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, ComputedValue2.isBeingObservedMask_, newValue);
     }
   }, {
     key: "isPendingUnobservation",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, ComputedValue2.isPendingUnobservationMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, ComputedValue2.isPendingUnobservationMask_, newValue);
     }
   }, {
     key: "diffValue",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, ComputedValue2.diffValueMask_) ? 1 : 0;
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, ComputedValue2.diffValueMask_, newValue === 1 ? true : false);
     }
   }]);
@@ -24096,42 +24096,42 @@ var Reaction = /* @__PURE__ */ (function() {
   };
   return _createClass(Reaction2, [{
     key: "isDisposed",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Reaction2.isDisposedMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Reaction2.isDisposedMask_, newValue);
     }
   }, {
     key: "isScheduled",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Reaction2.isScheduledMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Reaction2.isScheduledMask_, newValue);
     }
   }, {
     key: "isTrackPending",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Reaction2.isTrackPendingMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Reaction2.isTrackPendingMask_, newValue);
     }
   }, {
     key: "isRunning",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Reaction2.isRunningMask_);
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Reaction2.isRunningMask_, newValue);
     }
   }, {
     key: "diffValue",
-    get: function get3() {
+    get: function get4() {
       return getFlag(this.flags_, Reaction2.diffValueMask_) ? 1 : 0;
     },
-    set: function set4(newValue) {
+    set: function set5(newValue) {
       this.flags_ = setFlag(this.flags_, Reaction2.diffValueMask_, newValue === 1 ? true : false);
     }
   }]);
@@ -25260,7 +25260,7 @@ var ObservableMap = /* @__PURE__ */ (function() {
     }
     return entry.get();
   };
-  _proto.set = function set4(key, value) {
+  _proto.set = function set5(key, value) {
     var hasKey = this.has_(key);
     if (hasInterceptors(this)) {
       var change = interceptChange(this, {
@@ -25384,7 +25384,7 @@ var ObservableMap = /* @__PURE__ */ (function() {
       spyReportEnd();
     }
   };
-  _proto.get = function get3(key) {
+  _proto.get = function get4(key) {
     if (this.has(key)) {
       return this.dehanceValue_(this.data_.get(key).get());
     }
@@ -25543,13 +25543,13 @@ var ObservableMap = /* @__PURE__ */ (function() {
   };
   return _createClass(ObservableMap2, [{
     key: "size",
-    get: function get3() {
+    get: function get4() {
       this.keysAtom_.reportObserved();
       return this.data_.size;
     }
   }, {
     key: Symbol.toStringTag,
-    get: function get3() {
+    get: function get4() {
       return "Map";
     }
   }]);
@@ -25831,13 +25831,13 @@ var ObservableSet = /* @__PURE__ */ (function() {
   };
   return _createClass(ObservableSet2, [{
     key: "size",
-    get: function get3() {
+    get: function get4() {
       this.atom_.reportObserved();
       return this.data_.size;
     }
   }, {
     key: Symbol.toStringTag,
-    get: function get3() {
+    get: function get4() {
       return "Set";
     }
   }]);
@@ -26288,10 +26288,10 @@ function asObservableObject(target, options) {
 var isObservableObjectAdministration = /* @__PURE__ */ createInstanceofPredicate("ObservableObjectAdministration", ObservableObjectAdministration);
 function getCachedObservablePropDescriptor(key) {
   return descriptorCache[key] || (descriptorCache[key] = {
-    get: function get3() {
+    get: function get4() {
       return this[$mobx].getObservablePropValue_(key);
     },
-    set: function set4(value) {
+    set: function set5(value) {
       return this[$mobx].setObservablePropValue_(key, value);
     }
   });
@@ -26325,7 +26325,7 @@ var safariPrototypeSetterInheritanceBug = /* @__PURE__ */ (function() {
   var v = false;
   var p = {};
   Object.defineProperty(p, "0", {
-    set: function set4() {
+    set: function set5() {
       v = true;
     }
   });
@@ -26400,15 +26400,15 @@ var LegacyObservableArray = /* @__PURE__ */ (function(_StubArray) {
   };
   return _createClass(LegacyObservableArray2, [{
     key: "length",
-    get: function get3() {
+    get: function get4() {
       return this[$mobx].getArrayLength_();
     },
-    set: function set4(newLength) {
+    set: function set5(newLength) {
       this[$mobx].setArrayLength_(newLength);
     }
   }, {
     key: Symbol.toStringTag,
-    get: function get3() {
+    get: function get4() {
       return "Array";
     }
   }]);
@@ -26423,10 +26423,10 @@ function createArrayEntryDescriptor(index) {
   return {
     enumerable: false,
     configurable: true,
-    get: function get3() {
+    get: function get4() {
       return this[$mobx].get_(index);
     },
-    set: function set4(value) {
+    set: function set5(value) {
       this[$mobx].set_(index, value);
     }
   };
@@ -27446,25 +27446,57 @@ var GoogleDriveService = class {
     } while (pageToken);
     return ok(allFiles);
   }
-  async createSpreadsheet(name) {
+  async listFolders(parentId) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
-    const url = "https://sheets.googleapis.com/v4/spreadsheets";
+    let allFolders = [];
+    let pageToken = void 0;
+    const parentQuery = parentId ? `'${parentId}' in parents` : "'root' in parents";
+    const query = `mimeType = 'application/vnd.google-apps.folder' and ${parentQuery} and trashed = false`;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(id,name)`;
+      if (pageToken) {
+        url += `&pageToken=${pageToken}`;
+      }
+      const response = await withResult(fetch)(url, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (response.error) return err(response.error);
+      if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+      const data = await withResult(() => response.data.json())();
+      if (data.error) return err(data.error);
+      if (data.data.files) {
+        allFolders = allFolders.concat(data.data.files);
+      }
+      pageToken = data.data.nextPageToken;
+    } while (pageToken);
+    allFolders.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+    return ok(allFolders);
+  }
+  async createSpreadsheet(name, folderId) {
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    const url = "https://www.googleapis.com/drive/v3/files";
+    const body = {
+      name,
+      mimeType: "application/vnd.google-apps.spreadsheet"
+    };
+    if (folderId) {
+      body.parents = [folderId];
+    }
     const response = await withResult(fetch)(url, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        properties: { title: name }
-      })
+      body: JSON.stringify(body)
     });
     if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Sheets API error: ${response.data.statusText}`));
+    if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
     const data = await withResult(() => response.data.json())();
     if (data.error) return err(data.error);
-    return ok(data.data.spreadsheetId);
+    return ok(data.data.id);
   }
   async getSpreadsheet(spreadsheetId) {
     const authRes = await this.ensureAuthenticated();
@@ -27524,7 +27556,7 @@ var googleDriveService = new GoogleDriveService();
 
 // domain/google_sync_service.ts
 var GoogleSyncService = class {
-  async exportToGoogleDrive(transactions) {
+  async exportToGoogleDrive(transactions, folderId) {
     const groups = {};
     for (const t of transactions) {
       const month = t.date.substring(0, 7);
@@ -27534,7 +27566,11 @@ var GoogleSyncService = class {
     }
     for (const [name, txs] of Object.entries(groups)) {
       const escapedName = name.replace(/'/g, "\\'");
-      const filesRes = await googleDriveService.listFiles(`name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`);
+      let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`;
+      if (folderId) {
+        query += ` and '${folderId}' in parents`;
+      }
+      const filesRes = await googleDriveService.listFiles(query);
       let spreadsheetId;
       if (filesRes.error) {
         return err(filesRes.error);
@@ -27542,7 +27578,7 @@ var GoogleSyncService = class {
       if (filesRes.data.length > 0) {
         spreadsheetId = filesRes.data[0].id;
       } else {
-        const createRes = await googleDriveService.createSpreadsheet(name);
+        const createRes = await googleDriveService.createSpreadsheet(name, folderId);
         if (createRes.error) {
           return err(createRes.error);
         }
@@ -27570,8 +27606,12 @@ var GoogleSyncService = class {
     }
     return ok(void 0);
   }
-  async importFromGoogleDrive() {
-    const filesRes = await googleDriveService.listFiles("name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'");
+  async importFromGoogleDrive(folderId) {
+    let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
+    if (folderId) {
+      query += ` and '${folderId}' in parents`;
+    }
+    const filesRes = await googleDriveService.listFiles(query);
     if (filesRes.error) {
       return err(filesRes.error);
     }
@@ -27619,6 +27659,46 @@ var GoogleSyncService = class {
 };
 var googleSyncService = new GoogleSyncService();
 
+// ../node_modules/idb-keyval/dist/index.js
+function promisifyRequest2(request) {
+  return new Promise((resolve, reject) => {
+    request.oncomplete = request.onsuccess = () => resolve(request.result);
+    request.onabort = request.onerror = () => reject(request.error);
+  });
+}
+function createStore(dbName, storeName) {
+  let dbp;
+  const getDB2 = () => {
+    if (dbp)
+      return dbp;
+    const request = indexedDB.open(dbName);
+    request.onupgradeneeded = () => request.result.createObjectStore(storeName);
+    dbp = promisifyRequest2(request);
+    dbp.then((db) => {
+      db.onclose = () => dbp = void 0;
+    }, () => {
+    });
+    return dbp;
+  };
+  return (txMode, callback) => getDB2().then((db) => callback(db.transaction(storeName, txMode).objectStore(storeName)));
+}
+var defaultGetStoreFunc;
+function defaultGetStore() {
+  if (!defaultGetStoreFunc) {
+    defaultGetStoreFunc = createStore("keyval-store", "keyval");
+  }
+  return defaultGetStoreFunc;
+}
+function get3(key, customStore = defaultGetStore()) {
+  return customStore("readonly", (store2) => promisifyRequest2(store2.get(key)));
+}
+function set4(key, value, customStore = defaultGetStore()) {
+  return customStore("readwrite", (store2) => {
+    store2.put(value, key);
+    return promisifyRequest2(store2.transaction);
+  });
+}
+
 // domain/store.ts
 var AppStore = class {
   constructor() {
@@ -27632,11 +27712,19 @@ var AppStore = class {
     __publicField(this, "isLoading", true);
     __publicField(this, "error", null);
     __publicField(this, "isRecalculating", false);
+    __publicField(this, "syncFolderId", null);
+    __publicField(this, "syncFolderName", null);
     makeAutoObservable(this);
+  }
+  async setSyncFolder(id, name) {
+    this.syncFolderId = id;
+    this.syncFolderName = name;
+    await set4("syncFolderId", id);
+    await set4("syncFolderName", name);
   }
   async exportToGoogleDrive() {
     this.isLoading = true;
-    const result = await googleSyncService.exportToGoogleDrive(this.transactions);
+    const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0);
     runInAction(() => {
       if (result.error) {
         this.error = result.error;
@@ -27646,7 +27734,7 @@ var AppStore = class {
   }
   async importFromGoogleDrive() {
     this.isLoading = true;
-    const result = await googleSyncService.importFromGoogleDrive();
+    const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0);
     if (result.error) {
       runInAction(() => {
         this.error = result.error;
@@ -27699,6 +27787,12 @@ var AppStore = class {
   async loadData() {
     this.isLoading = true;
     this.error = null;
+    const folderId = await get3("syncFolderId");
+    const folderName = await get3("syncFolderName");
+    runInAction(() => {
+      if (folderId !== void 0) this.syncFolderId = folderId;
+      if (folderName !== void 0) this.syncFolderName = folderName;
+    });
     const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
     if (accountsErr) {
       runInAction(() => {
@@ -27919,8 +28013,127 @@ var DatabaseExplorer = observer(() => {
   ] });
 });
 
-// app_component.tsx
+// folder_selection_modal.tsx
+var import_react9 = __toESM(require_react());
 var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var FolderSelectionModal = ({ onClose }) => {
+  const [folders, setFolders] = (0, import_react9.useState)([]);
+  const [path, setPath] = (0, import_react9.useState)([{ id: "root", name: "\u041C\u043E\u0439 \u0434\u0438\u0441\u043A" }]);
+  const [isLoading, setIsLoading] = (0, import_react9.useState)(true);
+  const [error, setError] = (0, import_react9.useState)(null);
+  const currentFolderId = path[path.length - 1].id;
+  (0, import_react9.useEffect)(() => {
+    let isMounted = true;
+    const loadFolders = async () => {
+      setIsLoading(true);
+      setError(null);
+      const result = await googleDriveService.listFolders(currentFolderId === "root" ? void 0 : currentFolderId);
+      if (isMounted) {
+        if (result.error) {
+          setError(result.error.message);
+        } else {
+          setFolders(result.data);
+        }
+        setIsLoading(false);
+      }
+    };
+    loadFolders();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentFolderId]);
+  const navigateTo = (folder) => {
+    setPath([...path, folder]);
+  };
+  const navigateUp = (index) => {
+    setPath(path.slice(0, index + 1));
+  };
+  const selectCurrentFolder = async () => {
+    const selected = path[path.length - 1];
+    const idToSave = selected.id === "root" ? null : selected.id;
+    const nameToSave = selected.id === "root" ? null : selected.name;
+    await store.setSyncFolder(idToSave, nameToSave);
+    onClose();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 1e3
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+    backgroundColor: "white",
+    padding: "20px",
+    borderRadius: "8px",
+    width: "90%",
+    maxWidth: "400px",
+    maxHeight: "80vh",
+    display: "flex",
+    flexDirection: "column"
+  }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginTop: 0, marginBottom: "15px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "15px", display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        "span",
+        {
+          onClick: () => navigateUp(index),
+          style: {
+            cursor: index === path.length - 1 ? "default" : "pointer",
+            color: index === path.length - 1 ? "#333" : "#007bff",
+            fontWeight: index === path.length - 1 ? "bold" : "normal"
+          },
+          children: folder.name
+        }
+      ),
+      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "#888" }, children: "/" })
+    ] }, folder.id)) }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { color: "red", marginBottom: "15px" }, children: [
+      "\u041E\u0448\u0438\u0431\u043A\u0430: ",
+      error
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+      flex: 1,
+      overflowY: "auto",
+      border: "1px solid #eee",
+      borderRadius: "4px",
+      padding: "5px",
+      minHeight: "200px"
+    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px", textAlign: "center", color: "#666" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px", textAlign: "center", color: "#666" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+      "button",
+      {
+        onClick: () => navigateTo(folder),
+        style: {
+          width: "100%",
+          textAlign: "left",
+          padding: "10px",
+          background: "none",
+          border: "none",
+          borderBottom: "1px solid #f5f5f5",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px"
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
+          folder.name
+        ]
+      }
+    ) }, folder.id)) }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, style: { padding: "8px 16px", background: "none", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, style: { padding: "8px 16px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }, children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
+    ] })
+  ] }) });
+};
+
+// app_component.tsx
+var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 var formatDate = (dateStr) => {
   const date = new Date(dateStr);
   return date.toLocaleDateString("ru-RU", {
@@ -27936,7 +28149,7 @@ var formatAmount2 = (amount) => {
   }) + " \u20BD";
 };
 var TransactionModal = observer(() => {
-  const [formData, setFormData] = (0, import_react9.useState)(store.currentTransaction || {
+  const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
     id: 0,
     date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
     amountRubles: 0,
@@ -27966,7 +28179,7 @@ var TransactionModal = observer(() => {
       [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : value
     }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: {
     position: "fixed",
     top: 0,
     left: 0,
@@ -27977,7 +28190,7 @@ var TransactionModal = observer(() => {
     alignItems: "center",
     justifyContent: "center",
     zIndex: 1e3
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
+  }, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: {
     backgroundColor: "white",
     padding: "20px",
     borderRadius: "8px",
@@ -27986,30 +28199,30 @@ var TransactionModal = observer(() => {
     maxHeight: "90vh",
     overflowY: "auto"
   }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginTop: 0 }, children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { style: { marginTop: 0 }, children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u0414\u0430\u0442\u0430:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u0421\u0443\u043C\u043C\u0430 (\u20BD):",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u0422\u0438\u043F:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "accountName", value: formData.accountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
-          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: acc.name, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "accountName", value: formData.accountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
             acc.name,
             " (",
             acc.currency,
@@ -28017,15 +28230,15 @@ var TransactionModal = observer(() => {
           ] }, acc.id))
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
       ] }),
-      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(import_jsx_runtime3.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("label", { children: [
+      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
         "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:",
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
-          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("option", { value: acc.name, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
             acc.name,
             " (",
             acc.currency,
@@ -28033,9 +28246,9 @@ var TransactionModal = observer(() => {
           ] }, `recv-${acc.id}`))
         ] })
       ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
       ] })
     ] })
   ] }) });
@@ -28047,20 +28260,20 @@ var TransactionsView = observer(() => {
     return acc;
   }, {});
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("main", { children: [
-    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("main", { children: [
+    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: {
         backgroundColor: "#e3f2fd",
         padding: "8px 20px",
         textAlign: "right",
         fontSize: "14px",
         color: "#555"
       }, children: formatDate(dateStr) }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { backgroundColor: "white" }, children: groupedTransactions[dateStr].map((tx) => {
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { backgroundColor: "white" }, children: groupedTransactions[dateStr].map((tx) => {
         const isPositive = tx.type === "deposit";
         const color = isPositive ? "#2e7d32" : "#c62828";
         const arrow = isPositive ? "\u25BC" : "\u25B2";
-        return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+        return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
           "div",
           {
             onClick: () => store.openTransactionModal(tx),
@@ -28072,13 +28285,13 @@ var TransactionsView = observer(() => {
               cursor: "pointer"
             },
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: tx.accountName }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "16px" }, children: tx.description || tx.category })
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: tx.accountName }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { fontSize: "16px" }, children: tx.description || tx.category })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "16px" }, children: formatAmount2(tx.amountRubles) }),
-                /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color, fontSize: "12px" }, children: arrow })
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { fontSize: "16px" }, children: formatAmount2(tx.amountRubles) }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { color, fontSize: "12px" }, children: arrow })
               ] })
             ]
           },
@@ -28086,11 +28299,12 @@ var TransactionsView = observer(() => {
         );
       }) })
     ] }, dateStr)),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(TransactionModal, {})
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(TransactionModal, {})
   ] });
 });
 var AppMain = observer(() => {
-  (0, import_react9.useEffect)(() => {
+  const [isFolderModalOpen, setIsFolderModalOpen] = (0, import_react10.useState)(false);
+  (0, import_react10.useEffect)(() => {
     store.loadData().then(() => {
       if (store.currentView === "accounts") {
         store.recalculateBalances();
@@ -28098,10 +28312,10 @@ var AppMain = observer(() => {
     });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("header", { style: {
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { style: {
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
@@ -28109,15 +28323,15 @@ var AppMain = observer(() => {
       backgroundColor: "white",
       borderBottom: "1px solid #eee"
     }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-19 19:00:03 +0200" : "dev"
+          true ? "2026-05-19 23:57:09 +0200" : "dev"
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           "button",
           {
             onClick: () => store.currentView === "transactions" ? store.openTransactionModal() : store.openAccountModal(),
@@ -28125,7 +28339,7 @@ var AppMain = observer(() => {
             children: "\u2795"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           "button",
           {
             onClick: () => store.setView("settings"),
@@ -28135,12 +28349,12 @@ var AppMain = observer(() => {
         )
       ] })
     ] }),
-    store.error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "10px", backgroundColor: "#ffcccc", color: "red" }, children: [
+    store.error && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "10px", backgroundColor: "#ffcccc", color: "red" }, children: [
       "\u041E\u0448\u0438\u0431\u043A\u0430: ",
       store.error.message
     ] }),
-    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", backgroundColor: "white", borderBottom: "1px solid #ddd" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", backgroundColor: "white", borderBottom: "1px solid #ddd" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         "button",
         {
           onClick: () => store.setView("transactions"),
@@ -28148,7 +28362,7 @@ var AppMain = observer(() => {
           children: "\u041E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
         "button",
         {
           onClick: () => {
@@ -28160,11 +28374,11 @@ var AppMain = observer(() => {
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { flex: 1, overflowY: "auto" }, children: [
-      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(TransactionsView, {}),
-      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(AccountsView, {}),
-      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "20px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { flex: 1, overflowY: "auto" }, children: [
+      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(TransactionsView, {}),
+      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AccountsView, {}),
+      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "20px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           "button",
           {
             onClick: () => store.setView("transactions"),
@@ -28172,28 +28386,45 @@ var AppMain = observer(() => {
             children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
-        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-            "button",
-            {
-              onClick: () => store.exportToGoogleDrive(),
-              style: { padding: "10px 20px", backgroundColor: "#4285F4", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
-              disabled: store.isLoading,
-              children: store.isLoading ? "Exporting..." : "Export to Google Drive"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-            "button",
-            {
-              onClick: () => store.importFromGoogleDrive(),
-              style: { padding: "10px 20px", backgroundColor: "#34A853", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
-              disabled: store.isLoading,
-              children: store.isLoading ? "Importing..." : "Import from Google Drive"
-            }
-          ),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start", width: "100%" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "15px", backgroundColor: "#f0f8ff", borderRadius: "8px", width: "100%", boxSizing: "border-box" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { style: { margin: "0 0 10px 0", fontSize: "16px" }, children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F Google Drive" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { marginBottom: "10px", fontSize: "14px", color: "#555" }, children: [
+              "\u0422\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u043F\u043A\u0430: ",
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.syncFolderName || "\u041A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430 (\u041C\u043E\u0439 \u0434\u0438\u0441\u043A)" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              "button",
+              {
+                onClick: () => setIsFolderModalOpen(true),
+                style: { padding: "8px 16px", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "14px", marginBottom: "15px" },
+                children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u0443\u044E \u043F\u0430\u043F\u043A\u0443"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "10px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  onClick: () => store.exportToGoogleDrive(),
+                  style: { padding: "10px 20px", backgroundColor: "#4285F4", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+                  disabled: store.isLoading,
+                  children: store.isLoading ? "Exporting..." : "Export to Google Drive"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  onClick: () => store.importFromGoogleDrive(),
+                  style: { padding: "10px 20px", backgroundColor: "#34A853", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+                  disabled: store.isLoading,
+                  children: store.isLoading ? "Importing..." : "Import from Google Drive"
+                }
+              )
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
             "button",
             {
               onClick: () => store.setView("db_explorer"),
@@ -28203,20 +28434,21 @@ var AppMain = observer(() => {
           )
         ] })
       ] }),
-      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(DatabaseExplorer, {})
-    ] })
+      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(DatabaseExplorer, {})
+    ] }),
+    isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(FolderSelectionModal, { onClose: () => setIsFolderModalOpen(false) })
   ] });
 });
 
 // app.tsx
-var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("app");
   if (!el) {
     throw new Error(`Container with id 'app' not found.`);
   }
   const root = (0, import_client.createRoot)(el);
-  root.render(/* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AppMain, {}));
+  root.render(/* @__PURE__ */ (0, import_jsx_runtime5.jsx)(AppMain, {}));
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -28291,4 +28523,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-EOHD6ME4.js.map
+//# sourceMappingURL=app-MZ35EFVQ.js.map
