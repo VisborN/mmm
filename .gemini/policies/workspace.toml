@@ -1,0 +1,36 @@
+# Allow specific read-only and utility git commands
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "git status",
+  "git log",
+  "git diff",
+  "git show",
+  "git ls-files",
+  "git rev-parse",
+  "git branch",
+  "git remote -v"
+]
+decision = "allow"
+priority = 100
+
+# Allow common system utility commands
+[[rule]]
+toolName = "run_shell_command"
+commandPrefix = [
+  "ls",
+  "grep",
+  "cat",
+  "find",
+  "pwd",
+  "du",
+  "df"
+]
+decision = "allow"
+priority = 100
+
+# Allow file modification tools
+[[rule]]
+toolName = ["write_file", "replace"]
+decision = "allow"
+priority = 100

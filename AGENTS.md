@@ -2,6 +2,13 @@
 
 When working on this repository, please adhere to the following guidelines:
 
+## Project Configuration
+- This file (`AGENTS.md`) is the primary instruction file for Gemini CLI in this project, as configured in `.gemini/settings.json`.
+- The following tools are allowed to run without manual confirmation:
+  - Non-destructive git commands (`status`, `log`, `diff`, etc.).
+  - Common bash commands (`ls`, `grep`, `cat`, etc.).
+  - File editing tools (`write_file`, `replace`).
+
 ## General
 - Use strict TypeScript.
 - Prefer using `interfaces` and `type` aliases (or `structs` in Go) over `classes`.
