@@ -3,6 +3,14 @@ import { configure } from 'esbd';
 import * as esbuild from 'esbuild';
 import * as path from 'path';
 import * as fs from 'fs';
+import { execSync } from 'child_process';
+
+let commitTime = '';
+try {
+  commitTime = execSync('git log -1 --format="%ci"', { encoding: 'utf-8' }).trim();
+} catch (e) {
+  commitTime = 'unknown';
+}
 
 function getFiles(dir, files = []) {
   if (!fs.existsSync(dir)) return files;
@@ -64,7 +72,8 @@ async function buildWorkerAndConfigure() {
       entryNames: '[name]-[hash]',
       copy: copyConfig,
       define: {
-        '__WORKER_URL__': JSON.stringify(workerPath)
+        '__WORKER_URL__': JSON.stringify(workerPath),
+        '__COMMIT_TIME__': JSON.stringify(commitTime)
       }
     },
     {

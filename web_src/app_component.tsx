@@ -5,6 +5,8 @@ import { Transaction } from './domain/types';
 import { AccountsView } from './accounts_view';
 import { DatabaseExplorer } from './db_explorer_view';
 
+declare const __COMMIT_TIME__: string;
+
 // Utility for Russian locale formatting
 const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -205,7 +207,10 @@ export const AppMain = observer(() => {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '16px 20px', backgroundColor: 'white', borderBottom: '1px solid #eee'
             }}>
-                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>v. {typeof __COMMIT_TIME__ !== 'undefined' ? __COMMIT_TIME__ : 'dev'}</div>
+                </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
                     <button
                         onClick={() => store.currentView === 'transactions' ? store.openTransactionModal() : store.openAccountModal()}
