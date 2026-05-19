@@ -9,7 +9,10 @@ commandPrefix = [
   "git ls-files",
   "git rev-parse",
   "git branch",
-  "git remote -v"
+  "git remote -v",
+  "git add",
+  "git commit",
+  "git push"
 ]
 decision = "allow"
 priority = 100
@@ -24,7 +27,8 @@ commandPrefix = [
   "find",
   "pwd",
   "du",
-  "df"
+  "df",
+  "head"
 ]
 decision = "allow"
 priority = 100
