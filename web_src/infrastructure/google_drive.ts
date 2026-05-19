@@ -90,29 +90,73 @@ export class GoogleDriveService {
         return ok(allFiles);
     }
 
-    async createSpreadsheet(name: string): Promise<Result<string>> {
+    async listFolders(parentId?: string): Promise<Result<any[]>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
-        const url = 'https://sheets.googleapis.com/v4/spreadsheets';
+        let allFolders: any[] = [];
+        let pageToken: string | undefined = undefined;
+
+        const parentQuery = parentId ? `'${parentId}' in parents` : "'root' in parents";
+        const query = `mimeType = 'application/vnd.google-apps.folder' and ${parentQuery} and trashed = false`;
+
+        do {
+            let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(id,name)`;
+            if (pageToken) {
+                url += `&pageToken=${pageToken}`;
+            }
+
+            const response = await withResult(fetch)(url, {
+                headers: { Authorization: `Bearer ${this.accessToken}` }
+            });
+
+            if (response.error) return err(response.error);
+            if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+
+            const data = await withResult(() => response.data.json())();
+            if (data.error) return err(data.error);
+
+            if (data.data.files) {
+                allFolders = allFolders.concat(data.data.files);
+            }
+            pageToken = data.data.nextPageToken;
+        } while (pageToken);
+
+        // Sort folders alphabetically by name
+        allFolders.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        return ok(allFolders);
+    }
+
+    async createSpreadsheet(name: string, folderId?: string): Promise<Result<string>> {
+        const authRes = await this.ensureAuthenticated();
+        if (authRes.error) return err(authRes.error);
+
+        const url = 'https://www.googleapis.com/drive/v3/files';
+        const body: any = {
+            name: name,
+            mimeType: 'application/vnd.google-apps.spreadsheet'
+        };
+        if (folderId) {
+            body.parents = [folderId];
+        }
+
         const response = await withResult(fetch)(url, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${this.accessToken}`,
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                properties: { title: name }
-            })
+            body: JSON.stringify(body)
         });
 
         if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Sheets API error: ${response.data.statusText}`));
+        if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
 
         const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
 
-        return ok(data.data.spreadsheetId);
+        return ok(data.data.id);
     }
 
     async getSpreadsheet(spreadsheetId: string): Promise<Result<any>> {

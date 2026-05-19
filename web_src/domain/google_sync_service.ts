@@ -3,7 +3,7 @@ import { Transaction } from "./types";
 import { googleDriveService } from "../infrastructure/google_drive";
 
 export class GoogleSyncService {
-    async exportToGoogleDrive(transactions: Transaction[]): Promise<Result<void, Error>> {
+    async exportToGoogleDrive(transactions: Transaction[], folderId?: string): Promise<Result<void, Error>> {
         const groups: Record<string, Transaction[]> = {};
         for (const t of transactions) {
             const month = t.date.substring(0, 7); // YYYY-MM
@@ -14,7 +14,11 @@ export class GoogleSyncService {
 
         for (const [name, txs] of Object.entries(groups)) {
             const escapedName = name.replace(/'/g, "\\'");
-            const filesRes = await googleDriveService.listFiles(`name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`);
+            let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`;
+            if (folderId) {
+                query += ` and '${folderId}' in parents`;
+            }
+            const filesRes = await googleDriveService.listFiles(query);
             let spreadsheetId: string;
 
             if (filesRes.error) {
@@ -24,7 +28,7 @@ export class GoogleSyncService {
             if (filesRes.data.length > 0) {
                 spreadsheetId = filesRes.data[0].id;
             } else {
-                const createRes = await googleDriveService.createSpreadsheet(name);
+                const createRes = await googleDriveService.createSpreadsheet(name, folderId);
                 if (createRes.error) {
                     return err(createRes.error);
                 }
@@ -47,8 +51,12 @@ export class GoogleSyncService {
         return ok(undefined);
     }
 
-    async importFromGoogleDrive(): Promise<Result<Transaction[], Error>> {
-        const filesRes = await googleDriveService.listFiles("name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'");
+    async importFromGoogleDrive(folderId?: string): Promise<Result<Transaction[], Error>> {
+        let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
+        if (folderId) {
+            query += ` and '${folderId}' in parents`;
+        }
+        const filesRes = await googleDriveService.listFiles(query);
         if (filesRes.error) {
             return err(filesRes.error);
         }

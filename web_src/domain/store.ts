@@ -2,6 +2,7 @@ import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
 import { googleSyncService } from "./google_sync_service";
+import { get, set } from "idb-keyval";
 
 declare const __WORKER_URL__: string;
 
@@ -22,13 +23,23 @@ export class AppStore {
 
     isRecalculating: boolean = false;
 
+    syncFolderId: string | null = null;
+    syncFolderName: string | null = null;
+
     constructor() {
         makeAutoObservable(this);
     }
 
+    async setSyncFolder(id: string | null, name: string | null): Promise<void> {
+        this.syncFolderId = id;
+        this.syncFolderName = name;
+        await set('syncFolderId', id);
+        await set('syncFolderName', name);
+    }
+
     async exportToGoogleDrive(): Promise<void> {
         this.isLoading = true;
-        const result = await googleSyncService.exportToGoogleDrive(this.transactions);
+        const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined);
         runInAction(() => {
             if (result.error) {
                 this.error = result.error;
@@ -40,7 +51,7 @@ export class AppStore {
     async importFromGoogleDrive(): Promise<void> {
         this.isLoading = true;
         
-        const result = await googleSyncService.importFromGoogleDrive();
+        const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined);
         
         if (result.error) {
             runInAction(() => { this.error = result.error; this.isLoading = false; });
@@ -95,6 +106,13 @@ export class AppStore {
     async loadData(): Promise<void> {
         this.isLoading = true;
         this.error = null;
+
+        const folderId = await get('syncFolderId');
+        const folderName = await get('syncFolderName');
+        runInAction(() => {
+            if (folderId !== undefined) this.syncFolderId = folderId;
+            if (folderName !== undefined) this.syncFolderName = folderName;
+        });
 
         const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
         if (accountsErr) {

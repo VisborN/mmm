@@ -4,6 +4,7 @@ import { store } from './domain/store';
 import { Transaction } from './domain/types';
 import { AccountsView } from './accounts_view';
 import { DatabaseExplorer } from './db_explorer_view';
+import { FolderSelectionModal } from './folder_selection_modal';
 
 declare const __COMMIT_TIME__: string;
 
@@ -189,6 +190,8 @@ export const TransactionsView = observer(() => {
 });
 
 export const AppMain = observer(() => {
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+
     useEffect(() => {
         store.loadData().then(() => {
             if (store.currentView === 'accounts') {
@@ -265,23 +268,39 @@ export const AppMain = observer(() => {
                             &larr; Назад
                         </button>
                         <h2>Настройки</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
+                            <div style={{ padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>
+                                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Синхронизация Google Drive</h3>
+                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#555' }}>
+                                    Текущая папка: <strong>{store.syncFolderName || 'Корневая папка (Мой диск)'}</strong>
+                                </div>
+                                <button
+                                    onClick={() => setIsFolderModalOpen(true)}
+                                    style={{ padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', marginBottom: '15px' }}
+                                >
+                                    Выбрать другую папку
+                                </button>
+                                
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={() => store.exportToGoogleDrive()}
+                                        style={{ padding: '10px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        disabled={store.isLoading}
+                                    >
+                                        {store.isLoading ? 'Exporting...' : 'Export to Google Drive'}
+                                    </button>
+                                    <button
+                                        onClick={() => store.importFromGoogleDrive()}
+                                        style={{ padding: '10px 20px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        disabled={store.isLoading}
+                                    >
+                                        {store.isLoading ? 'Importing...' : 'Import from Google Drive'}
+                                    </button>
+                                </div>
+                            </div>
+
                             <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                                 Open Tinkoff Login
-                            </button>
-                            <button
-                                onClick={() => store.exportToGoogleDrive()}
-                                style={{ padding: '10px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                                disabled={store.isLoading}
-                            >
-                                {store.isLoading ? 'Exporting...' : 'Export to Google Drive'}
-                            </button>
-                            <button
-                                onClick={() => store.importFromGoogleDrive()}
-                                style={{ padding: '10px 20px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                                disabled={store.isLoading}
-                            >
-                                {store.isLoading ? 'Importing...' : 'Import from Google Drive'}
                             </button>
                             <button
                                 onClick={() => store.setView('db_explorer')}
@@ -294,6 +313,7 @@ export const AppMain = observer(() => {
                 )}
                 {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
+            {isFolderModalOpen && <FolderSelectionModal onClose={() => setIsFolderModalOpen(false)} />}
         </div>
     );
 });
