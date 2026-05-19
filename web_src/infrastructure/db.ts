@@ -4,12 +4,12 @@ import { Account, Transaction } from '../domain/types';
 
 export interface MoneyAppDB extends DBSchema {
     transactions: {
-        key: string;
+        key: number;
         value: Transaction;
         indexes: { 'by-date': string, 'by-account': string };
     };
     accounts: {
-        key: string;
+        key: number;
         value: Account;
     };
 }
@@ -21,7 +21,7 @@ export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
         dbPromise = openDB<MoneyAppDB>('money-management-app', 2, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (oldVersion < 1) {
-                    const txStore = db.createObjectStore('transactions', { keyPath: 'id' });
+                    const txStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
                     txStore.createIndex('by-date', 'date');
                     txStore.createIndex('by-account', 'accountName');
                 }
@@ -31,7 +31,7 @@ export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
                     txStore.createIndex('by-account', 'accountName');
                 }
                 if (!db.objectStoreNames.contains('accounts')) {
-                    db.createObjectStore('accounts', { keyPath: 'id' });
+                    db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });
                 }
             },
         });

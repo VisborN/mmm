@@ -5,14 +5,14 @@ import { withDB } from "./db_wrapper";
 
 export interface Repository {
     getTransactions(): Promise<Result<Transaction[], Error>>;
-    getTransaction(id: string): Promise<Result<Transaction | undefined, Error>>;
+    getTransaction(id: number): Promise<Result<Transaction | undefined, Error>>;
     saveTransaction(transaction: Transaction): Promise<Result<void, Error>>;
-    deleteTransaction(id: string): Promise<Result<void, Error>>;
+    deleteTransaction(id: number): Promise<Result<void, Error>>;
 
     getAccounts(): Promise<Result<Account[], Error>>;
-    getAccount(id: string): Promise<Result<Account | undefined, Error>>;
+    getAccount(id: number): Promise<Result<Account | undefined, Error>>;
     saveAccount(account: Account): Promise<Result<void, Error>>;
-    deleteAccount(id: string): Promise<Result<void, Error>>;
+    deleteAccount(id: number): Promise<Result<void, Error>>;
 }
 
 export const indexedDBRepository: Repository = {
@@ -24,19 +24,27 @@ export const indexedDBRepository: Repository = {
         return ok(result.data);
     },
 
-    async getTransaction(id: string): Promise<Result<Transaction | undefined, Error>> {
+    async getTransaction(id: number): Promise<Result<Transaction | undefined, Error>> {
         return withDB<Transaction | undefined>(db => db.get('transactions', id));
     },
 
     async saveTransaction(transaction: Transaction): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
-            await db.put('transactions', transaction);
+            if (transaction.id === 0) {
+                // For new transactions, we let IndexedDB generate the ID.
+                // We omit the id property so autoIncrement takes over.
+                const data = { ...transaction };
+                delete (data as { id?: number }).id;
+                await db.add('transactions', data as unknown as Transaction);
+            } else {
+                await db.put('transactions', transaction);
+            }
         });
         if (result.error) return result;
         return ok<void>(undefined);
     },
 
-    async deleteTransaction(id: string): Promise<Result<void, Error>> {
+    async deleteTransaction(id: number): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
             await db.delete('transactions', id);
         });
@@ -48,19 +56,26 @@ export const indexedDBRepository: Repository = {
         return withDB<Account[]>(db => db.getAll('accounts'));
     },
 
-    async getAccount(id: string): Promise<Result<Account | undefined, Error>> {
+    async getAccount(id: number): Promise<Result<Account | undefined, Error>> {
         return withDB<Account | undefined>(db => db.get('accounts', id));
     },
 
     async saveAccount(account: Account): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
-            await db.put('accounts', account);
+            if (account.id === 0) {
+                // For new accounts, we let IndexedDB generate the ID.
+                const data = { ...account };
+                delete (data as { id?: number }).id;
+                await db.add('accounts', data as unknown as Account);
+            } else {
+                await db.put('accounts', account);
+            }
         });
         if (result.error) return result;
         return ok<void>(undefined);
     },
 
-    async deleteAccount(id: string): Promise<Result<void, Error>> {
+    async deleteAccount(id: number): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
             await db.delete('accounts', id);
         });

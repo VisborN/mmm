@@ -11,6 +11,7 @@ When working on this repository, please adhere to the following guidelines:
 
 ## General
 - Use strict TypeScript.
+- Always use `yarn` for package management and running scripts; never use `npm`.
 - Prefer using `interfaces` and `type` aliases (or `structs` in Go) over `classes`.
 - Minimize the use of third-party libraries. Stick to native APIs or lightweight, well-known libraries when necessary.
 - **Do not touch any code in the `money_flow` directory.**

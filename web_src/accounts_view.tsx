@@ -15,7 +15,7 @@ const formatAmount = (amountStr: string) => {
 
 export const AccountModal = observer(() => {
     const [formData, setFormData] = useState<Partial<Account>>(store.currentAccount || {
-        id: crypto.randomUUID(),
+        id: 0,
         name: '',
         currency: 'RUB',
         balance: '0'
@@ -89,7 +89,7 @@ export const AccountsView = observer(() => {
                             }}
                         >
                             <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{acc.id.slice(-4)}</span>
+                                <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{acc.id}</span>
                                 <span style={{ fontSize: '16px' }}>{acc.name}</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

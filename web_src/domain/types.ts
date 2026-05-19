@@ -1,5 +1,5 @@
 export interface Account {
-    id: string;
+    id: number;
     name: string;
     currency: string;
     balance: string; // Stored as a string to preserve precision
@@ -8,7 +8,7 @@ export interface Account {
 export type TransactionType = 'withdraw' | 'transfer' | 'deposit' | 'balance_correct';
 
 export interface Transaction {
-    id: string;
+    id: number;
     date: string; // YYYY-MM-DD
     amountRubles: number; // precision 2 digits
     amountAccountCurrency: string; // Stored as string to support any precision

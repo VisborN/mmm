@@ -36,10 +36,9 @@ self.onmessage = async (e: MessageEvent): Promise<void> => {
 
             // Sort transactions: date ascending, then id ascending
             transactions.sort((a, b) => {
-                if (a.date === b.date) {
-                    return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
-                }
-                return a.date > b.date ? 1 : a.date < b.date ? -1 : 0;
+                const dateCompare = a.date.localeCompare(b.date);
+                if (dateCompare !== 0) return dateCompare;
+                return a.id - b.id;
             });
 
             // Initialize balances

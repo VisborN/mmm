@@ -24,7 +24,7 @@ const formatAmount = (amount: number) => {
 
 export const TransactionModal = observer(() => {
     const [formData, setFormData] = useState<Partial<Transaction>>(store.currentTransaction || {
-        id: crypto.randomUUID(),
+        id: 0,
         date: new Date().toISOString().split('T')[0],
         amountRubles: 0,
         amountAccountCurrency: '0',
@@ -54,7 +54,7 @@ export const TransactionModal = observer(() => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
-            [name]: name === 'amountRubles' ? parseFloat(value) : value
+            [name]: name === 'amountRubles' ? (value === '' ? 0 : parseFloat(value)) : value
         }));
     };
 
