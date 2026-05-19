@@ -1,6 +1,7 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
+import { googleSyncService } from "./google_sync_service";
 
 declare const __WORKER_URL__: string;
 
@@ -23,6 +24,37 @@ export class AppStore {
 
     constructor() {
         makeAutoObservable(this);
+    }
+
+    async exportToGoogleDrive(): Promise<void> {
+        this.isLoading = true;
+        const result = await googleSyncService.exportToGoogleDrive(this.transactions);
+        runInAction(() => {
+            if (result.error) {
+                this.error = result.error;
+            }
+            this.isLoading = false;
+        });
+    }
+
+    async importFromGoogleDrive(): Promise<void> {
+        this.isLoading = true;
+        
+        const result = await googleSyncService.importFromGoogleDrive();
+        
+        if (result.error) {
+            runInAction(() => { this.error = result.error; this.isLoading = false; });
+            return;
+        }
+
+        const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+        if (replaceRes.error) {
+            runInAction(() => { this.error = replaceRes.error; this.isLoading = false; });
+            return;
+        }
+
+        await this.loadData();
+        this.recalculateBalances();
     }
 
     recalculateBalances(): void {

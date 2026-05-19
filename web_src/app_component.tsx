@@ -265,6 +265,20 @@ export const AppMain = observer(() => {
                                 Open Tinkoff Login
                             </button>
                             <button
+                                onClick={() => store.exportToGoogleDrive()}
+                                style={{ padding: '10px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                disabled={store.isLoading}
+                            >
+                                {store.isLoading ? 'Exporting...' : 'Export to Google Drive'}
+                            </button>
+                            <button
+                                onClick={() => store.importFromGoogleDrive()}
+                                style={{ padding: '10px 20px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                disabled={store.isLoading}
+                            >
+                                {store.isLoading ? 'Importing...' : 'Import from Google Drive'}
+                            </button>
+                            <button
                                 onClick={() => store.setView('db_explorer')}
                                 style={{ padding: '10px 20px', backgroundColor: '#eee', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                             >

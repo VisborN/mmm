@@ -13,9 +13,24 @@ export interface Repository {
     getAccount(id: number): Promise<Result<Account | undefined, Error>>;
     saveAccount(account: Account): Promise<Result<void, Error>>;
     deleteAccount(id: number): Promise<Result<void, Error>>;
+    replaceAllTransactions(transactions: Transaction[]): Promise<Result<void, Error>>;
 }
 
 export const indexedDBRepository: Repository = {
+    async replaceAllTransactions(transactions: Transaction[]): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            const tx = db.transaction('transactions', 'readwrite');
+            await tx.store.clear();
+            for (const t of transactions) {
+                const data = { ...t };
+                delete (data as { id?: number }).id;
+                await tx.store.add(data as unknown as Transaction);
+            }
+            await tx.done;
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
     async getTransactions(): Promise<Result<Transaction[], Error>> {
         const result = await withDB<Transaction[]>(db => db.getAllFromIndex('transactions', 'by-date'));
         if (result.error) return result;
