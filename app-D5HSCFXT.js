@@ -2346,8 +2346,8 @@ var require_react_dom_client_development = __commonJS({
           ), true;
         try {
           rendererID = hook.inject(internals), injectedHook = hook;
-        } catch (err2) {
-          console.error("React instrumentation encountered an error: %o.", err2);
+        } catch (err3) {
+          console.error("React instrumentation encountered an error: %o.", err3);
         }
         return hook.checkDCE ? true : false;
       }
@@ -2356,10 +2356,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.setStrictMode)
           try {
             injectedHook.setStrictMode(rendererID, newIsStrictMode);
-          } catch (err2) {
+          } catch (err3) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err2
+              err3
             ));
           }
       }
@@ -4175,7 +4175,7 @@ var require_react_dom_client_development = __commonJS({
         for (var element = getActiveElement(containerInfo.document); element instanceof containerInfo.HTMLIFrameElement; ) {
           try {
             var JSCompiler_inline_result = "string" === typeof element.contentWindow.location.href;
-          } catch (err2) {
+          } catch (err3) {
             JSCompiler_inline_result = false;
           }
           if (JSCompiler_inline_result) containerInfo = element.contentWindow;
@@ -11413,10 +11413,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.onCommitFiberUnmount)
           try {
             injectedHook.onCommitFiberUnmount(rendererID, deletedFiber);
-          } catch (err2) {
+          } catch (err3) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err2
+              err3
             ));
           }
         var prevEffectStart = pushComponentEffectStart(), prevEffectDuration = pushComponentEffectDuration(), prevEffectErrors = pushComponentEffectErrors(), prevEffectDidSpawnUpdate = pushComponentEffectDidSpawnUpdate();
@@ -14322,10 +14322,10 @@ var require_react_dom_client_development = __commonJS({
                 schedulerPriority,
                 didError
               );
-            } catch (err2) {
+            } catch (err3) {
               hasLoggedError || (hasLoggedError = true, console.error(
                 "React instrumentation encountered an error: %o",
-                err2
+                err3
               ));
             }
           isDevToolsPresent && startViewTransitionStartTime.memoizedUpdaters.clear();
@@ -14481,10 +14481,10 @@ var require_react_dom_client_development = __commonJS({
           if (injectedHook && "function" === typeof injectedHook.onPostCommitFiberRoot)
             try {
               injectedHook.onPostCommitFiberRoot(rendererID, priority);
-            } catch (err2) {
+            } catch (err3) {
               hasLoggedError || (hasLoggedError = true, console.error(
                 "React instrumentation encountered an error: %o",
-                err2
+                err3
               ));
             }
           var stateNode = priority.current.stateNode;
@@ -17996,10 +17996,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.onScheduleFiberRoot)
           try {
             injectedHook.onScheduleFiberRoot(rendererID, container, element);
-          } catch (err2) {
+          } catch (err3) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err2
+              err3
             ));
           }
         parentComponent = getContextForSubtree(parentComponent);
@@ -21599,13 +21599,13 @@ var require_lib = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ResultIs = exports.withResult = void 0;
-    exports.err = err2;
+    exports.err = err3;
     exports.ok = ok2;
     var with_result_1 = require_with_result();
     Object.defineProperty(exports, "withResult", { enumerable: true, get: function() {
       return with_result_1.withResult;
     } });
-    function err2(error) {
+    function err3(error) {
       return {
         data: null,
         error,
@@ -21616,7 +21616,7 @@ var require_lib = __commonJS({
           return defaultValue;
         },
         transformOnFailure(fn) {
-          return err2(fn(error));
+          return err3(fn(error));
         },
         transformOnSuccess() {
           return this;
@@ -21643,7 +21643,7 @@ var require_lib = __commonJS({
     }
     exports.ResultIs = {
       success: ok2,
-      failure: err2
+      failure: err3
     };
   }
 });
@@ -23112,9 +23112,9 @@ function executeAction(actionName, canRunAsDerivation, fn, scope, args) {
   var runInfo = _startAction(actionName, canRunAsDerivation, scope, args);
   try {
     return fn.apply(scope, args);
-  } catch (err2) {
-    runInfo.error_ = err2;
-    throw err2;
+  } catch (err3) {
+    runInfo.error_ = err3;
+    throw err3;
   } finally {
     _endAction(runInfo);
   }
@@ -24483,11 +24483,11 @@ var flow = /* @__PURE__ */ Object.assign(function flow2(arg1, arg2) {
         }
         next(ret);
       }
-      function onRejected(err2) {
+      function onRejected(err3) {
         pendingPromise = void 0;
         var ret;
         try {
-          ret = action(name + " - runid: " + runId + " - yield " + stepId++, gen["throw"]).call(gen, err2);
+          ret = action(name + " - runid: " + runId + " - yield " + stepId++, gen["throw"]).call(gen, err3);
         } catch (e) {
           return reject(e);
         }
@@ -27299,6 +27299,20 @@ async function withDB(operation) {
 
 // infrastructure/repository.ts
 var indexedDBRepository = {
+  async replaceAllTransactions(transactions) {
+    const result = await withDB(async (db) => {
+      const tx = db.transaction("transactions", "readwrite");
+      await tx.store.clear();
+      for (const t of transactions) {
+        const data = __spreadValues({}, t);
+        delete data.id;
+        await tx.store.add(data);
+      }
+      await tx.done;
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
   async getTransactions() {
     const result = await withDB((db) => db.getAllFromIndex("transactions", "by-date"));
     if (result.error) return result;
@@ -27356,6 +27370,239 @@ var indexedDBRepository = {
   }
 };
 
+// domain/google_sync_service.ts
+var import_globals4 = __toESM(require_globals());
+
+// infrastructure/google_drive.ts
+var import_globals3 = __toESM(require_globals());
+var CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+var SCOPES = "https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets";
+var GoogleDriveService = class {
+  constructor() {
+    __publicField(this, "accessToken", null);
+    __publicField(this, "tokenClient", null);
+  }
+  initTokenClient() {
+    if (typeof window !== "undefined" && window.google) {
+      this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: (response) => {
+          if (response.error !== void 0) {
+            console.error("GIS error:", response);
+            return;
+          }
+          this.accessToken = response.access_token;
+        }
+      });
+    }
+  }
+  async ensureAuthenticated() {
+    if (this.accessToken) {
+      return ok(this.accessToken);
+    }
+    return new Promise((resolve) => {
+      if (!this.tokenClient) {
+        this.initTokenClient();
+      }
+      if (!this.tokenClient) {
+        resolve(err(new Error("Google Identity Services not initialized")));
+        return;
+      }
+      const originalCallback = this.tokenClient.callback;
+      this.tokenClient.callback = (response) => {
+        this.tokenClient.callback = originalCallback;
+        if (response.error !== void 0) {
+          resolve(err(new Error(`Authentication failed: ${response.error}`)));
+          return;
+        }
+        this.accessToken = response.access_token;
+        resolve(ok(this.accessToken));
+      };
+      this.tokenClient.requestAccessToken({ prompt: "consent" });
+    });
+  }
+  async listFiles(query) {
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    let allFiles = [];
+    let pageToken = void 0;
+    do {
+      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(id,name)`;
+      if (pageToken) {
+        url += `&pageToken=${pageToken}`;
+      }
+      const response = await withResult(fetch)(url, {
+        headers: { Authorization: `Bearer ${this.accessToken}` }
+      });
+      if (response.error) return err(response.error);
+      if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+      const data = await withResult(response.data.json)();
+      if (data.error) return err(data.error);
+      if (data.data.files) {
+        allFiles = allFiles.concat(data.data.files);
+      }
+      pageToken = data.data.nextPageToken;
+    } while (pageToken);
+    return ok(allFiles);
+  }
+  async createSpreadsheet(name) {
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    const url = "https://sheets.googleapis.com/v4/spreadsheets";
+    const response = await withResult(fetch)(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        properties: { title: name }
+      })
+    });
+    if (response.error) return err(response.error);
+    if (!response.data.ok) return err(new Error(`Sheets API error: ${response.data.statusText}`));
+    const data = await withResult(response.data.json)();
+    if (data.error) return err(data.error);
+    return ok(data.data.spreadsheetId);
+  }
+  async updateSpreadsheetValues(spreadsheetId, values) {
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:Z1000:clear`;
+    await fetch(clearUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1?valueInputOption=RAW`;
+    const response = await withResult(fetch)(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${this.accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ values })
+    });
+    if (response.error) return err(response.error);
+    if (!response.data.ok) {
+      const errorData = await response.data.json();
+      return err(new Error(`Sheets API update error: ${JSON.stringify(errorData)}`));
+    }
+    return ok(void 0);
+  }
+  async getSpreadsheetValues(spreadsheetId) {
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/Sheet1!A1:Z1000`;
+    const response = await withResult(fetch)(url, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (response.error) return err(response.error);
+    if (!response.data.ok) return err(new Error(`Sheets API read error: ${response.data.statusText}`));
+    const data = await withResult(response.data.json)();
+    if (data.error) return err(data.error);
+    return ok(data.data.values);
+  }
+};
+var googleDriveService = new GoogleDriveService();
+
+// domain/google_sync_service.ts
+var GoogleSyncService = class {
+  async exportToGoogleDrive(transactions) {
+    const groups = {};
+    for (const t of transactions) {
+      const month = t.date.substring(0, 7);
+      const key = `MMM - ${t.accountName} - ${month}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(t);
+    }
+    for (const [name, txs] of Object.entries(groups)) {
+      const escapedName = name.replace(/'/g, "\\'");
+      const filesRes = await googleDriveService.listFiles(`name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`);
+      let spreadsheetId;
+      if (filesRes.error) {
+        return err(filesRes.error);
+      }
+      if (filesRes.data.length > 0) {
+        spreadsheetId = filesRes.data[0].id;
+      } else {
+        const createRes = await googleDriveService.createSpreadsheet(name);
+        if (createRes.error) {
+          return err(createRes.error);
+        }
+        spreadsheetId = createRes.data;
+      }
+      const values = [
+        ["id", "date", "amountRubles", "amountAccountCurrency", "accountName", "category", "description", "type", "transferReceiveAccountName", "transferReceiveAmountAccountCurrency"],
+        ...txs.map((t) => [
+          t.id,
+          t.date,
+          t.amountRubles,
+          t.amountAccountCurrency,
+          t.accountName,
+          t.category,
+          t.description,
+          t.type,
+          t.transferReceiveAccountName,
+          t.transferReceiveAmountAccountCurrency
+        ])
+      ];
+      const updateRes = await googleDriveService.updateSpreadsheetValues(spreadsheetId, values);
+      if (updateRes.error) {
+        return err(updateRes.error);
+      }
+    }
+    return ok(void 0);
+  }
+  async importFromGoogleDrive() {
+    const filesRes = await googleDriveService.listFiles("name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'");
+    if (filesRes.error) {
+      return err(filesRes.error);
+    }
+    const allTransactions = [];
+    for (const file of filesRes.data) {
+      const valuesRes = await googleDriveService.getSpreadsheetValues(file.id);
+      if (valuesRes.error) {
+        return err(valuesRes.error);
+      }
+      const values = valuesRes.data;
+      if (!values || values.length <= 1) continue;
+      const headers = values[0];
+      const rows = values.slice(1);
+      for (const row of rows) {
+        const t = headers.reduce((acc, header, index) => {
+          const val = row[index];
+          if (val === "null" || val === void 0 || val === "") {
+            return __spreadProps(__spreadValues({}, acc), { [header]: null });
+          }
+          if (header === "amountRubles") {
+            return __spreadProps(__spreadValues({}, acc), { [header]: parseFloat(val) });
+          } else if (header === "id") {
+            return __spreadProps(__spreadValues({}, acc), { [header]: parseInt(val, 10) });
+          } else {
+            return __spreadProps(__spreadValues({}, acc), { [header]: val });
+          }
+        }, {});
+        const transaction2 = {
+          id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
+          date: t.date || "",
+          amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
+          amountAccountCurrency: t.amountAccountCurrency || "0",
+          accountName: t.accountName || "",
+          category: t.category || "",
+          description: t.description || "",
+          type: t.type || "withdraw",
+          transferReceiveAccountName: t.transferReceiveAccountName || null,
+          transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency || null
+        };
+        allTransactions.push(transaction2);
+      }
+    }
+    return ok(allTransactions);
+  }
+};
+var googleSyncService = new GoogleSyncService();
+
 // domain/store.ts
 var AppStore = class {
   constructor() {
@@ -27370,6 +27617,37 @@ var AppStore = class {
     __publicField(this, "error", null);
     __publicField(this, "isRecalculating", false);
     makeAutoObservable(this);
+  }
+  async exportToGoogleDrive() {
+    this.isLoading = true;
+    const result = await googleSyncService.exportToGoogleDrive(this.transactions);
+    runInAction(() => {
+      if (result.error) {
+        this.error = result.error;
+      }
+      this.isLoading = false;
+    });
+  }
+  async importFromGoogleDrive() {
+    this.isLoading = true;
+    const result = await googleSyncService.importFromGoogleDrive();
+    if (result.error) {
+      runInAction(() => {
+        this.error = result.error;
+        this.isLoading = false;
+      });
+      return;
+    }
+    const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+    if (replaceRes.error) {
+      runInAction(() => {
+        this.error = replaceRes.error;
+        this.isLoading = false;
+      });
+      return;
+    }
+    await this.loadData();
+    this.recalculateBalances();
   }
   recalculateBalances() {
     if (this.isRecalculating) return;
@@ -27587,8 +27865,8 @@ var DatabaseExplorer = observer(() => {
           allData[storeName] = await db.getAll(storeName);
         }
         setDbData(allData);
-      } catch (err2) {
-        console.error("Failed to load DB data", err2);
+      } catch (err3) {
+        console.error("Failed to load DB data", err3);
       } finally {
         setLoading(false);
       }
@@ -27878,6 +28156,24 @@ var AppMain = observer(() => {
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
             "button",
             {
+              onClick: () => store.exportToGoogleDrive(),
+              style: { padding: "10px 20px", backgroundColor: "#4285F4", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+              disabled: store.isLoading,
+              children: store.isLoading ? "Exporting..." : "Export to Google Drive"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              onClick: () => store.importFromGoogleDrive(),
+              style: { padding: "10px 20px", backgroundColor: "#34A853", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
+              disabled: store.isLoading,
+              children: store.isLoading ? "Importing..." : "Import from Google Drive"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
               onClick: () => store.setView("db_explorer"),
               style: { padding: "10px 20px", backgroundColor: "#eee", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
               children: "Database Explorer"
@@ -27902,7 +28198,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.ts.js").then((reg) => console.log("SW registered:", reg)).catch((err2) => console.error("SW registration failed:", err2));
+    navigator.serviceWorker.register("/sw.ts.js").then((reg) => console.log("SW registered:", reg)).catch((err3) => console.error("SW registration failed:", err3));
   });
 }
 /*! Bundled license information:
@@ -27973,4 +28269,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-MYZT3PZN.js.map
+//# sourceMappingURL=app-D5HSCFXT.js.map
