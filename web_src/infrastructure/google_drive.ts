@@ -78,7 +78,7 @@ export class GoogleDriveService {
             if (response.error) return err(response.error);
             if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
 
-            const data = await withResult(response.data.json)();
+            const data = await withResult(() => response.data.json())();
             if (data.error) return err(data.error);
 
             if (data.data.files) {
@@ -109,7 +109,7 @@ export class GoogleDriveService {
         if (response.error) return err(response.error);
         if (!response.data.ok) return err(new Error(`Sheets API error: ${response.data.statusText}`));
 
-        const data = await withResult(response.data.json)();
+        const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
 
         return ok(data.data.spreadsheetId);
@@ -138,8 +138,11 @@ export class GoogleDriveService {
 
         if (response.error) return err(response.error);
         if (!response.data.ok) {
-            const errorData = await response.data.json();
-            return err(new Error(`Sheets API update error: ${JSON.stringify(errorData)}`));
+            const errorData = await withResult(() => response.data.json())();
+            const message = errorData.error 
+                ? `Sheets API update error (also failed to parse error response): ${response.data.statusText}`
+                : `Sheets API update error: ${JSON.stringify(errorData.data)}`;
+            return err(new Error(message));
         }
 
         return ok(undefined);
@@ -157,7 +160,7 @@ export class GoogleDriveService {
         if (response.error) return err(response.error);
         if (!response.data.ok) return err(new Error(`Sheets API read error: ${response.data.statusText}`));
 
-        const data = await withResult(response.data.json)();
+        const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
 
         return ok(data.data.values);

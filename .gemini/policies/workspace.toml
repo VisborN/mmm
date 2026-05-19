@@ -22,7 +22,8 @@ commandPrefix = [
   "git remote -v",
   "git add",
   "git commit",
-  "git push"
+  "git push",
+  "git checkout"
 ]
 decision = "allow"
 priority = 100
@@ -38,7 +39,10 @@ commandPrefix = [
   "pwd",
   "du",
   "df",
-  "head"
+  "head",
+  "yarn type-check",
+  "yarn lint",
+  "yarn build"
 ]
 decision = "allow"
 priority = 100
