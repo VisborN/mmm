@@ -751,10 +751,9 @@
           db.getAll("accounts")
         ]);
         transactions.sort((a, b) => {
-          if (a.date === b.date) {
-            return a.id > b.id ? 1 : a.id < b.id ? -1 : 0;
-          }
-          return a.date > b.date ? 1 : a.date < b.date ? -1 : 0;
+          const dateCompare = a.date.localeCompare(b.date);
+          if (dateCompare !== 0) return dateCompare;
+          return a.id - b.id;
         });
         const balancesByName = {};
         for (const acc of accounts) {
@@ -797,4 +796,4 @@
     }
   };
 })();
-//# sourceMappingURL=recalculate_worker-PLYIV2QU.js.map
+//# sourceMappingURL=recalculate_worker-ILWOQYBR.js.map

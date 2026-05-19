@@ -27269,7 +27269,7 @@ function getDB() {
     dbPromise = openDB("money-management-app", 2, {
       upgrade(db, oldVersion, newVersion, transaction2) {
         if (oldVersion < 1) {
-          const txStore = db.createObjectStore("transactions", { keyPath: "id" });
+          const txStore = db.createObjectStore("transactions", { keyPath: "id", autoIncrement: true });
           txStore.createIndex("by-date", "date");
           txStore.createIndex("by-account", "accountName");
         }
@@ -27279,7 +27279,7 @@ function getDB() {
           txStore.createIndex("by-account", "accountName");
         }
         if (!db.objectStoreNames.contains("accounts")) {
-          db.createObjectStore("accounts", { keyPath: "id" });
+          db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
         }
       }
     });
@@ -27310,7 +27310,13 @@ var indexedDBRepository = {
   },
   async saveTransaction(transaction2) {
     const result = await withDB(async (db) => {
-      await db.put("transactions", transaction2);
+      if (transaction2.id === 0) {
+        const data = __spreadValues({}, transaction2);
+        delete data.id;
+        await db.add("transactions", data);
+      } else {
+        await db.put("transactions", transaction2);
+      }
     });
     if (result.error) return result;
     return ok(void 0);
@@ -27330,7 +27336,13 @@ var indexedDBRepository = {
   },
   async saveAccount(account) {
     const result = await withDB(async (db) => {
-      await db.put("accounts", account);
+      if (account.id === 0) {
+        const data = __spreadValues({}, account);
+        delete data.id;
+        await db.add("accounts", data);
+      } else {
+        await db.put("accounts", account);
+      }
     });
     if (result.error) return result;
     return ok(void 0);
@@ -27362,7 +27374,7 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-PLYIV2QU.js" : "/domain/recalculate_worker.js";
+    const workerUrl = true ? "/domain/recalculate_worker-ILWOQYBR.js" : "/domain/recalculate_worker.js";
     const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
@@ -27473,7 +27485,7 @@ var formatAmount = (amountStr) => {
 };
 var AccountModal = observer(() => {
   const [formData, setFormData] = (0, import_react7.useState)(store.currentAccount || {
-    id: crypto.randomUUID(),
+    id: 0,
     name: "",
     currency: "RUB",
     balance: "0"
@@ -27542,7 +27554,7 @@ var AccountsView = observer(() => {
         },
         children: [
           /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px" }, children: acc.id.slice(-4) }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px" }, children: acc.id }),
             /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "16px" }, children: acc.name })
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "16px" }, children: [
@@ -27631,7 +27643,7 @@ var formatAmount2 = (amount) => {
 };
 var TransactionModal = observer(() => {
   const [formData, setFormData] = (0, import_react9.useState)(store.currentTransaction || {
-    id: crypto.randomUUID(),
+    id: 0,
     date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
     amountRubles: 0,
     amountAccountCurrency: "0",
@@ -27657,7 +27669,7 @@ var TransactionModal = observer(() => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => __spreadProps(__spreadValues({}, prev), {
-      [name]: name === "amountRubles" ? parseFloat(value) : value
+      [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : value
     }));
   };
   return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
@@ -27961,4 +27973,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-WBM35Q63.js.map
+//# sourceMappingURL=app-MYZT3PZN.js.map
