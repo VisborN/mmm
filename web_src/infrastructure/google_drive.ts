@@ -128,30 +128,49 @@ export class GoogleDriveService {
         return ok(allFolders);
     }
 
-    async createSpreadsheet(name: string, folderId?: string): Promise<Result<string>> {
+    async uploadFile(name: string, content: string, mimeType: string, folderId?: string, fileId?: string): Promise<Result<string>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
-        const url = 'https://www.googleapis.com/drive/v3/files';
-        const body: any = {
+        const metadata: any = {
             name: name,
-            mimeType: 'application/vnd.google-apps.spreadsheet'
+            mimeType: mimeType
         };
-        if (folderId) {
-            body.parents = [folderId];
+        if (folderId && !fileId) {
+            metadata.parents = [folderId];
         }
 
+        const boundary = '-------314159265358979323846';
+        const delimiter = "\r\n--" + boundary + "\r\n";
+        const close_delim = "\r\n--" + boundary + "--";
+
+        // To support unicode correctly in multipart upload, we shouldn't just use string concatenation directly if using fetch with string body.
+        // Actually, fetch handles string bodies as UTF-8 automatically.
+        const multipartRequestBody =
+            delimiter +
+            'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+            JSON.stringify(metadata) +
+            delimiter +
+            'Content-Type: ' + mimeType + '\r\n\r\n' +
+            content +
+            close_delim;
+
+        const method = fileId ? 'PATCH' : 'POST';
+        const url = fileId 
+            ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
+            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+
         const response = await withResult(fetch)(url, {
-            method: 'POST',
+            method: method,
             headers: {
                 Authorization: `Bearer ${this.accessToken}`,
-                'Content-Type': 'application/json',
+                'Content-Type': `multipart/related; boundary=${boundary}` // without quotes around boundary
             },
-            body: JSON.stringify(body)
+            body: multipartRequestBody
         });
 
         if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+        if (!response.data.ok) return err(new Error(`Drive API upload error: ${response.data.statusText}`));
 
         const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
@@ -159,77 +178,22 @@ export class GoogleDriveService {
         return ok(data.data.id);
     }
 
-    async getSpreadsheet(spreadsheetId: string): Promise<Result<any>> {
+    async getFileContent(fileId: string): Promise<Result<string>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
+        const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
         const response = await withResult(fetch)(url, {
             headers: { Authorization: `Bearer ${this.accessToken}` }
         });
 
         if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Sheets API get error: ${response.data.statusText}`));
+        if (!response.data.ok) return err(new Error(`Drive API download error: ${response.data.statusText}`));
 
-        const data = await withResult(() => response.data.json())();
-        if (data.error) return err(data.error);
+        const text = await withResult(() => response.data.text())();
+        if (text.error) return err(text.error);
 
-        return ok(data.data);
-    }
-
-    async updateSpreadsheetValues(spreadsheetId: string, values: any[][]): Promise<Result<void>> {
-        const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
-        if (spreadsheetRes.error) return err(spreadsheetRes.error);
-
-        const sheetName = spreadsheetRes.data.sheets[0].properties.title;
-
-        // First, clear the sheet
-        const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000:clear`;
-        await fetch(clearUrl, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${this.accessToken}` }
-        });
-
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1?valueInputOption=RAW`;
-        const response = await withResult(fetch)(url, {
-            method: 'PUT',
-            headers: {
-                Authorization: `Bearer ${this.accessToken}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ values })
-        });
-
-        if (response.error) return err(response.error);
-        if (!response.data.ok) {
-            const errorData = await withResult(() => response.data.json())();
-            const message = errorData.error 
-                ? `Sheets API update error (also failed to parse error response): ${response.data.statusText}`
-                : `Sheets API update error: ${JSON.stringify(errorData.data)}`;
-            return err(new Error(message));
-        }
-
-        return ok(undefined);
-    }
-
-    async getSpreadsheetValues(spreadsheetId: string): Promise<Result<any[][]>> {
-        const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
-        if (spreadsheetRes.error) return err(spreadsheetRes.error);
-
-        const sheetName = spreadsheetRes.data.sheets[0].properties.title;
-
-        const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000`;
-        const response = await withResult(fetch)(url, {
-            headers: { Authorization: `Bearer ${this.accessToken}` }
-        });
-
-        if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Sheets API read error: ${response.data.statusText}`));
-
-        const data = await withResult(() => response.data.json())();
-        if (data.error) return err(data.error);
-
-        return ok(data.data.values);
+        return ok(text.data);
     }
 }
 
