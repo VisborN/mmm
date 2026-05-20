@@ -2,7 +2,7 @@
 import "ts-error-as-value/lib/globals";
 
 const CLIENT_ID = '26384778878-6ev9883mob866lnecidhqeudl4461pvd.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
 
 export class GoogleDriveService {
     private accessToken: string | null = null;
