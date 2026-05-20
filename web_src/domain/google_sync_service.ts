@@ -1,69 +1,13 @@
 import "ts-error-as-value/lib/globals";
 import { Transaction } from "./types";
 import { googleDriveService } from "../infrastructure/google_drive";
-
-function encodeCSV(headers: string[], rows: unknown[][]): string {
-    const escape = (val: unknown): string => {
-        if (val === null || val === undefined) return '';
-        const str = String(val);
-        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
-            return `"${str.replace(/"/g, '""')}"`;
-        }
-        return str;
-    };
-
-    const headerRow = headers.map(escape).join(',');
-    const dataRows = rows.map(row => row.map(escape).join(','));
-    return [headerRow, ...dataRows].join('\n');
-}
-
-function parseCSV(text: string): string[][] {
-    const rows: string[][] = [];
-    let currentRow: string[] = [];
-    let currentCell = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        if (inQuotes) {
-            if (char === '"') {
-                if (i + 1 < text.length && text[i + 1] === '"') {
-                    currentCell += '"';
-                    i++; // skip escaped quote
-                } else {
-                    inQuotes = false;
-                }
-            } else {
-                currentCell += char;
-            }
-        } else {
-            if (char === '"') {
-                inQuotes = true;
-            } else if (char === ',') {
-                currentRow.push(currentCell);
-                currentCell = '';
-            } else if (char === '\n' || char === '\r') {
-                currentRow.push(currentCell);
-                rows.push(currentRow);
-                currentRow = [];
-                currentCell = '';
-                if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
-                    i++; // skip \r\n
-                }
-            } else {
-                currentCell += char;
-            }
-        }
-    }
-    if (currentCell || currentRow.length > 0) {
-        currentRow.push(currentCell);
-        rows.push(currentRow);
-    }
-    return rows;
-}
+import Papa from "papaparse";
 
 export class GoogleSyncService {
-    async exportToGoogleDrive(transactions: Transaction[], folderId?: string): Promise<Result<void, Error>> {
+    async exportToGoogleDrive(transactions: Transaction[], folderId?: string, onProgress?: (progress: string) => void): Promise<Result<void, Error>> {
+        if (onProgress) onProgress('Удаление старых файлов (Spreadsheets)...');
+        await this.deleteOldGSheets(folderId);
+
         const groups: Record<string, Transaction[]> = {};
         for (const t of transactions) {
             const month = t.date.substring(0, 7); // YYYY-MM
@@ -72,8 +16,10 @@ export class GoogleSyncService {
             groups[key].push(t);
         }
 
-        // We can execute uploads in parallel for even more speed
-        const uploadPromises = Object.entries(groups).map(async ([name, txs]) => {
+        const entries = Object.entries(groups);
+        let completed = 0;
+
+        const uploadPromises = entries.map(async ([name, txs]) => {
             const escapedName = name.replace(/'/g, "\\'");
             let query = `name = '${escapedName}' and mimeType = 'text/csv'`;
             if (folderId) {
@@ -82,112 +28,90 @@ export class GoogleSyncService {
             const filesRes = await googleDriveService.listFiles(query);
             let fileId: string | undefined;
 
-            if (filesRes.error) {
-                return err(filesRes.error);
-            }
+            if (filesRes.error) return err(filesRes.error);
 
             if (filesRes.data.length > 0) {
                 fileId = filesRes.data[0].id;
             }
 
-            const headers = ['id', 'date', 'amountRubles', 'amountAccountCurrency', 'accountName', 'category', 'description', 'type', 'transferReceiveAccountName', 'transferReceiveAmountAccountCurrency'];
-            const rows = txs.map(t => [
-                t.id, t.date, t.amountRubles, t.amountAccountCurrency, t.accountName, t.category, t.description, t.type, t.transferReceiveAccountName, t.transferReceiveAmountAccountCurrency
-            ]);
-            
-            const csvContent = encodeCSV(headers, rows);
+            const csvContent = Papa.unparse(txs);
 
             const uploadRes = await googleDriveService.uploadFile(name, csvContent, 'text/csv', folderId, fileId);
-            if (uploadRes.error) {
-                return err(uploadRes.error);
-            }
+            if (uploadRes.error) return err(uploadRes.error);
+
+            completed++;
+            if (onProgress) onProgress(`Загружено ${completed} из ${entries.length} файлов...`);
 
             return ok(undefined);
         });
 
         const results = await Promise.all(uploadPromises);
         for (const res of results) {
-            if (res.error) {
-                return err(res.error);
-            }
+            if (res.error) return err(res.error);
         }
 
         return ok(undefined);
     }
 
-    async importFromGoogleDrive(folderId?: string): Promise<Result<Transaction[], Error>> {
+    async importFromGoogleDrive(folderId?: string, onProgress?: (progress: string) => void): Promise<Result<Transaction[], Error>> {
+        if (onProgress) onProgress('Поиск CSV файлов...');
         let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
         if (folderId) {
             query += ` and '${folderId}' in parents`;
         }
         const filesRes = await googleDriveService.listFiles(query);
-        if (filesRes.error) {
-            return err(filesRes.error);
-        }
+        if (filesRes.error) return err(filesRes.error);
 
         const allTransactions: Transaction[] = [];
+        const files = filesRes.data;
+        let completed = 0;
         
-        const fetchPromises = filesRes.data.map(async (file) => {
+        const fetchPromises = files.map(async (file) => {
             const contentRes = await googleDriveService.getFileContent(file.id);
-            if (contentRes.error) {
-                return err(contentRes.error);
-            }
+            if (contentRes.error) return err(contentRes.error);
 
-            const values = parseCSV(contentRes.data);
-            if (!values || values.length <= 1) return ok([] as Transaction[]);
+            const parsed = Papa.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
+            
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const fileTransactions: Transaction[] = parsed.data.map((t: any) => ({
+                id: typeof t.id === 'number' ? t.id : parseInt(t.id as unknown as string, 10) || 0,
+                uuid: t.uuid || '',
+                date: t.date || '',
+                amountRubles: typeof t.amountRubles === 'number' ? t.amountRubles : parseFloat(t.amountRubles as unknown as string) || 0,
+                amountAccountCurrency: String(t.amountAccountCurrency || '0'),
+                accountName: t.accountName || '',
+                category: t.category || '',
+                description: t.description || '',
+                type: t.type || 'withdraw',
+                transferReceiveAccountName: t.transferReceiveAccountName || null,
+                transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== undefined ? String(t.transferReceiveAmountAccountCurrency) : null,
+            }));
 
-            const headers = values[0];
-            const rows = values.slice(1);
-            const fileTransactions: Transaction[] = [];
+            completed++;
+            if (onProgress) onProgress(`Скачано ${completed} из ${files.length} файлов...`);
 
-            for (const row of rows) {
-                // Skip empty rows
-                if (row.length === 1 && row[0] === '') continue;
-
-                const t = headers.reduce((acc, header, index) => {
-                    const val = row[index];
-                    
-                    if (val === 'null' || val === undefined || val === '') {
-                        return { ...acc, [header]: null };
-                    }
-
-                    if (header === 'amountRubles') {
-                        return { ...acc, [header]: parseFloat(val) };
-                    } else if (header === 'id') {
-                        return { ...acc, [header]: parseInt(val, 10) };
-                    } else {
-                        return { ...acc, [header]: val };
-                    }
-                }, {} as Partial<Transaction>);
-                
-                // Ensure correct types according to Transaction interface
-                const transaction: Transaction = {
-                    id: typeof t.id === 'number' ? t.id : parseInt(t.id as unknown as string, 10) || 0,
-                    date: t.date || '',
-                    amountRubles: typeof t.amountRubles === 'number' ? t.amountRubles : parseFloat(t.amountRubles as unknown as string) || 0,
-                    amountAccountCurrency: t.amountAccountCurrency || '0',
-                    accountName: t.accountName || '',
-                    category: t.category || '',
-                    description: t.description || '',
-                    type: t.type || 'withdraw',
-                    transferReceiveAccountName: t.transferReceiveAccountName || null,
-                    transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency || null,
-                };
-
-                fileTransactions.push(transaction);
-            }
             return ok(fileTransactions);
         });
 
         const results = await Promise.all(fetchPromises);
         for (const res of results) {
-            if (res.error) {
-                return err(res.error);
-            }
+            if (res.error) return err(res.error);
             allTransactions.push(...res.data);
         }
 
         return ok(allTransactions);
+    }
+
+    async deleteOldGSheets(folderId?: string): Promise<void> {
+        let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
+        if (folderId) {
+            query += ` and '${folderId}' in parents`;
+        }
+        const filesRes = await googleDriveService.listFiles(query);
+        if (filesRes.error) return;
+
+        const deletePromises = filesRes.data.map(file => googleDriveService.deleteFile(file.id));
+        await Promise.all(deletePromises);
     }
 }
 

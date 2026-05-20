@@ -21,8 +21,18 @@ export const indexedDBRepository: Repository = {
         const result = await withDB(async db => {
             const tx = db.transaction('transactions', 'readwrite');
             await tx.store.clear();
-            for (const t of transactions) {
+
+            // Sort by date ascending, then by old ID ascending
+            // This ensures that when we insert them and they get new auto-incrementing IDs,
+            // the relative order within the same day is preserved.
+            const sorted = [...transactions].sort((a, b) => {
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                return a.id - b.id;
+            });
+
+            for (const t of sorted) {
                 const data = { ...t };
+                if (!data.uuid) data.uuid = crypto.randomUUID();
                 delete (data as { id?: number }).id;
                 await tx.store.add(data as unknown as Transaction);
             }
@@ -35,19 +45,23 @@ export const indexedDBRepository: Repository = {
         const result = await withDB<Transaction[]>(db => db.getAllFromIndex('transactions', 'by-date'));
         if (result.error) return result;
 
-        result.data!.sort((a: Transaction, b: Transaction) => b.date.localeCompare(a.date));
+        // Sort by date descending, then ID descending
+        result.data!.sort((a: Transaction, b: Transaction) => {
+            if (a.date !== b.date) return b.date.localeCompare(a.date);
+            return b.id - a.id;
+        });
         return ok(result.data);
     },
-
     async getTransaction(id: number): Promise<Result<Transaction | undefined, Error>> {
         return withDB<Transaction | undefined>(db => db.get('transactions', id));
     },
-
     async saveTransaction(transaction: Transaction): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
+            if (!transaction.uuid) {
+                transaction.uuid = crypto.randomUUID();
+            }
             if (transaction.id === 0) {
                 // For new transactions, we let IndexedDB generate the ID.
-                // We omit the id property so autoIncrement takes over.
                 const data = { ...transaction };
                 delete (data as { id?: number }).id;
                 await db.add('transactions', data as unknown as Transaction);

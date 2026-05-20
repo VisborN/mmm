@@ -195,6 +195,22 @@ export class GoogleDriveService {
 
         return ok(text.data);
     }
+
+    async deleteFile(fileId: string): Promise<Result<void>> {
+        const authRes = await this.ensureAuthenticated();
+        if (authRes.error) return err(authRes.error);
+
+        const url = `https://www.googleapis.com/drive/v3/files/${fileId}`;
+        const response = await withResult(fetch)(url, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+
+        if (response.error) return err(response.error);
+        if (!response.data.ok) return err(new Error(`Drive API delete error: ${response.data.statusText}`));
+
+        return ok(undefined);
+    }
 }
 
 export const googleDriveService = new GoogleDriveService();

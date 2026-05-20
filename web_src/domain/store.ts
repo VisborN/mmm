@@ -19,6 +19,7 @@ export class AppStore {
     currentAccount: Account | null = null;
 
     isLoading: boolean = true;
+    syncProgress: string = '';
     error: Error | null = null;
 
     isRecalculating: boolean = false;
@@ -39,32 +40,43 @@ export class AppStore {
 
     async exportToGoogleDrive(): Promise<void> {
         this.isLoading = true;
-        const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined);
+        this.syncProgress = 'Подготовка к экспорту...';
+        const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
+            runInAction(() => { this.syncProgress = progress; });
+        });
         runInAction(() => {
             if (result.error) {
                 this.error = result.error;
+            } else {
+                this.error = null;
             }
             this.isLoading = false;
+            this.syncProgress = '';
         });
     }
 
     async importFromGoogleDrive(): Promise<void> {
         this.isLoading = true;
+        this.syncProgress = 'Поиск файлов...';
         
-        const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined);
+        const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined, (progress) => {
+            runInAction(() => { this.syncProgress = progress; });
+        });
         
         if (result.error) {
-            runInAction(() => { this.error = result.error; this.isLoading = false; });
+            runInAction(() => { this.error = result.error; this.isLoading = false; this.syncProgress = ''; });
             return;
         }
 
+        this.syncProgress = 'Сохранение в базу данных...';
         const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
         if (replaceRes.error) {
-            runInAction(() => { this.error = replaceRes.error; this.isLoading = false; });
+            runInAction(() => { this.error = replaceRes.error; this.isLoading = false; this.syncProgress = ''; });
             return;
         }
 
         await this.loadData();
+        runInAction(() => { this.isLoading = false; this.syncProgress = ''; this.error = null; });
         this.recalculateBalances();
     }
 

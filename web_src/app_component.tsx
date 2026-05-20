@@ -287,16 +287,21 @@ export const AppMain = observer(() => {
                                         style={{ padding: '10px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                                         disabled={store.isLoading}
                                     >
-                                        {store.isLoading ? 'Exporting...' : 'Export to Google Drive'}
+                                        {store.isLoading ? 'Экспорт...' : 'Export to Google Drive'}
                                     </button>
                                     <button
                                         onClick={() => store.importFromGoogleDrive()}
                                         style={{ padding: '10px 20px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
                                         disabled={store.isLoading}
                                     >
-                                        {store.isLoading ? 'Importing...' : 'Import from Google Drive'}
+                                        {store.isLoading ? 'Импорт...' : 'Import from Google Drive'}
                                     </button>
                                 </div>
+                                {store.syncProgress && (
+                                    <div style={{ marginTop: '10px', fontSize: '14px', color: '#007bff' }}>
+                                        {store.syncProgress}
+                                    </div>
+                                )}
                             </div>
 
                             <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
