@@ -27473,141 +27473,163 @@ var GoogleDriveService = class {
     allFolders.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     return ok(allFolders);
   }
-  async createSpreadsheet(name, folderId) {
+  async uploadFile(name, content, mimeType, folderId, fileId) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
-    const url = "https://www.googleapis.com/drive/v3/files";
-    const body = {
+    const metadata = {
       name,
-      mimeType: "application/vnd.google-apps.spreadsheet"
+      mimeType
     };
-    if (folderId) {
-      body.parents = [folderId];
+    if (folderId && !fileId) {
+      metadata.parents = [folderId];
     }
+    const boundary = "-------314159265358979323846";
+    const delimiter = "\r\n--" + boundary + "\r\n";
+    const close_delim = "\r\n--" + boundary + "--";
+    const multipartRequestBody = delimiter + "Content-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(metadata) + delimiter + "Content-Type: " + mimeType + "\r\n\r\n" + content + close_delim;
+    const method = fileId ? "PATCH" : "POST";
+    const url = fileId ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart` : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
     const response = await withResult(fetch)(url, {
-      method: "POST",
+      method,
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json"
+        "Content-Type": `multipart/related; boundary=${boundary}`
+        // without quotes around boundary
       },
-      body: JSON.stringify(body)
+      body: multipartRequestBody
     });
     if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+    if (!response.data.ok) return err(new Error(`Drive API upload error: ${response.data.statusText}`));
     const data = await withResult(() => response.data.json())();
     if (data.error) return err(data.error);
     return ok(data.data.id);
   }
-  async getSpreadsheet(spreadsheetId) {
+  async getFileContent(fileId) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`;
+    const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
     const response = await withResult(fetch)(url, {
       headers: { Authorization: `Bearer ${this.accessToken}` }
     });
     if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Sheets API get error: ${response.data.statusText}`));
-    const data = await withResult(() => response.data.json())();
-    if (data.error) return err(data.error);
-    return ok(data.data);
-  }
-  async updateSpreadsheetValues(spreadsheetId, values) {
-    const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
-    if (spreadsheetRes.error) return err(spreadsheetRes.error);
-    const sheetName = spreadsheetRes.data.sheets[0].properties.title;
-    const clearUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000:clear`;
-    await fetch(clearUrl, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1?valueInputOption=RAW`;
-    const response = await withResult(fetch)(url, {
-      method: "PUT",
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ values })
-    });
-    if (response.error) return err(response.error);
-    if (!response.data.ok) {
-      const errorData = await withResult(() => response.data.json())();
-      const message = errorData.error ? `Sheets API update error (also failed to parse error response): ${response.data.statusText}` : `Sheets API update error: ${JSON.stringify(errorData.data)}`;
-      return err(new Error(message));
-    }
-    return ok(void 0);
-  }
-  async getSpreadsheetValues(spreadsheetId) {
-    const spreadsheetRes = await this.getSpreadsheet(spreadsheetId);
-    if (spreadsheetRes.error) return err(spreadsheetRes.error);
-    const sheetName = spreadsheetRes.data.sheets[0].properties.title;
-    const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetName)}!A1:Z1000`;
-    const response = await withResult(fetch)(url, {
-      headers: { Authorization: `Bearer ${this.accessToken}` }
-    });
-    if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Sheets API read error: ${response.data.statusText}`));
-    const data = await withResult(() => response.data.json())();
-    if (data.error) return err(data.error);
-    return ok(data.data.values);
+    if (!response.data.ok) return err(new Error(`Drive API download error: ${response.data.statusText}`));
+    const text = await withResult(() => response.data.text())();
+    if (text.error) return err(text.error);
+    return ok(text.data);
   }
 };
 var googleDriveService = new GoogleDriveService();
 
 // domain/google_sync_service.ts
+function encodeCSV(headers, rows) {
+  const escape = (val) => {
+    if (val === null || val === void 0) return "";
+    const str = String(val);
+    if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+  const headerRow = headers.map(escape).join(",");
+  const dataRows = rows.map((row) => row.map(escape).join(","));
+  return [headerRow, ...dataRows].join("\n");
+}
+function parseCSV(text) {
+  const rows = [];
+  let currentRow = [];
+  let currentCell = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (i + 1 < text.length && text[i + 1] === '"') {
+          currentCell += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        currentCell += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        currentRow.push(currentCell);
+        currentCell = "";
+      } else if (char === "\n" || char === "\r") {
+        currentRow.push(currentCell);
+        rows.push(currentRow);
+        currentRow = [];
+        currentCell = "";
+        if (char === "\r" && i + 1 < text.length && text[i + 1] === "\n") {
+          i++;
+        }
+      } else {
+        currentCell += char;
+      }
+    }
+  }
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell);
+    rows.push(currentRow);
+  }
+  return rows;
+}
 var GoogleSyncService = class {
   async exportToGoogleDrive(transactions, folderId) {
     const groups = {};
     for (const t of transactions) {
       const month = t.date.substring(0, 7);
-      const key = `MMM - ${t.accountName} - ${month}`;
+      const key = `MMM - ${t.accountName} - ${month}.csv`;
       if (!groups[key]) groups[key] = [];
       groups[key].push(t);
     }
-    for (const [name, txs] of Object.entries(groups)) {
+    const uploadPromises = Object.entries(groups).map(async ([name, txs]) => {
       const escapedName = name.replace(/'/g, "\\'");
-      let query = `name = '${escapedName}' and mimeType = 'application/vnd.google-apps.spreadsheet'`;
+      let query = `name = '${escapedName}' and mimeType = 'text/csv'`;
       if (folderId) {
         query += ` and '${folderId}' in parents`;
       }
       const filesRes = await googleDriveService.listFiles(query);
-      let spreadsheetId;
+      let fileId;
       if (filesRes.error) {
         return err(filesRes.error);
       }
       if (filesRes.data.length > 0) {
-        spreadsheetId = filesRes.data[0].id;
-      } else {
-        const createRes = await googleDriveService.createSpreadsheet(name, folderId);
-        if (createRes.error) {
-          return err(createRes.error);
-        }
-        spreadsheetId = createRes.data;
+        fileId = filesRes.data[0].id;
       }
-      const values = [
-        ["id", "date", "amountRubles", "amountAccountCurrency", "accountName", "category", "description", "type", "transferReceiveAccountName", "transferReceiveAmountAccountCurrency"],
-        ...txs.map((t) => [
-          t.id,
-          t.date,
-          t.amountRubles,
-          t.amountAccountCurrency,
-          t.accountName,
-          t.category,
-          t.description,
-          t.type,
-          t.transferReceiveAccountName,
-          t.transferReceiveAmountAccountCurrency
-        ])
-      ];
-      const updateRes = await googleDriveService.updateSpreadsheetValues(spreadsheetId, values);
-      if (updateRes.error) {
-        return err(updateRes.error);
+      const headers = ["id", "date", "amountRubles", "amountAccountCurrency", "accountName", "category", "description", "type", "transferReceiveAccountName", "transferReceiveAmountAccountCurrency"];
+      const rows = txs.map((t) => [
+        t.id,
+        t.date,
+        t.amountRubles,
+        t.amountAccountCurrency,
+        t.accountName,
+        t.category,
+        t.description,
+        t.type,
+        t.transferReceiveAccountName,
+        t.transferReceiveAmountAccountCurrency
+      ]);
+      const csvContent = encodeCSV(headers, rows);
+      const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
+      if (uploadRes.error) {
+        return err(uploadRes.error);
+      }
+      return ok(void 0);
+    });
+    const results = await Promise.all(uploadPromises);
+    for (const res of results) {
+      if (res.error) {
+        return err(res.error);
       }
     }
     return ok(void 0);
   }
   async importFromGoogleDrive(folderId) {
-    let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
+    let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
     if (folderId) {
       query += ` and '${folderId}' in parents`;
     }
@@ -27616,16 +27638,18 @@ var GoogleSyncService = class {
       return err(filesRes.error);
     }
     const allTransactions = [];
-    for (const file of filesRes.data) {
-      const valuesRes = await googleDriveService.getSpreadsheetValues(file.id);
-      if (valuesRes.error) {
-        return err(valuesRes.error);
+    const fetchPromises = filesRes.data.map(async (file) => {
+      const contentRes = await googleDriveService.getFileContent(file.id);
+      if (contentRes.error) {
+        return err(contentRes.error);
       }
-      const values = valuesRes.data;
-      if (!values || values.length <= 1) continue;
+      const values = parseCSV(contentRes.data);
+      if (!values || values.length <= 1) return ok([]);
       const headers = values[0];
       const rows = values.slice(1);
+      const fileTransactions = [];
       for (const row of rows) {
+        if (row.length === 1 && row[0] === "") continue;
         const t = headers.reduce((acc, header, index) => {
           const val = row[index];
           if (val === "null" || val === void 0 || val === "") {
@@ -27651,8 +27675,16 @@ var GoogleSyncService = class {
           transferReceiveAccountName: t.transferReceiveAccountName || null,
           transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency || null
         };
-        allTransactions.push(transaction2);
+        fileTransactions.push(transaction2);
       }
+      return ok(fileTransactions);
+    });
+    const results = await Promise.all(fetchPromises);
+    for (const res of results) {
+      if (res.error) {
+        return err(res.error);
+      }
+      allTransactions.push(...res.data);
     }
     return ok(allTransactions);
   }
@@ -28327,7 +28359,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-20 20:20:16 +0200" : "dev"
+          true ? "2026-05-20 23:45:10 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28523,4 +28555,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-JF6YV5F3.js.map
+//# sourceMappingURL=app-O57BCKBU.js.map
