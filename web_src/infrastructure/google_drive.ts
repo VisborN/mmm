@@ -227,7 +227,20 @@ export class GoogleDriveService {
         if (response.error) return err(response.error);
         if (!response.data.ok) {
             if (response.data.status === 401) this.clearAuth();
-            return err(new Error(`Drive API upload error: ${response.data.statusText}`));
+            
+            let errorDetail = response.data.statusText;
+            try {
+                const errorData = await response.data.json();
+                if (errorData && errorData.error && errorData.error.message) {
+                    errorDetail += ` - ${errorData.error.message}`;
+                } else {
+                    errorDetail += ` - ${JSON.stringify(errorData)}`;
+                }
+            } catch {
+                // Ignore json parsing error if the response is not JSON
+            }
+            
+            return err(new Error(`Drive API upload error: ${errorDetail}`));
         }
 
         const data = await withResult(() => response.data.json())();
