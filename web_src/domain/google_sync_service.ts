@@ -34,7 +34,7 @@ export class GoogleSyncService {
                 fileId = filesRes.data[0].id;
             }
 
-            const csvContent = Papa.unparse(txs);
+            const csvContent = "\uFEFF" + Papa.unparse(txs);
 
             const uploadRes = await googleDriveService.uploadFile(name, csvContent, 'text/csv', folderId, fileId);
             if (uploadRes.error) return err(uploadRes.error);
