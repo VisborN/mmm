@@ -5,6 +5,10 @@ import Papa from "papaparse";
 
 export class GoogleSyncService {
     async exportToGoogleDrive(transactions: Transaction[], folderId?: string, onProgress?: (progress: string) => void): Promise<Result<void, Error>> {
+        if (!transactions || transactions.length === 0) {
+            return err(new Error('Нет операций для экспорта'));
+        }
+
         if (onProgress) onProgress('Удаление старых файлов (Spreadsheets)...');
         await this.deleteOldGSheets(folderId);
 
