@@ -28051,7 +28051,7 @@ var GoogleSyncService = class {
     let completed = 0;
     const uploadPromises = entries.map(async ([name, txs]) => {
       const escapedName = name.replace(/'/g, "\\'");
-      let query = `name = '${escapedName}' and mimeType = 'text/csv'`;
+      let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
       if (folderId) {
         query += ` and '${folderId}' in parents`;
       }
@@ -28839,7 +28839,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 01:12:13 +0200" : "dev"
+          true ? "2026-05-22 01:16:29 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29058,4 +29058,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-R7BWKT4H.js.map
+//# sourceMappingURL=app-KUXAXWPG.js.map
