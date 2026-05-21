@@ -27834,6 +27834,32 @@ var GoogleDriveService = class {
     localStorage.removeItem("gdrive_access_token");
     localStorage.removeItem("gdrive_token_expires_at");
   }
+  hasValidToken() {
+    if (this.accessToken) return true;
+    const storedToken = localStorage.getItem("gdrive_access_token");
+    const expiresAt = localStorage.getItem("gdrive_token_expires_at");
+    return !!(storedToken && expiresAt && Date.now() < parseInt(expiresAt, 10));
+  }
+  async getUserEmail() {
+    var _a3;
+    if (!this.hasValidToken()) {
+      return ok(null);
+    }
+    const authRes = await this.ensureAuthenticated();
+    if (authRes.error) return err(authRes.error);
+    const url = "https://www.googleapis.com/drive/v3/about?fields=user";
+    const response = await withResult(fetch)(url, {
+      headers: { Authorization: `Bearer ${this.accessToken}` }
+    });
+    if (response.error) return err(response.error);
+    if (!response.data.ok) {
+      if (response.data.status === 401) this.clearAuth();
+      return err(new Error(`Drive API error: ${response.data.statusText}`));
+    }
+    const data = await withResult(() => response.data.json())();
+    if (data.error) return err(data.error);
+    return ok(((_a3 = data.data.user) == null ? void 0 : _a3.emailAddress) || null);
+  }
   async ensureAuthenticated() {
     if (this.accessToken) {
       return ok(this.accessToken);
@@ -27994,6 +28020,9 @@ var googleDriveService = new GoogleDriveService();
 // domain/google_sync_service.ts
 var import_papaparse = __toESM(require_papaparse_min());
 var GoogleSyncService = class {
+  async getUserEmail() {
+    return googleDriveService.getUserEmail();
+  }
   async exportToGoogleDrive(transactions, folderId, onProgress) {
     if (!transactions || transactions.length === 0) {
       return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
@@ -28142,7 +28171,20 @@ var AppStore = class {
     __publicField(this, "isRecalculating", false);
     __publicField(this, "syncFolderId", null);
     __publicField(this, "syncFolderName", null);
+    __publicField(this, "googleAccountEmail", null);
     makeAutoObservable(this);
+  }
+  async loadGoogleAccountEmail() {
+    const emailRes = await googleSyncService.getUserEmail();
+    if (!emailRes.error && emailRes.data) {
+      runInAction(() => {
+        this.googleAccountEmail = emailRes.data;
+      });
+    } else {
+      runInAction(() => {
+        this.googleAccountEmail = null;
+      });
+    }
   }
   async setSyncFolder(id, name) {
     this.syncFolderId = id;
@@ -28158,6 +28200,7 @@ var AppStore = class {
         this.syncProgress = progress;
       });
     });
+    this.loadGoogleAccountEmail();
     runInAction(() => {
       if (result.error) {
         this.error = result.error;
@@ -28197,6 +28240,7 @@ var AppStore = class {
       return;
     }
     await this.loadData();
+    this.loadGoogleAccountEmail();
     runInAction(() => {
       this.isLoading = false;
       this.syncProgress = "";
@@ -28265,6 +28309,7 @@ var AppStore = class {
       this.transactions = txData;
       this.isLoading = false;
     });
+    this.loadGoogleAccountEmail();
   }
   openTransactionModal(transaction2) {
     this.currentTransaction = transaction2 || null;
@@ -28783,7 +28828,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 01:02:23 +0200" : "dev"
+          true ? "2026-05-22 01:04:20 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28859,6 +28904,10 @@ var AppMain = observer(() => {
                   children: "(\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432 Google Drive \u2197)"
                 }
               )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { marginBottom: "10px", fontSize: "14px", color: "#555" }, children: [
+              "Google \u0410\u043A\u043A\u0430\u0443\u043D\u0442: ",
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.googleAccountEmail || "\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D (\u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430/\u0438\u043C\u043F\u043E\u0440\u0442\u0430)" })
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
               "button",
@@ -28998,4 +29047,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-F546VLSJ.js.map
+//# sourceMappingURL=app-M7MRHR46.js.map
