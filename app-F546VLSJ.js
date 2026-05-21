@@ -28783,7 +28783,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 01:00:06 +0200" : "dev"
+          true ? "2026-05-22 01:02:23 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28848,7 +28848,17 @@ var AppMain = observer(() => {
             /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { style: { margin: "0 0 10px 0", fontSize: "16px" }, children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F Google Drive" }),
             /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { marginBottom: "10px", fontSize: "14px", color: "#555" }, children: [
               "\u0422\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u043F\u043A\u0430: ",
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.syncFolderName || "\u041A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430 (\u041C\u043E\u0439 \u0434\u0438\u0441\u043A)" })
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.syncFolderName || "\u041A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430 (\u041C\u043E\u0439 \u0434\u0438\u0441\u043A)" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "a",
+                {
+                  href: store.syncFolderId ? `https://drive.google.com/drive/folders/${store.syncFolderId}` : "https://drive.google.com/drive/my-drive",
+                  target: "_blank",
+                  rel: "noopener noreferrer",
+                  style: { marginLeft: "10px", color: "#007bff", textDecoration: "none" },
+                  children: "(\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432 Google Drive \u2197)"
+                }
+              )
             ] }),
             /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
               "button",
@@ -28988,4 +28998,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-HWZZDI53.js.map
+//# sourceMappingURL=app-F546VLSJ.js.map
