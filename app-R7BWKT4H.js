@@ -27965,7 +27965,8 @@ var GoogleDriveService = class {
     const boundary = "-------314159265358979323846";
     const delimiter = "\r\n--" + boundary + "\r\n";
     const close_delim = "\r\n--" + boundary + "--";
-    const multipartRequestBody = delimiter + "Content-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(metadata) + delimiter + "Content-Type: " + mimeType + "; charset=UTF-8\r\n\r\n" + content + close_delim;
+    const base64Content = btoa(unescape(encodeURIComponent(content)));
+    const multipartRequestBody = delimiter + "Content-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(metadata) + delimiter + "Content-Type: " + mimeType + "; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" + base64Content + close_delim;
     const method = fileId ? "PATCH" : "POST";
     const url = fileId ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart` : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
     const response = await withResult(fetch)(url, {
@@ -28838,7 +28839,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 01:07:49 +0200" : "dev"
+          true ? "2026-05-22 01:12:13 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29057,4 +29058,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-U7GCWK7M.js.map
+//# sourceMappingURL=app-R7BWKT4H.js.map
