@@ -27829,8 +27829,19 @@ var GoogleDriveService = class {
       });
     }
   }
+  clearAuth() {
+    this.accessToken = null;
+    localStorage.removeItem("gdrive_access_token");
+    localStorage.removeItem("gdrive_token_expires_at");
+  }
   async ensureAuthenticated() {
     if (this.accessToken) {
+      return ok(this.accessToken);
+    }
+    const storedToken = localStorage.getItem("gdrive_access_token");
+    const expiresAt = localStorage.getItem("gdrive_token_expires_at");
+    if (storedToken && expiresAt && Date.now() < parseInt(expiresAt, 10)) {
+      this.accessToken = storedToken;
       return ok(this.accessToken);
     }
     return new Promise((resolve) => {
@@ -27849,9 +27860,13 @@ var GoogleDriveService = class {
           return;
         }
         this.accessToken = response.access_token;
+        if (response.expires_in) {
+          localStorage.setItem("gdrive_access_token", response.access_token);
+          localStorage.setItem("gdrive_token_expires_at", (Date.now() + response.expires_in * 1e3).toString());
+        }
         resolve(ok(this.accessToken));
       };
-      this.tokenClient.requestAccessToken({ prompt: "consent" });
+      this.tokenClient.requestAccessToken();
     });
   }
   async listFiles(query) {
@@ -27868,7 +27883,10 @@ var GoogleDriveService = class {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (response.error) return err(response.error);
-      if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+      if (!response.data.ok) {
+        if (response.data.status === 401) this.clearAuth();
+        return err(new Error(`Drive API error: ${response.data.statusText}`));
+      }
       const data = await withResult(() => response.data.json())();
       if (data.error) return err(data.error);
       if (data.data.files) {
@@ -27894,7 +27912,10 @@ var GoogleDriveService = class {
         headers: { Authorization: `Bearer ${this.accessToken}` }
       });
       if (response.error) return err(response.error);
-      if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+      if (!response.data.ok) {
+        if (response.data.status === 401) this.clearAuth();
+        return err(new Error(`Drive API error: ${response.data.statusText}`));
+      }
       const data = await withResult(() => response.data.json())();
       if (data.error) return err(data.error);
       if (data.data.files) {
@@ -27931,7 +27952,10 @@ var GoogleDriveService = class {
       body: multipartRequestBody
     });
     if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Drive API upload error: ${response.data.statusText}`));
+    if (!response.data.ok) {
+      if (response.data.status === 401) this.clearAuth();
+      return err(new Error(`Drive API upload error: ${response.data.statusText}`));
+    }
     const data = await withResult(() => response.data.json())();
     if (data.error) return err(data.error);
     return ok(data.data.id);
@@ -27944,7 +27968,10 @@ var GoogleDriveService = class {
       headers: { Authorization: `Bearer ${this.accessToken}` }
     });
     if (response.error) return err(response.error);
-    if (!response.data.ok) return err(new Error(`Drive API download error: ${response.data.statusText}`));
+    if (!response.data.ok) {
+      if (response.data.status === 401) this.clearAuth();
+      return err(new Error(`Drive API download error: ${response.data.statusText}`));
+    }
     const text = await withResult(() => response.data.text())();
     if (text.error) return err(text.error);
     return ok(text.data);
@@ -28751,7 +28778,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-21 22:09:11 +0200" : "dev"
+          true ? "2026-05-21 23:24:21 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28956,4 +28983,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-H2UQ5IAE.js.map
+//# sourceMappingURL=app-UIHEN4NR.js.map
