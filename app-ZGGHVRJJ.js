@@ -28038,8 +28038,6 @@ var GoogleSyncService = class {
     if (!transactions || transactions.length === 0) {
       return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
     }
-    if (onProgress) onProgress("\u0423\u0434\u0430\u043B\u0435\u043D\u0438\u0435 \u0441\u0442\u0430\u0440\u044B\u0445 \u0444\u0430\u0439\u043B\u043E\u0432 (Spreadsheets)...");
-    await this.deleteOldGSheets(folderId);
     const groups = {};
     for (const t of transactions) {
       const month = t.date.substring(0, 7);
@@ -28112,16 +28110,6 @@ var GoogleSyncService = class {
       allTransactions.push(...res.data);
     }
     return ok(allTransactions);
-  }
-  async deleteOldGSheets(folderId) {
-    let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
-    if (folderId) {
-      query += ` and '${folderId}' in parents`;
-    }
-    const filesRes = await googleDriveService.listFiles(query);
-    if (filesRes.error) return;
-    const deletePromises = filesRes.data.map((file) => googleDriveService.deleteFile(file.id));
-    await Promise.all(deletePromises);
   }
 };
 var googleSyncService = new GoogleSyncService();
@@ -28839,7 +28827,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 01:16:29 +0200" : "dev"
+          true ? "2026-05-22 01:53:43 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29058,4 +29046,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-KUXAXWPG.js.map
+//# sourceMappingURL=app-ZGGHVRJJ.js.map
