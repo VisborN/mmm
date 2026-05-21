@@ -47,8 +47,10 @@ export class AppStore {
         runInAction(() => {
             if (result.error) {
                 this.error = result.error;
+                alert(`Ошибка экспорта: ${result.error.message}`);
             } else {
                 this.error = null;
+                alert('Экспорт успешно завершен!');
             }
             this.isLoading = false;
             this.syncProgress = '';
