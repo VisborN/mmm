@@ -4,8 +4,10 @@
  * Simplified for modern browser environments.
  */
 
-export async function askAndReadJsonFile(): Promise<any> {
-  return new Promise((resolve, reject) => {
+import "ts-error-as-value/lib/globals";
+
+export async function askAndReadJsonFile(): Promise<Result<any, Error>> {
+  return new Promise((resolve) => {
     // 1. Create a hidden input element
     const input = document.createElement('input');
     input.type = 'file';
@@ -15,28 +17,27 @@ export async function askAndReadJsonFile(): Promise<any> {
       const file = (event.target as HTMLInputElement).files?.[0];
 
       if (!file) {
-        return reject(new Error('UserHaventOpenedFileProperly'));
+        return resolve(err(new Error('UserHaventOpenedFileProperly')));
       }
 
-      try {
-        // 2. Read file content as string
-        const text = await file.text();
-
-        // 3. Parse JSON
-        const data = JSON.parse(text);
-        resolve(data);
-      } catch (e) {
-        if (e instanceof SyntaxError) {
-          reject(new Error('FormatException: Invalid JSON'));
-        } else {
-          reject(new Error('UserHaventOpenedFileProperly'));
-        }
+      // 2. Read file content as string
+      const textRes = await withResult(file.text, file)();
+      if (textRes.error !== null) {
+        return resolve(err(new AggregateError([textRes.error], 'UserHaventOpenedFileProperly')));
       }
+
+      // 3. Parse JSON
+      const jsonRes = withResult(JSON.parse)(textRes.data) as Result<any, Error>;
+      if (jsonRes.error !== null) {
+        return resolve(err(new Error('FormatException: Invalid JSON')));
+      }
+      
+      resolve(ok(jsonRes.data));
     };
 
     // Handle cancel (note: 'cancel' event isn't supported in all browsers yet)
     input.oncancel = () => {
-      reject(new Error('UserHaventOpenedFileProperly'));
+      resolve(err(new Error('UserHaventOpenedFileProperly')));
     };
 
     // 4. Trigger the file picker

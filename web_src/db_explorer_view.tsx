@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { getDB } from './infrastructure/db';
+import "ts-error-as-value/lib/globals";
 
 type DbRow = Record<string, unknown>;
 
@@ -11,22 +12,27 @@ export const DatabaseExplorer = observer(() => {
 
     useEffect(() => {
         const loadData = async () => {
-            try {
-                const db = await getDB();
-                const storeNames = db.objectStoreNames;
-                const allData: Record<string, DbRow[]> = {};
-
-                for (let i = 0; i < storeNames.length; i++) {
-                    const storeName = storeNames[i];
-                    allData[storeName] = (await db.getAll(storeName)) as unknown as DbRow[];
-                }
-
-                setDbData(allData);
-            } catch (err) {
-                console.error("Failed to load DB data", err);
-            } finally {
+            const dbRes = await withResult(getDB)();
+            if (dbRes.error !== null) {
+                console.error('Failed to load database:', dbRes.error);
                 setLoading(false);
+                return;
             }
+
+            const db = dbRes.data;
+            const storeNames = db.objectStoreNames;
+            const allData: Record<string, DbRow[]> = {};
+
+            for (let i = 0; i < storeNames.length; i++) {
+                const storeName = storeNames[i];
+                const res = await withResult(db.getAll, db)(storeName);
+                if (!res.error) {
+                    allData[storeName] = res.data as unknown as DbRow[];
+                }
+            }
+
+            setDbData(allData);
+            setLoading(false);
         };
 
         loadData();

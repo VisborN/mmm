@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-function-return-type */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { makeAutoObservable, runInAction } from "mobx";
 import { TinkoffAuthService } from "./tinkoff_auth_service";
 import { TinkoffOperation } from "./domain/tinkoff_operation";
@@ -51,46 +51,48 @@ export class AuthStore {
     this.isLoading = true;
     this.error = null;
 
-    try {
-      if (this.step === LoginStep.PHONE) {
-        // Logic for Phone Login
-        const needsOtp = await this.authService.loginPhone(this.inputValue);
-
-        // runInAction is required for updating state after an await
-        runInAction(() => {
-          this.step = needsOtp ? LoginStep.OTP : LoginStep.PASSWORD;
+    if (this.step === LoginStep.PHONE) {
+      // Logic for Phone Login
+      const needsOtpRes = await this.authService.loginPhone(this.inputValue);
+      
+      runInAction(() => {
+        if (needsOtpRes.error) {
+          this.error = needsOtpRes.error.message || "An unexpected error occurred";
+        } else {
+          this.step = needsOtpRes.data ? LoginStep.OTP : LoginStep.PASSWORD;
           this.inputValue = "";
-        });
-      }
-      else if (this.step === LoginStep.OTP) {
-        // Logic for SMS Confirmation
-        const ok = await this.authService.confirmOTP(this.inputValue);
-        runInAction(() => {
-          if (ok) {
-            this.step = LoginStep.PASSWORD;
-            this.inputValue = "";
-          } else {
-            this.error = "Invalid OTP code";
-          }
-        });
-      }
-      else if (this.step === LoginStep.PASSWORD) {
-        // Logic for Password Login
-        const ok = await this.authService.loginPassword(this.inputValue);
-        runInAction(() => {
-          if (ok) {
-            this.step = LoginStep.SUCCESS;
-          } else {
-            this.error = "Incorrect password";
-          }
-        });
-      }
-    } catch (e: any) {
-      runInAction(() => {
-        this.error = e.message || "An unexpected error occurred";
+        }
+        this.isLoading = false;
       });
-    } finally {
+    }
+    else if (this.step === LoginStep.OTP) {
+      // Logic for SMS Confirmation
+      const okRes = await this.authService.confirmOTP(this.inputValue);
+      
       runInAction(() => {
+        if (okRes.error) {
+          this.error = okRes.error.message || "An unexpected error occurred";
+        } else if (okRes.data) {
+          this.step = LoginStep.PASSWORD;
+          this.inputValue = "";
+        } else {
+          this.error = "Invalid OTP code";
+        }
+        this.isLoading = false;
+      });
+    }
+    else if (this.step === LoginStep.PASSWORD) {
+      // Logic for Password Login
+      const okRes = await this.authService.loginPassword(this.inputValue);
+      
+      runInAction(() => {
+        if (okRes.error) {
+          this.error = okRes.error.message || "An unexpected error occurred";
+        } else if (okRes.data) {
+          this.step = LoginStep.SUCCESS;
+        } else {
+          this.error = "Incorrect password";
+        }
         this.isLoading = false;
       });
     }
@@ -101,16 +103,16 @@ export class AuthStore {
    */
   async loadOperations() {
     this.isLoading = true;
-    try {
-      const data = await this.authService.getOperations();
-      runInAction(() => {
-        this.operations = data;
-      });
-    } catch (e: any) {
-      runInAction(() => this.error = e.message);
-    } finally {
-      runInAction(() => this.isLoading = false);
-    }
+    const res = await this.authService.getOperations();
+    
+    runInAction(() => {
+      if (res.error) {
+        this.error = res.error.message;
+      } else {
+        this.operations = res.data;
+      }
+      this.isLoading = false;
+    });
   }
 }
 

@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { JsonStore } from './json_store';
+import "ts-error-as-value/lib/globals";
 import { TinkoffOperation } from '../domain/tinkoff_operation';
+import { JsonStore } from './json_store';
 import { askAndReadJsonFile } from './json_file';
 
 const SAVE_KEY = 'localTinkoffOperations';
 
 /**
- * Reads Tinkoff operations from IndexedDB.
+ * Loads Tinkoff operations from IndexedDB.
  */
 export async function readLocal(): Promise<TinkoffOperation[]> {
-  // Retrieve raw array from IndexedDB
-  const rawData = await JsonStore.getJson<any[]>(SAVE_KEY);
+  const rawDataRes = await JsonStore.getJson<any[]>(SAVE_KEY);
+  const rawData = rawDataRes.error ? null : rawDataRes.data;
 
-  // Ensure we return an array. Since TinkoffOperation uses
+  // Since Tinkoff operations use standard JSON-compatible fields like
   // milliseconds (number), no special Date object conversion is
   // required unless you want to wrap it in a class.
   return Array.isArray(rawData) ? (rawData as TinkoffOperation[]) : [];
@@ -28,17 +29,14 @@ export async function writeLocal(data: TinkoffOperation[]): Promise<void> {
 /**
  * Opens file picker and parses results into TinkoffOperation objects.
  */
-export async function readFromFile(): Promise<TinkoffOperation[]> {
-  try {
-    const fileContent = await askAndReadJsonFile();
-
-    // Fallback to empty list if content is null or not an array
-    const data = Array.isArray(fileContent) ? fileContent : [];
-
-    return data as TinkoffOperation[];
-  } catch (error) {
-    // Mimics the 'UserHaventOpenedFileProperly' or 'FormatException' catch
-    console.warn("Tinkoff file read failed:", error);
-    return [];
+export async function readFromFile(): Promise<Result<TinkoffOperation[], Error>> {
+  const fileContentRes = await askAndReadJsonFile();
+  if (fileContentRes.error !== null) {
+    return err(new AggregateError([fileContentRes.error], "Tinkoff file read failed"));
   }
+
+  // Fallback to empty list if content is null or not an array
+  const data = Array.isArray(fileContentRes.data) ? fileContentRes.data : [];
+
+  return ok(data as TinkoffOperation[]);
 }

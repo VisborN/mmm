@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import "ts-error-as-value/lib/globals";
 import { get, set } from 'idb-keyval';
 
 /**
@@ -30,20 +31,25 @@ export class JsonStore {
    * Throws an Error if the stored value is not valid JSON.
    */
 
-  static async getJson<T = any>(key: string): Promise<T | null> {
+  static async getJson<T = any>(key: string): Promise<Result<T | null, Error>> {
     // 1. Retrieve the string from IndexedDB
-    const jsonValue = await get<string>(key);
+    const jsonValueRes = await withResult(get<string>)(key);
+    if (jsonValueRes.error !== null) {
+      return err(new AggregateError([jsonValueRes.error], `Failed to retrieve key "${key}" from IDB`));
+    }
+
+    const jsonValue = jsonValueRes.data;
 
     // 2. Return null if not found (matching Dart's getJson)
     if (jsonValue === undefined || jsonValue === null) {
-      return null;
+      return ok(null);
     }
 
-    try {
-      // 3. Parse and return
-      return JSON.parse(jsonValue) as T;
-    } catch (e) {
-      throw new Error(`FormatException: Invalid JSON text for key "${key}"`, { cause: e });
+    // 3. Parse JSON
+    const parseRes = withResult(JSON.parse)(jsonValue) as Result<any, Error>;
+    if (parseRes.error !== null) {
+      return err(new AggregateError([parseRes.error], `FormatException: Invalid JSON text for key "${key}"`));
     }
+    return ok(parseRes.data as T);
   }
 }

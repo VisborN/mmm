@@ -11,7 +11,8 @@ const SAVE_KEY = 'localOperations';
  */
 export async function readLocal(): Promise<Operation[]> {
   // getJson returns null if not found, so we default to an empty array
-  const rawData = await JsonStore.getJson<any[]>(SAVE_KEY) ?? [];
+  const rawDataRes = await JsonStore.getJson<any[]>(SAVE_KEY);
+  const rawData = rawDataRes.error ? [] : (rawDataRes.data ?? []);
 
   // In TS, if the stored JSON matches the interface structure,
   // we cast it. Note: Date strings need to be converted back to Date objects.
@@ -30,16 +31,14 @@ export async function writeLocal(data: Operation[]): Promise<void> {
  * Prompts user for a file and parses it into Operation objects.
  * Equivalent to readFromFile() in Dart.
  */
-export async function readFromFile(): Promise<Operation[]> {
-  try {
-    const fileContent = await askAndReadJsonFile();
-    const data = Array.isArray(fileContent) ? fileContent : [];
-
-    return data.map((e) => reviveOperation(e));
-  } catch (error) {
-    console.error("Failed to read file:", error);
-    return [];
+export async function readFromFile(): Promise<Result<Operation[], Error>> {
+  const fileContentRes = await askAndReadJsonFile();
+  if (fileContentRes.error !== null) {
+    return err(new AggregateError([fileContentRes.error], "Failed to read file"));
   }
+  
+  const data = Array.isArray(fileContentRes.data) ? fileContentRes.data : [];
+  return ok(data.map((e) => reviveOperation(e)));
 }
 
 /**
