@@ -28,8 +28,21 @@ export class GoogleDriveService {
         }
     }
 
+    private clearAuth(): void {
+        this.accessToken = null;
+        localStorage.removeItem('gdrive_access_token');
+        localStorage.removeItem('gdrive_token_expires_at');
+    }
+
     async ensureAuthenticated(): Promise<Result<string>> {
         if (this.accessToken) {
+            return ok(this.accessToken);
+        }
+
+        const storedToken = localStorage.getItem('gdrive_access_token');
+        const expiresAt = localStorage.getItem('gdrive_token_expires_at');
+        if (storedToken && expiresAt && Date.now() < parseInt(expiresAt, 10)) {
+            this.accessToken = storedToken;
             return ok(this.accessToken);
         }
 
@@ -51,10 +64,14 @@ export class GoogleDriveService {
                     return;
                 }
                 this.accessToken = response.access_token;
+                if (response.expires_in) {
+                    localStorage.setItem('gdrive_access_token', response.access_token);
+                    localStorage.setItem('gdrive_token_expires_at', (Date.now() + response.expires_in * 1000).toString());
+                }
                 resolve(ok(this.accessToken!));
             };
 
-            this.tokenClient.requestAccessToken({ prompt: '' });
+            this.tokenClient.requestAccessToken();
         });
     }
 
@@ -76,7 +93,10 @@ export class GoogleDriveService {
             });
 
             if (response.error) return err(response.error);
-            if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+            if (!response.data.ok) {
+                if (response.data.status === 401) this.clearAuth();
+                return err(new Error(`Drive API error: ${response.data.statusText}`));
+            }
 
             const data = await withResult(() => response.data.json())();
             if (data.error) return err(data.error);
@@ -111,7 +131,10 @@ export class GoogleDriveService {
             });
 
             if (response.error) return err(response.error);
-            if (!response.data.ok) return err(new Error(`Drive API error: ${response.data.statusText}`));
+            if (!response.data.ok) {
+                if (response.data.status === 401) this.clearAuth();
+                return err(new Error(`Drive API error: ${response.data.statusText}`));
+            }
 
             const data = await withResult(() => response.data.json())();
             if (data.error) return err(data.error);
@@ -170,7 +193,10 @@ export class GoogleDriveService {
         });
 
         if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Drive API upload error: ${response.data.statusText}`));
+        if (!response.data.ok) {
+            if (response.data.status === 401) this.clearAuth();
+            return err(new Error(`Drive API upload error: ${response.data.statusText}`));
+        }
 
         const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
@@ -188,7 +214,10 @@ export class GoogleDriveService {
         });
 
         if (response.error) return err(response.error);
-        if (!response.data.ok) return err(new Error(`Drive API download error: ${response.data.statusText}`));
+        if (!response.data.ok) {
+            if (response.data.status === 401) this.clearAuth();
+            return err(new Error(`Drive API download error: ${response.data.statusText}`));
+        }
 
         const text = await withResult(() => response.data.text())();
         if (text.error) return err(text.error);
