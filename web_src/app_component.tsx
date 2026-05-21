@@ -273,6 +273,14 @@ export const AppMain = observer(() => {
                                 <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Синхронизация Google Drive</h3>
                                 <div style={{ marginBottom: '10px', fontSize: '14px', color: '#555' }}>
                                     Текущая папка: <strong>{store.syncFolderName || 'Корневая папка (Мой диск)'}</strong>
+                                    <a
+                                        href={store.syncFolderId ? `https://drive.google.com/drive/folders/${store.syncFolderId}` : 'https://drive.google.com/drive/my-drive'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ marginLeft: '10px', color: '#007bff', textDecoration: 'none' }}
+                                    >
+                                        (Открыть в Google Drive ↗)
+                                    </a>
                                 </div>
                                 <button
                                     onClick={() => setIsFolderModalOpen(true)}
