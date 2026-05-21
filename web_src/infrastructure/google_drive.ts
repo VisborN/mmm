@@ -34,6 +34,38 @@ export class GoogleDriveService {
         localStorage.removeItem('gdrive_token_expires_at');
     }
 
+    hasValidToken(): boolean {
+        if (this.accessToken) return true;
+        const storedToken = localStorage.getItem('gdrive_access_token');
+        const expiresAt = localStorage.getItem('gdrive_token_expires_at');
+        return !!(storedToken && expiresAt && Date.now() < parseInt(expiresAt, 10));
+    }
+
+    async getUserEmail(): Promise<Result<string | null>> {
+        if (!this.hasValidToken()) {
+            return ok(null);
+        }
+
+        const authRes = await this.ensureAuthenticated();
+        if (authRes.error) return err(authRes.error);
+
+        const url = 'https://www.googleapis.com/drive/v3/about?fields=user';
+        const response = await withResult(fetch)(url, {
+            headers: { Authorization: `Bearer ${this.accessToken}` }
+        });
+
+        if (response.error) return err(response.error);
+        if (!response.data.ok) {
+            if (response.data.status === 401) this.clearAuth();
+            return err(new Error(`Drive API error: ${response.data.statusText}`));
+        }
+
+        const data = await withResult(() => response.data.json())();
+        if (data.error) return err(data.error);
+
+        return ok(data.data.user?.emailAddress || null);
+    }
+
     async ensureAuthenticated(): Promise<Result<string>> {
         if (this.accessToken) {
             return ok(this.accessToken);

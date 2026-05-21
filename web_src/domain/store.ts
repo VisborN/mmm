@@ -23,12 +23,25 @@ export class AppStore {
     error: Error | null = null;
 
     isRecalculating: boolean = false;
-
     syncFolderId: string | null = null;
     syncFolderName: string | null = null;
+    googleAccountEmail: string | null = null;
 
     constructor() {
         makeAutoObservable(this);
+    }
+
+    async loadGoogleAccountEmail(): Promise<void> {
+        const emailRes = await googleSyncService.getUserEmail();
+        if (!emailRes.error && emailRes.data) {
+            runInAction(() => {
+                this.googleAccountEmail = emailRes.data;
+            });
+        } else {
+             runInAction(() => {
+                this.googleAccountEmail = null;
+            });
+        }
     }
 
     async setSyncFolder(id: string | null, name: string | null): Promise<void> {
@@ -44,6 +57,7 @@ export class AppStore {
         const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
             runInAction(() => { this.syncProgress = progress; });
         });
+        this.loadGoogleAccountEmail();
         runInAction(() => {
             if (result.error) {
                 this.error = result.error;
@@ -78,6 +92,7 @@ export class AppStore {
         }
 
         await this.loadData();
+        this.loadGoogleAccountEmail();
         runInAction(() => { this.isLoading = false; this.syncProgress = ''; this.error = null; });
         this.recalculateBalances();
     }
@@ -151,6 +166,8 @@ export class AppStore {
             this.transactions = txData;
             this.isLoading = false;
         });
+
+        this.loadGoogleAccountEmail();
     }
 
     openTransactionModal(transaction?: Transaction): void {

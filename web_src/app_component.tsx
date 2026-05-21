@@ -282,6 +282,9 @@ export const AppMain = observer(() => {
                                         (Открыть в Google Drive ↗)
                                     </a>
                                 </div>
+                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#555' }}>
+                                    Google Аккаунт: <strong>{store.googleAccountEmail || 'Не авторизован (появится после первого экспорта/импорта)'}</strong>
+                                </div>
                                 <button
                                     onClick={() => setIsFolderModalOpen(true)}
                                     style={{ padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', marginBottom: '15px' }}

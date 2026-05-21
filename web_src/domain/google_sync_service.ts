@@ -4,6 +4,10 @@ import { googleDriveService } from "../infrastructure/google_drive";
 import Papa from "papaparse";
 
 export class GoogleSyncService {
+    async getUserEmail(): Promise<Result<string | null, Error>> {
+        return googleDriveService.getUserEmail();
+    }
+
     async exportToGoogleDrive(transactions: Transaction[], folderId?: string, onProgress?: (progress: string) => void): Promise<Result<void, Error>> {
         if (!transactions || transactions.length === 0) {
             return err(new Error('Нет операций для экспорта'));
