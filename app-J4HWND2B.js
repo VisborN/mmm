@@ -28018,7 +28018,7 @@ var GoogleSyncService = class {
       if (filesRes.data.length > 0) {
         fileId = filesRes.data[0].id;
       }
-      const csvContent = import_papaparse.default.unparse(txs);
+      const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
       const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
       if (uploadRes.error) return err(uploadRes.error);
       completed++;
@@ -28778,7 +28778,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-21 23:24:21 +0200" : "dev"
+          true ? "2026-05-22 00:50:09 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28983,4 +28983,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-UIHEN4NR.js.map
+//# sourceMappingURL=app-J4HWND2B.js.map
