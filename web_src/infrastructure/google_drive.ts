@@ -174,7 +174,7 @@ export class GoogleDriveService {
             'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
             JSON.stringify(metadata) +
             delimiter +
-            'Content-Type: ' + mimeType + '\r\n\r\n' +
+            'Content-Type: ' + mimeType + '; charset=UTF-8\r\n\r\n' +
             content +
             close_delim;
 
