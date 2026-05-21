@@ -199,15 +199,17 @@ export class GoogleDriveService {
         const delimiter = "\r\n--" + boundary + "\r\n";
         const close_delim = "\r\n--" + boundary + "--";
 
-        // To support unicode correctly in multipart upload, we shouldn't just use string concatenation directly if using fetch with string body.
-        // Actually, fetch handles string bodies as UTF-8 automatically.
+        // Convert the UTF-8 content string to Base64 to prevent the multipart parser from mangling high-bit characters.
+        const base64Content = btoa(unescape(encodeURIComponent(content)));
+
         const multipartRequestBody =
             delimiter +
             'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
             JSON.stringify(metadata) +
             delimiter +
-            'Content-Type: ' + mimeType + '; charset=UTF-8\r\n\r\n' +
-            content +
+            'Content-Type: ' + mimeType + '; charset=UTF-8\r\n' +
+            'Content-Transfer-Encoding: base64\r\n\r\n' +
+            base64Content +
             close_delim;
 
         const method = fileId ? 'PATCH' : 'POST';
