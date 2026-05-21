@@ -13,9 +13,6 @@ export class GoogleSyncService {
             return err(new Error('Нет операций для экспорта'));
         }
 
-        if (onProgress) onProgress('Удаление старых файлов (Spreadsheets)...');
-        await this.deleteOldGSheets(folderId);
-
         const groups: Record<string, Transaction[]> = {};
         for (const t of transactions) {
             const month = t.date.substring(0, 7); // YYYY-MM
@@ -108,18 +105,6 @@ export class GoogleSyncService {
         }
 
         return ok(allTransactions);
-    }
-
-    async deleteOldGSheets(folderId?: string): Promise<void> {
-        let query = "name contains 'MMM - ' and mimeType = 'application/vnd.google-apps.spreadsheet'";
-        if (folderId) {
-            query += ` and '${folderId}' in parents`;
-        }
-        const filesRes = await googleDriveService.listFiles(query);
-        if (filesRes.error) return;
-
-        const deletePromises = filesRes.data.map(file => googleDriveService.deleteFile(file.id));
-        await Promise.all(deletePromises);
     }
 }
 
