@@ -29,7 +29,7 @@ export class GoogleSyncService {
 
         const uploadPromises = entries.map(async ([name, txs]) => {
             const escapedName = name.replace(/'/g, "\\'");
-            let query = `name = '${escapedName}' and mimeType = 'text/csv'`;
+            let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
             if (folderId) {
                 query += ` and '${folderId}' in parents`;
             }
