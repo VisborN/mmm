@@ -235,6 +235,9 @@
     }
   }));
 
+  // web_src/infrastructure/db.ts
+  var DB_VERSION = 3;
+
   // node_modules/big.js/big.mjs
   var DP = 20;
   var RM = 1;
@@ -745,7 +748,7 @@
   self.onmessage = async (e) => {
     if (e.data === "recalculate") {
       try {
-        const db = await openDB("money-management-app", 3);
+        const db = await openDB("money-management-app", DB_VERSION);
         const [transactions, accounts] = await Promise.all([
           db.getAllFromIndex("transactions", "by-date"),
           db.getAll("accounts")
@@ -796,4 +799,4 @@
     }
   };
 })();
-//# sourceMappingURL=recalculate_worker-GLPPVZRC.js.map
+//# sourceMappingURL=recalculate_worker-KNJTZRHR.js.map
