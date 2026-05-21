@@ -54,7 +54,7 @@ export class GoogleDriveService {
                 resolve(ok(this.accessToken!));
             };
 
-            this.tokenClient.requestAccessToken({ prompt: 'consent' });
+            this.tokenClient.requestAccessToken({ prompt: '' });
         });
     }
 
