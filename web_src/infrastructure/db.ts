@@ -2,6 +2,8 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Account, Transaction } from '../domain/types';
 
+export const DB_VERSION = 3;
+
 export interface MoneyAppDB extends DBSchema {
     transactions: {
         key: number;
@@ -18,7 +20,7 @@ let dbPromise: Promise<IDBPDatabase<MoneyAppDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
     if (!dbPromise) {
-        dbPromise = openDB<MoneyAppDB>('money-management-app', 3, {
+        dbPromise = openDB<MoneyAppDB>('money-management-app', DB_VERSION, {
             upgrade(db, oldVersion, newVersion, transaction) {
                 if (oldVersion < 1) {
                     const txStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });

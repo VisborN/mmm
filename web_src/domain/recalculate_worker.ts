@@ -1,5 +1,5 @@
 import { openDB } from 'idb';
-import { MoneyAppDB } from '../infrastructure/db';
+import { MoneyAppDB, DB_VERSION } from '../infrastructure/db';
 import Big from 'big.js';
 
 // Exact math string functions to preserve precision using big.js
@@ -26,7 +26,7 @@ function subStrings(a: string, b: string): string {
 self.onmessage = async (e: MessageEvent): Promise<void> => {
     if (e.data === 'recalculate') {
         try {
-            const db = await openDB<MoneyAppDB>('money-management-app', 3);
+            const db = await openDB<MoneyAppDB>('money-management-app', DB_VERSION);
 
             // Fetch all transactions and accounts
             const [transactions, accounts] = await Promise.all([
