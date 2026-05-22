@@ -4,6 +4,9 @@ import { store } from './domain/store';
 import { Transaction } from './domain/types';
 import { AccountsView } from './accounts_view';
 import { DatabaseExplorer } from './db_explorer_view';
+import { FolderSelectionModal } from './folder_selection_modal';
+
+declare const __COMMIT_TIME__: string;
 
 // Utility for Russian locale formatting
 const formatDate = (dateStr: string) => {
@@ -187,6 +190,8 @@ export const TransactionsView = observer(() => {
 });
 
 export const AppMain = observer(() => {
+    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+
     useEffect(() => {
         store.loadData().then(() => {
             if (store.currentView === 'accounts') {
@@ -205,7 +210,10 @@ export const AppMain = observer(() => {
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '16px 20px', backgroundColor: 'white', borderBottom: '1px solid #eee'
             }}>
-                <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
+                <div>
+                    <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 'normal' }}>моней флов</h1>
+                    <div style={{ fontSize: '10px', color: '#888', marginTop: '2px' }}>v. {typeof __COMMIT_TIME__ !== 'undefined' ? __COMMIT_TIME__ : 'dev'}</div>
+                </div>
                 <div style={{ display: 'flex', gap: '16px' }}>
                     <button
                         onClick={() => store.currentView === 'transactions' ? store.openTransactionModal() : store.openAccountModal()}
@@ -260,7 +268,53 @@ export const AppMain = observer(() => {
                             &larr; Назад
                         </button>
                         <h2>Настройки</h2>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
+                            <div style={{ padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>
+                                <h3 style={{ margin: '0 0 10px 0', fontSize: '16px' }}>Синхронизация Google Drive</h3>
+                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#555' }}>
+                                    Текущая папка: <strong>{store.syncFolderName || 'Корневая папка (Мой диск)'}</strong>
+                                    <a
+                                        href={store.syncFolderId ? `https://drive.google.com/drive/folders/${store.syncFolderId}` : 'https://drive.google.com/drive/my-drive'}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ marginLeft: '10px', color: '#007bff', textDecoration: 'none' }}
+                                    >
+                                        (Открыть в Google Drive ↗)
+                                    </a>
+                                </div>
+                                <div style={{ marginBottom: '10px', fontSize: '14px', color: '#555' }}>
+                                    Google Аккаунт: <strong>{store.googleAccountEmail || 'Не авторизован (появится после первого экспорта/импорта)'}</strong>
+                                </div>
+                                <button
+                                    onClick={() => setIsFolderModalOpen(true)}
+                                    style={{ padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', marginBottom: '15px' }}
+                                >
+                                    Выбрать другую папку
+                                </button>
+                                
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        onClick={() => store.exportToGoogleDrive()}
+                                        style={{ padding: '10px 20px', backgroundColor: '#4285F4', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        disabled={store.isLoading}
+                                    >
+                                        {store.isLoading ? 'Экспорт...' : 'Export to Google Drive'}
+                                    </button>
+                                    <button
+                                        onClick={() => store.importFromGoogleDrive()}
+                                        style={{ padding: '10px 20px', backgroundColor: '#34A853', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                                        disabled={store.isLoading}
+                                    >
+                                        {store.isLoading ? 'Импорт...' : 'Import from Google Drive'}
+                                    </button>
+                                </div>
+                                {store.syncProgress && (
+                                    <div style={{ marginTop: '10px', fontSize: '14px', color: '#007bff' }}>
+                                        {store.syncProgress}
+                                    </div>
+                                )}
+                            </div>
+
                             <button id="open-auth" style={{ padding: '10px 20px', backgroundColor: '#ffdd2d', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
                                 Open Tinkoff Login
                             </button>
@@ -275,6 +329,7 @@ export const AppMain = observer(() => {
                 )}
                 {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
+            {isFolderModalOpen && <FolderSelectionModal onClose={() => setIsFolderModalOpen(false)} />}
         </div>
     );
 });

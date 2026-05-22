@@ -9,6 +9,7 @@ export type TransactionType = 'withdraw' | 'transfer' | 'deposit' | 'balance_cor
 
 export interface Transaction {
     id: number;
+    uuid: string;
     date: string; // YYYY-MM-DD
     amountRubles: number; // precision 2 digits
     amountAccountCurrency: string; // Stored as string to support any precision

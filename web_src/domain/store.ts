@@ -1,6 +1,8 @@
 import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
+import { googleSyncService } from "./google_sync_service";
+import { get, set } from "idb-keyval";
 
 declare const __WORKER_URL__: string;
 
@@ -17,12 +19,82 @@ export class AppStore {
     currentAccount: Account | null = null;
 
     isLoading: boolean = true;
+    syncProgress: string = '';
     error: Error | null = null;
 
     isRecalculating: boolean = false;
+    syncFolderId: string | null = null;
+    syncFolderName: string | null = null;
+    googleAccountEmail: string | null = null;
 
     constructor() {
         makeAutoObservable(this);
+    }
+
+    async loadGoogleAccountEmail(): Promise<void> {
+        const emailRes = await googleSyncService.getUserEmail();
+        if (!emailRes.error && emailRes.data) {
+            runInAction(() => {
+                this.googleAccountEmail = emailRes.data;
+            });
+        } else {
+             runInAction(() => {
+                this.googleAccountEmail = null;
+            });
+        }
+    }
+
+    async setSyncFolder(id: string | null, name: string | null): Promise<void> {
+        this.syncFolderId = id;
+        this.syncFolderName = name;
+        await set('syncFolderId', id);
+        await set('syncFolderName', name);
+    }
+
+    async exportToGoogleDrive(): Promise<void> {
+        this.isLoading = true;
+        this.syncProgress = 'Подготовка к экспорту...';
+        const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
+            runInAction(() => { this.syncProgress = progress; });
+        });
+        this.loadGoogleAccountEmail();
+        runInAction(() => {
+            if (result.error) {
+                this.error = result.error;
+                alert(`Ошибка экспорта: ${result.error.message}`);
+            } else {
+                this.error = null;
+                alert('Экспорт успешно завершен!');
+            }
+            this.isLoading = false;
+            this.syncProgress = '';
+        });
+    }
+
+    async importFromGoogleDrive(): Promise<void> {
+        this.isLoading = true;
+        this.syncProgress = 'Поиск файлов...';
+        
+        const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined, (progress) => {
+            runInAction(() => { this.syncProgress = progress; });
+        });
+        
+        if (result.error) {
+            runInAction(() => { this.error = result.error; this.isLoading = false; this.syncProgress = ''; });
+            return;
+        }
+
+        this.syncProgress = 'Сохранение в базу данных...';
+        const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+        if (replaceRes.error) {
+            runInAction(() => { this.error = replaceRes.error; this.isLoading = false; this.syncProgress = ''; });
+            return;
+        }
+
+        await this.loadData();
+        this.loadGoogleAccountEmail();
+        runInAction(() => { this.isLoading = false; this.syncProgress = ''; this.error = null; });
+        this.recalculateBalances();
     }
 
     recalculateBalances(): void {
@@ -64,6 +136,13 @@ export class AppStore {
         this.isLoading = true;
         this.error = null;
 
+        const folderId = await get('syncFolderId');
+        const folderName = await get('syncFolderName');
+        runInAction(() => {
+            if (folderId !== undefined) this.syncFolderId = folderId;
+            if (folderName !== undefined) this.syncFolderName = folderName;
+        });
+
         const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
         if (accountsErr) {
             runInAction(() => {
@@ -87,6 +166,8 @@ export class AppStore {
             this.transactions = txData;
             this.isLoading = false;
         });
+
+        this.loadGoogleAccountEmail();
     }
 
     openTransactionModal(transaction?: Transaction): void {
