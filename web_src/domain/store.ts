@@ -18,6 +18,8 @@ export class AppStore {
     isAccountModalOpen: boolean = false;
     currentAccount: Account | null = null;
 
+    isFolderModalOpen: boolean = false;
+
     isLoading: boolean = true;
     syncProgress: string = '';
     error: Error | null = null;
@@ -29,6 +31,41 @@ export class AppStore {
 
     constructor() {
         makeAutoObservable(this);
+        if (typeof window !== 'undefined') {
+            this.initRouting();
+        }
+    }
+
+    initRouting(): void {
+        window.addEventListener('hashchange', () => this.handleHashChange());
+        if (!window.location.hash) {
+            window.location.hash = 'transactions';
+        } else {
+            this.handleHashChange();
+        }
+    }
+
+    handleHashChange(): void {
+        const hash = window.location.hash.replace('#', '');
+        runInAction(() => {
+            if (hash === 'modal-tx') {
+                this.isTransactionModalOpen = true;
+            } else if (hash === 'modal-account') {
+                this.isAccountModalOpen = true;
+            } else if (hash === 'modal-folder') {
+                this.isFolderModalOpen = true;
+            } else {
+                this.isTransactionModalOpen = false;
+                this.isAccountModalOpen = false;
+                this.isFolderModalOpen = false;
+                
+                if (['transactions', 'accounts', 'settings', 'db_explorer'].includes(hash)) {
+                    this.currentView = hash as 'transactions' | 'accounts' | 'settings' | 'db_explorer';
+                } else {
+                    this.currentView = 'transactions';
+                }
+            }
+        });
     }
 
     async loadGoogleAccountEmail(): Promise<void> {
@@ -172,12 +209,16 @@ export class AppStore {
 
     openTransactionModal(transaction?: Transaction): void {
         this.currentTransaction = transaction || null;
-        this.isTransactionModalOpen = true;
+        window.location.hash = 'modal-tx';
     }
 
     closeTransactionModal(): void {
-        this.currentTransaction = null;
-        this.isTransactionModalOpen = false;
+        if (window.location.hash === '#modal-tx') {
+            window.history.back();
+        } else {
+            this.isTransactionModalOpen = false;
+            this.currentTransaction = null;
+        }
     }
 
     async saveTransaction(transaction: Transaction): Promise<void> {
@@ -196,12 +237,16 @@ export class AppStore {
 
     openAccountModal(account?: Account): void {
         this.currentAccount = account || null;
-        this.isAccountModalOpen = true;
+        window.location.hash = 'modal-account';
     }
 
     closeAccountModal(): void {
-        this.currentAccount = null;
-        this.isAccountModalOpen = false;
+        if (window.location.hash === '#modal-account') {
+            window.history.back();
+        } else {
+            this.isAccountModalOpen = false;
+            this.currentAccount = null;
+        }
     }
 
     async saveAccount(account: Account): Promise<void> {
@@ -217,8 +262,20 @@ export class AppStore {
         this.closeAccountModal();
     }
 
+    openFolderModal(): void {
+        window.location.hash = 'modal-folder';
+    }
+
+    closeFolderModal(): void {
+        if (window.location.hash === '#modal-folder') {
+            window.history.back();
+        } else {
+            this.isFolderModalOpen = false;
+        }
+    }
+
     setView(view: 'transactions' | 'accounts' | 'settings' | 'db_explorer'): void {
-        this.currentView = view;
+        window.location.hash = view;
     }
 }
 

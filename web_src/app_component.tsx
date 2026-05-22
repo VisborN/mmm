@@ -190,8 +190,6 @@ export const TransactionsView = observer(() => {
 });
 
 export const AppMain = observer(() => {
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-
     useEffect(() => {
         store.loadData().then(() => {
             if (store.currentView === 'accounts') {
@@ -262,7 +260,7 @@ export const AppMain = observer(() => {
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
                         <button
-                            onClick={() => store.setView('transactions')}
+                            onClick={() => window.history.back()}
                             style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
                         >
                             &larr; Назад
@@ -286,7 +284,7 @@ export const AppMain = observer(() => {
                                     Google Аккаунт: <strong>{store.googleAccountEmail || 'Не авторизован (появится после первого экспорта/импорта)'}</strong>
                                 </div>
                                 <button
-                                    onClick={() => setIsFolderModalOpen(true)}
+                                    onClick={() => store.openFolderModal()}
                                     style={{ padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', marginBottom: '15px' }}
                                 >
                                     Выбрать другую папку
@@ -329,7 +327,7 @@ export const AppMain = observer(() => {
                 )}
                 {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
-            {isFolderModalOpen && <FolderSelectionModal onClose={() => setIsFolderModalOpen(false)} />}
+            {store.isFolderModalOpen && <FolderSelectionModal onClose={() => store.closeFolderModal()} />}
         </div>
     );
 });
