@@ -28536,14 +28536,6 @@ var DatabaseExplorer = observer(() => {
   }, []);
   if (loading) return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { padding: "20px" }, children: "Loading DB Data..." });
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "20px" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
-      "button",
-      {
-        onClick: () => window.history.back(),
-        style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
-        children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
-      }
-    ),
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { children: "Database Explorer" }),
     Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "40px", overflowX: "auto" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { children: [
@@ -28877,7 +28869,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 21:35:33 +0200" : "dev"
+          true ? "2026-05-22 21:41:52 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28928,14 +28920,6 @@ var AppMain = observer(() => {
       store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(TransactionsView, {}),
       store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AccountsView, {}),
       store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "20px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "button",
-          {
-            onClick: () => window.history.back(),
-            style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
-            children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
-          }
-        ),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start", width: "100%" }, children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "15px", backgroundColor: "#f0f8ff", borderRadius: "8px", width: "100%", boxSizing: "border-box" }, children: [
@@ -29096,4 +29080,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-YBCIONII.js.map
+//# sourceMappingURL=app-6DDOS2BJ.js.map
