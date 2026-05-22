@@ -259,12 +259,6 @@ export const AppMain = observer(() => {
                 {store.currentView === 'accounts' && <AccountsView />}
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
-                        <button
-                            onClick={() => window.history.back()}
-                            style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
-                        >
-                            &larr; Назад
-                        </button>
                         <h2>Настройки</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
                             <div style={{ padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>

@@ -41,12 +41,6 @@ export const DatabaseExplorer = observer(() => {
 
     return (
         <div style={{ padding: '20px' }}>
-            <button
-                onClick={() => window.history.back()}
-                style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
-            >
-                &larr; Назад
-            </button>
             <h2>Database Explorer</h2>
             {Object.keys(dbData).map(storeName => (
                 <div key={storeName} style={{ marginBottom: '40px', overflowX: 'auto' }}>
