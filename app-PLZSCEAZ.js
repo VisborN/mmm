@@ -28164,6 +28164,7 @@ var AppStore = class {
     __publicField(this, "currentTransaction", null);
     __publicField(this, "isAccountModalOpen", false);
     __publicField(this, "currentAccount", null);
+    __publicField(this, "isFolderModalOpen", false);
     __publicField(this, "isLoading", true);
     __publicField(this, "syncProgress", "");
     __publicField(this, "error", null);
@@ -28172,6 +28173,38 @@ var AppStore = class {
     __publicField(this, "syncFolderName", null);
     __publicField(this, "googleAccountEmail", null);
     makeAutoObservable(this);
+    if (typeof window !== "undefined") {
+      this.initRouting();
+    }
+  }
+  initRouting() {
+    window.addEventListener("hashchange", () => this.handleHashChange());
+    if (!window.location.hash) {
+      window.location.hash = "transactions";
+    } else {
+      this.handleHashChange();
+    }
+  }
+  handleHashChange() {
+    const hash = window.location.hash.replace("#", "");
+    runInAction(() => {
+      if (hash === "modal-tx") {
+        this.isTransactionModalOpen = true;
+      } else if (hash === "modal-account") {
+        this.isAccountModalOpen = true;
+      } else if (hash === "modal-folder") {
+        this.isFolderModalOpen = true;
+      } else {
+        this.isTransactionModalOpen = false;
+        this.isAccountModalOpen = false;
+        this.isFolderModalOpen = false;
+        if (["transactions", "accounts", "settings", "db_explorer"].includes(hash)) {
+          this.currentView = hash;
+        } else {
+          this.currentView = "transactions";
+        }
+      }
+    });
   }
   async loadGoogleAccountEmail() {
     const emailRes = await googleSyncService.getUserEmail();
@@ -28312,11 +28345,15 @@ var AppStore = class {
   }
   openTransactionModal(transaction2) {
     this.currentTransaction = transaction2 || null;
-    this.isTransactionModalOpen = true;
+    window.location.hash = "modal-tx";
   }
   closeTransactionModal() {
-    this.currentTransaction = null;
-    this.isTransactionModalOpen = false;
+    if (window.location.hash === "#modal-tx") {
+      window.history.back();
+    } else {
+      this.isTransactionModalOpen = false;
+      this.currentTransaction = null;
+    }
   }
   async saveTransaction(transaction2) {
     const { error } = await indexedDBRepository.saveTransaction(transaction2);
@@ -28332,11 +28369,15 @@ var AppStore = class {
   }
   openAccountModal(account) {
     this.currentAccount = account || null;
-    this.isAccountModalOpen = true;
+    window.location.hash = "modal-account";
   }
   closeAccountModal() {
-    this.currentAccount = null;
-    this.isAccountModalOpen = false;
+    if (window.location.hash === "#modal-account") {
+      window.history.back();
+    } else {
+      this.isAccountModalOpen = false;
+      this.currentAccount = null;
+    }
   }
   async saveAccount(account) {
     const { error } = await indexedDBRepository.saveAccount(account);
@@ -28349,8 +28390,18 @@ var AppStore = class {
     await this.loadData();
     this.closeAccountModal();
   }
+  openFolderModal() {
+    window.location.hash = "modal-folder";
+  }
+  closeFolderModal() {
+    if (window.location.hash === "#modal-folder") {
+      window.history.back();
+    } else {
+      this.isFolderModalOpen = false;
+    }
+  }
   setView(view) {
-    this.currentView = view;
+    window.location.hash = view;
   }
 };
 var store = new AppStore();
@@ -28488,7 +28539,7 @@ var DatabaseExplorer = observer(() => {
     /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
       "button",
       {
-        onClick: () => store.setView("settings"),
+        onClick: () => window.history.back(),
         style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
         children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
       }
@@ -28803,7 +28854,6 @@ var TransactionsView = observer(() => {
   ] });
 });
 var AppMain = observer(() => {
-  const [isFolderModalOpen, setIsFolderModalOpen] = (0, import_react10.useState)(false);
   (0, import_react10.useEffect)(() => {
     store.loadData().then(() => {
       if (store.currentView === "accounts") {
@@ -28827,7 +28877,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 02:05:19 +0200" : "dev"
+          true ? "2026-05-22 21:20:18 +0200" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -28881,7 +28931,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
           "button",
           {
-            onClick: () => store.setView("transactions"),
+            onClick: () => window.history.back(),
             style: { padding: "8px 16px", marginBottom: "20px", cursor: "pointer" },
             children: "\u2190 \u041D\u0430\u0437\u0430\u0434"
           }
@@ -28911,7 +28961,7 @@ var AppMain = observer(() => {
             /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
               "button",
               {
-                onClick: () => setIsFolderModalOpen(true),
+                onClick: () => store.openFolderModal(),
                 style: { padding: "8px 16px", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "14px", marginBottom: "15px" },
                 children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u0443\u044E \u043F\u0430\u043F\u043A\u0443"
               }
@@ -28951,7 +29001,7 @@ var AppMain = observer(() => {
       ] }),
       store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(DatabaseExplorer, {})
     ] }),
-    isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(FolderSelectionModal, { onClose: () => setIsFolderModalOpen(false) })
+    store.isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(FolderSelectionModal, { onClose: () => store.closeFolderModal() })
   ] });
 });
 
@@ -29046,4 +29096,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-XMEZW4AW.js.map
+//# sourceMappingURL=app-PLZSCEAZ.js.map
