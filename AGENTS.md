@@ -8,6 +8,7 @@ When working on this repository, please adhere to the following guidelines:
   - Git commands (`status`, `log`, `diff`, `show`, `add`, `commit`, `push`, etc.). Note: force pushes (`-f`, `--force`) always require manual confirmation.
   - Common bash commands (`ls`, `grep`, `cat`, `head`, etc.).
   - File editing tools (`write_file`, `replace`).
+- **Git Workflow:** If you are on the `master` branch and need to make changes, you MUST create a new branch before committing those changes. After committing and pushing to the new branch, if there is no pull request, you MUST create one.
 
 ## General
 - Use strict TypeScript.

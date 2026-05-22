@@ -190,8 +190,6 @@ export const TransactionsView = observer(() => {
 });
 
 export const AppMain = observer(() => {
-    const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
-
     useEffect(() => {
         store.loadData().then(() => {
             if (store.currentView === 'accounts') {
@@ -261,12 +259,6 @@ export const AppMain = observer(() => {
                 {store.currentView === 'accounts' && <AccountsView />}
                 {store.currentView === 'settings' && (
                     <div style={{ padding: '20px' }}>
-                        <button
-                            onClick={() => store.setView('transactions')}
-                            style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
-                        >
-                            &larr; Назад
-                        </button>
                         <h2>Настройки</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'flex-start', width: '100%' }}>
                             <div style={{ padding: '15px', backgroundColor: '#f0f8ff', borderRadius: '8px', width: '100%', boxSizing: 'border-box' }}>
@@ -286,7 +278,7 @@ export const AppMain = observer(() => {
                                     Google Аккаунт: <strong>{store.googleAccountEmail || 'Не авторизован (появится после первого экспорта/импорта)'}</strong>
                                 </div>
                                 <button
-                                    onClick={() => setIsFolderModalOpen(true)}
+                                    onClick={() => store.openFolderModal()}
                                     style={{ padding: '8px 16px', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', fontSize: '14px', marginBottom: '15px' }}
                                 >
                                     Выбрать другую папку
@@ -329,7 +321,7 @@ export const AppMain = observer(() => {
                 )}
                 {store.currentView === 'db_explorer' && <DatabaseExplorer />}
             </div>
-            {isFolderModalOpen && <FolderSelectionModal onClose={() => setIsFolderModalOpen(false)} />}
+            {store.isFolderModalOpen && <FolderSelectionModal onClose={() => store.closeFolderModal()} />}
         </div>
     );
 });

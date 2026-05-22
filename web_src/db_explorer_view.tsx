@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
-import { store } from './domain/store';
 import { getDB } from './infrastructure/db';
 import "ts-error-as-value/lib/globals";
 
@@ -42,12 +41,6 @@ export const DatabaseExplorer = observer(() => {
 
     return (
         <div style={{ padding: '20px' }}>
-            <button
-                onClick={() => store.setView('settings')}
-                style={{ padding: '8px 16px', marginBottom: '20px', cursor: 'pointer' }}
-            >
-                &larr; Назад
-            </button>
             <h2>Database Explorer</h2>
             {Object.keys(dbData).map(storeName => (
                 <div key={storeName} style={{ marginBottom: '40px', overflowX: 'auto' }}>
