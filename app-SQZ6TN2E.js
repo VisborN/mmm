@@ -27714,7 +27714,10 @@ async function withDB(operation) {
   const { data: db, error: dbErr } = await withResult(getDB)();
   if (dbErr) return (0, import_ts_error_as_value.err)(new AggregateError([dbErr], "failed to open database"));
   const { data, error: opErr } = await withResult(operation)(db);
-  if (opErr) return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
+  if (opErr) {
+    console.error("Database operation failed:", opErr);
+    return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
+  }
   return ok(data);
 }
 
@@ -28074,7 +28077,7 @@ var GoogleSyncService = class {
   }
   async importFromGoogleDrive(folderId, onProgress) {
     if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
-    let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
+    let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
     if (folderId) {
       query += ` and '${folderId}' in parents`;
     }
@@ -28109,7 +28112,18 @@ var GoogleSyncService = class {
       if (res.error) return err(res.error);
       allTransactions.push(...res.data);
     }
-    return ok(allTransactions);
+    const seenUuids = /* @__PURE__ */ new Set();
+    const uniqueTransactions = [];
+    for (const t of allTransactions) {
+      if (t.uuid) {
+        if (seenUuids.has(t.uuid)) {
+          continue;
+        }
+        seenUuids.add(t.uuid);
+      }
+      uniqueTransactions.push(t);
+    }
+    return ok(uniqueTransactions);
   }
 };
 var googleSyncService = new GoogleSyncService();
@@ -28869,7 +28883,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-05-22 22:08:04 +0200" : "dev"
+          true ? "2026-06-21 20:39:47 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29080,4 +29094,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-I75ETHRP.js.map
+//# sourceMappingURL=app-SQZ6TN2E.js.map
