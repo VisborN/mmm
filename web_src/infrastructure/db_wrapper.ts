@@ -9,7 +9,10 @@ export async function withDB<T>(operation: (db: IDBPDatabase<MoneyAppDB>) => Pro
     if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
 
     const { data, error: opErr } = await withResult(operation)(db);
-    if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+    if (opErr) {
+        console.error("Database operation failed:", opErr);
+        return err(new AggregateError([opErr], "database operation failed"));
+    }
 
     return ok(data);
 }
