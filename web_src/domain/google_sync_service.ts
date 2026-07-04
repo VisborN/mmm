@@ -60,7 +60,7 @@ export class GoogleSyncService {
 
     async importFromGoogleDrive(folderId?: string, onProgress?: (progress: string) => void): Promise<Result<Transaction[], Error>> {
         if (onProgress) onProgress('Поиск CSV файлов...');
-        let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
+        let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
         if (folderId) {
             query += ` and '${folderId}' in parents`;
         }
@@ -104,7 +104,20 @@ export class GoogleSyncService {
             allTransactions.push(...res.data);
         }
 
-        return ok(allTransactions);
+        // Deduplicate transactions by uuid if they are present
+        const seenUuids = new Set<string>();
+        const uniqueTransactions: Transaction[] = [];
+        for (const t of allTransactions) {
+            if (t.uuid) {
+                if (seenUuids.has(t.uuid)) {
+                    continue;
+                }
+                seenUuids.add(t.uuid);
+            }
+            uniqueTransactions.push(t);
+        }
+
+        return ok(uniqueTransactions);
     }
 }
 
