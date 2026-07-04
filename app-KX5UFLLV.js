@@ -27714,10 +27714,7 @@ async function withDB(operation) {
   const { data: db, error: dbErr } = await withResult(getDB)();
   if (dbErr) return (0, import_ts_error_as_value.err)(new AggregateError([dbErr], "failed to open database"));
   const { data, error: opErr } = await withResult(operation)(db);
-  if (opErr) {
-    console.error("Database operation failed:", opErr);
-    return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
-  }
+  if (opErr) return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
   return ok(data);
 }
 
@@ -27806,7 +27803,7 @@ var indexedDBRepository = {
 };
 
 // domain/google_sync_service.ts
-var import_globals4 = __toESM(require_globals());
+var import_globals5 = __toESM(require_globals());
 
 // infrastructure/google_drive.ts
 var import_globals3 = __toESM(require_globals());
@@ -28031,102 +28028,8 @@ var GoogleDriveService = class {
 };
 var googleDriveService = new GoogleDriveService();
 
-// domain/google_sync_service.ts
-var import_papaparse = __toESM(require_papaparse_min());
-var GoogleSyncService = class {
-  async getUserEmail() {
-    return googleDriveService.getUserEmail();
-  }
-  async exportToGoogleDrive(transactions, folderId, onProgress) {
-    if (!transactions || transactions.length === 0) {
-      return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
-    }
-    const groups = {};
-    for (const t of transactions) {
-      const month = t.date.substring(0, 7);
-      const key = `MMM - ${t.accountName} - ${month}.csv`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(t);
-    }
-    const entries = Object.entries(groups);
-    let completed = 0;
-    const uploadPromises = entries.map(async ([name, txs]) => {
-      const escapedName = name.replace(/'/g, "\\'");
-      let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
-      if (folderId) {
-        query += ` and '${folderId}' in parents`;
-      }
-      const filesRes = await googleDriveService.listFiles(query);
-      let fileId;
-      if (filesRes.error) return err(filesRes.error);
-      if (filesRes.data.length > 0) {
-        fileId = filesRes.data[0].id;
-      }
-      const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
-      const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
-      if (uploadRes.error) return err(uploadRes.error);
-      completed++;
-      if (onProgress) onProgress(`\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E ${completed} \u0438\u0437 ${entries.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
-      return ok(void 0);
-    });
-    const results = await Promise.all(uploadPromises);
-    for (const res of results) {
-      if (res.error) return err(res.error);
-    }
-    return ok(void 0);
-  }
-  async importFromGoogleDrive(folderId, onProgress) {
-    if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
-    let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
-    if (folderId) {
-      query += ` and '${folderId}' in parents`;
-    }
-    const filesRes = await googleDriveService.listFiles(query);
-    if (filesRes.error) return err(filesRes.error);
-    const allTransactions = [];
-    const files = filesRes.data;
-    let completed = 0;
-    const fetchPromises = files.map(async (file) => {
-      const contentRes = await googleDriveService.getFileContent(file.id);
-      if (contentRes.error) return err(contentRes.error);
-      const parsed = import_papaparse.default.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
-      const fileTransactions = parsed.data.map((t) => ({
-        id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
-        uuid: t.uuid || "",
-        date: t.date || "",
-        amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
-        amountAccountCurrency: String(t.amountAccountCurrency || "0"),
-        accountName: t.accountName || "",
-        category: t.category || "",
-        description: t.description || "",
-        type: t.type || "withdraw",
-        transferReceiveAccountName: t.transferReceiveAccountName || null,
-        transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
-      }));
-      completed++;
-      if (onProgress) onProgress(`\u0421\u043A\u0430\u0447\u0430\u043D\u043E ${completed} \u0438\u0437 ${files.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
-      return ok(fileTransactions);
-    });
-    const results = await Promise.all(fetchPromises);
-    for (const res of results) {
-      if (res.error) return err(res.error);
-      allTransactions.push(...res.data);
-    }
-    const seenUuids = /* @__PURE__ */ new Set();
-    const uniqueTransactions = [];
-    for (const t of allTransactions) {
-      if (t.uuid) {
-        if (seenUuids.has(t.uuid)) {
-          continue;
-        }
-        seenUuids.add(t.uuid);
-      }
-      uniqueTransactions.push(t);
-    }
-    return ok(uniqueTransactions);
-  }
-};
-var googleSyncService = new GoogleSyncService();
+// infrastructure/google_drive_lock.ts
+var import_globals4 = __toESM(require_globals());
 
 // ../node_modules/idb-keyval/dist/index.js
 function promisifyRequest2(request) {
@@ -28167,6 +28070,251 @@ function set4(key, value, customStore = defaultGetStore()) {
     return promisifyRequest2(store2.transaction);
   });
 }
+
+// infrastructure/google_drive_lock.ts
+var LOCK_FILE_NAME = "_MMM_SYNC.lock";
+var LOCK_STALE_MS = 5 * 60 * 1e3;
+var LOCK_ACQUIRE_RETRY_MS = 2e3;
+var LOCK_ACQUIRE_MAX_RETRIES = 3;
+async function getDeviceId() {
+  const stored = await get3("mmm_device_id");
+  if (stored) return stored;
+  const id = crypto.randomUUID();
+  await set4("mmm_device_id", id);
+  return id;
+}
+function isLockStale(lockInfo) {
+  const lockedAt = new Date(lockInfo.lockedAt).getTime();
+  if (isNaN(lockedAt)) return true;
+  return Date.now() - lockedAt > LOCK_STALE_MS;
+}
+async function findLockFile(folderId) {
+  const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
+  let query = `name = '${escapedName}' and mimeType = 'application/json' and trashed = false`;
+  if (folderId) {
+    query += ` and '${folderId}' in parents`;
+  }
+  const filesRes = await googleDriveService.listFiles(query);
+  if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
+  if (filesRes.data.length === 0) {
+    return ok(null);
+  }
+  const lockFileId = filesRes.data[0].id;
+  const contentRes = await googleDriveService.getFileContent(lockFileId);
+  if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
+  const parseRes = withResult(() => JSON.parse(contentRes.data))();
+  if (parseRes.error) {
+    await googleDriveService.deleteFile(lockFileId);
+    return ok(null);
+  }
+  return ok({ id: lockFileId, content: parseRes.data });
+}
+async function createLockFile(operation, folderId) {
+  const deviceId = await getDeviceId();
+  const lockInfo = {
+    deviceId,
+    lockedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    operation
+  };
+  const uploadRes = await googleDriveService.uploadFile(
+    LOCK_FILE_NAME,
+    JSON.stringify(lockInfo),
+    "application/json",
+    folderId
+  );
+  if (uploadRes.error) return err(new AggregateError([uploadRes.error], "failed to create lock file"));
+  return ok(uploadRes.data);
+}
+async function acquireLock(operation, folderId) {
+  const deviceId = await getDeviceId();
+  for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
+    const lockRes = await findLockFile(folderId);
+    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
+    const existingLock = lockRes.data;
+    if (existingLock === null) {
+      const createRes = await createLockFile(operation, folderId);
+      if (createRes.error) return err(createRes.error);
+      const verifyRes = await findAllLockFiles(folderId);
+      if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
+      if (verifyRes.data.length === 1) {
+        return ok(createRes.data);
+      }
+      const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
+      const winner = verifyRes.data.reduce((a, b) => {
+        const aTime = new Date(a.content.lockedAt).getTime();
+        const bTime = new Date(b.content.lockedAt).getTime();
+        if (aTime !== bTime) return aTime < bTime ? a : b;
+        return a.content.deviceId < b.content.deviceId ? a : b;
+      });
+      if (winner.content.deviceId === deviceId) {
+        for (const lock of verifyRes.data) {
+          if (lock.id !== winner.id) {
+            await googleDriveService.deleteFile(lock.id);
+          }
+        }
+        return ok(winner.id);
+      }
+      if (ours) {
+        await googleDriveService.deleteFile(ours.id);
+      }
+      if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+        await sleep(LOCK_ACQUIRE_RETRY_MS);
+        continue;
+      }
+      return err(new Error(
+        `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${winner.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
+      ));
+    }
+    if (existingLock.content.deviceId === deviceId) {
+      await googleDriveService.deleteFile(existingLock.id);
+      const createRes = await createLockFile(operation, folderId);
+      if (createRes.error) return err(createRes.error);
+      return ok(createRes.data);
+    }
+    if (isLockStale(existingLock.content)) {
+      await googleDriveService.deleteFile(existingLock.id);
+      continue;
+    }
+    if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+      await sleep(LOCK_ACQUIRE_RETRY_MS);
+      continue;
+    }
+    return err(new Error(
+      `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${existingLock.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
+    ));
+  }
+  return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0443 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438 \u043F\u043E\u0441\u043B\u0435 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u0438\u0445 \u043F\u043E\u043F\u044B\u0442\u043E\u043A."));
+}
+async function releaseLock(lockFileId) {
+  const deleteRes = await googleDriveService.deleteFile(lockFileId);
+  if (deleteRes.error) {
+    return err(new AggregateError([deleteRes.error], "failed to release lock file"));
+  }
+  return ok(void 0);
+}
+async function findAllLockFiles(folderId) {
+  const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
+  let query = `name = '${escapedName}' and mimeType = 'application/json' and trashed = false`;
+  if (folderId) {
+    query += ` and '${folderId}' in parents`;
+  }
+  const filesRes = await googleDriveService.listFiles(query);
+  if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
+  const results = [];
+  for (const file of filesRes.data) {
+    const contentRes = await googleDriveService.getFileContent(file.id);
+    if (contentRes.error) continue;
+    const parseRes = withResult(() => JSON.parse(contentRes.data))();
+    if (parseRes.error) continue;
+    results.push({ id: file.id, content: parseRes.data });
+  }
+  return ok(results);
+}
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// domain/google_sync_service.ts
+var import_papaparse = __toESM(require_papaparse_min());
+var GoogleSyncService = class {
+  async getUserEmail() {
+    return googleDriveService.getUserEmail();
+  }
+  async exportToGoogleDrive(transactions, folderId, onProgress) {
+    if (!transactions || transactions.length === 0) {
+      return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
+    }
+    if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
+    const lockRes = await acquireLock("export", folderId);
+    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for export"));
+    const lockFileId = lockRes.data;
+    try {
+      const groups = {};
+      for (const t of transactions) {
+        const month = t.date.substring(0, 7);
+        const key = `MMM - ${t.accountName} - ${month}.csv`;
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(t);
+      }
+      const entries = Object.entries(groups);
+      let completed = 0;
+      const uploadPromises = entries.map(async ([name, txs]) => {
+        const escapedName = name.replace(/'/g, "\\'");
+        let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
+        if (folderId) {
+          query += ` and '${folderId}' in parents`;
+        }
+        const filesRes = await googleDriveService.listFiles(query);
+        let fileId;
+        if (filesRes.error) return err(filesRes.error);
+        if (filesRes.data.length > 0) {
+          fileId = filesRes.data[0].id;
+        }
+        const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
+        const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
+        if (uploadRes.error) return err(uploadRes.error);
+        completed++;
+        if (onProgress) onProgress(`\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E ${completed} \u0438\u0437 ${entries.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
+        return ok(void 0);
+      });
+      const results = await Promise.all(uploadPromises);
+      for (const res of results) {
+        if (res.error) return err(res.error);
+      }
+      return ok(void 0);
+    } finally {
+      await releaseLock(lockFileId);
+    }
+  }
+  async importFromGoogleDrive(folderId, onProgress) {
+    if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
+    const lockRes = await acquireLock("import", folderId);
+    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for import"));
+    const lockFileId = lockRes.data;
+    try {
+      if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
+      let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
+      if (folderId) {
+        query += ` and '${folderId}' in parents`;
+      }
+      const filesRes = await googleDriveService.listFiles(query);
+      if (filesRes.error) return err(filesRes.error);
+      const allTransactions = [];
+      const files = filesRes.data;
+      let completed = 0;
+      const fetchPromises = files.map(async (file) => {
+        const contentRes = await googleDriveService.getFileContent(file.id);
+        if (contentRes.error) return err(contentRes.error);
+        const parsed = import_papaparse.default.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
+        const fileTransactions = parsed.data.map((t) => ({
+          id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
+          uuid: t.uuid || "",
+          date: t.date || "",
+          amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
+          amountAccountCurrency: String(t.amountAccountCurrency || "0"),
+          accountName: t.accountName || "",
+          category: t.category || "",
+          description: t.description || "",
+          type: t.type || "withdraw",
+          transferReceiveAccountName: t.transferReceiveAccountName || null,
+          transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
+        }));
+        completed++;
+        if (onProgress) onProgress(`\u0421\u043A\u0430\u0447\u0430\u043D\u043E ${completed} \u0438\u0437 ${files.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
+        return ok(fileTransactions);
+      });
+      const results = await Promise.all(fetchPromises);
+      for (const res of results) {
+        if (res.error) return err(res.error);
+        allTransactions.push(...res.data);
+      }
+      return ok(allTransactions);
+    } finally {
+      await releaseLock(lockFileId);
+    }
+  }
+};
+var googleSyncService = new GoogleSyncService();
 
 // domain/store.ts
 var AppStore = class {
@@ -28520,7 +28668,7 @@ var AccountsView = observer(() => {
 
 // db_explorer_view.tsx
 var import_react8 = __toESM(require_react());
-var import_globals5 = __toESM(require_globals());
+var import_globals6 = __toESM(require_globals());
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
 var DatabaseExplorer = observer(() => {
   const [dbData, setDbData] = (0, import_react8.useState)({});
@@ -28883,7 +29031,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-04 09:44:12 +0300" : "dev"
+          true ? "2026-07-04 10:37:42 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29094,4 +29242,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-LKBO6JVN.js.map
+//# sourceMappingURL=app-KX5UFLLV.js.map
