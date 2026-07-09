@@ -27714,7 +27714,10 @@ async function withDB(operation) {
   const { data: db, error: dbErr } = await withResult(getDB)();
   if (dbErr) return (0, import_ts_error_as_value.err)(new AggregateError([dbErr], "failed to open database"));
   const { data, error: opErr } = await withResult(operation)(db);
-  if (opErr) return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
+  if (opErr) {
+    console.error("Database operation failed:", opErr);
+    return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
+  }
   return ok(data);
 }
 
@@ -27895,13 +27898,14 @@ var GoogleDriveService = class {
       this.tokenClient.requestAccessToken();
     });
   }
-  async listFiles(query) {
+  async listFiles(query, extraFields) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
     let allFiles = [];
     let pageToken = void 0;
+    const fileFields = ["id", "name", ...extraFields != null ? extraFields : []].join(",");
     do {
-      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(id,name)`;
+      let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(${fileFields})`;
       if (pageToken) {
         url += `&pageToken=${pageToken}`;
       }
@@ -27968,7 +27972,7 @@ var GoogleDriveService = class {
     const base64Content = btoa(unescape(encodeURIComponent(content)));
     const multipartRequestBody = delimiter + "Content-Type: application/json; charset=UTF-8\r\n\r\n" + JSON.stringify(metadata) + delimiter + "Content-Type: " + mimeType + "; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" + base64Content + close_delim;
     const method = fileId ? "PATCH" : "POST";
-    const url = fileId ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart` : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart";
+    const url = fileId ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,createdTime` : "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,createdTime";
     const response = await withResult(fetch)(url, {
       method,
       headers: {
@@ -27995,7 +27999,7 @@ var GoogleDriveService = class {
     }
     const data = await withResult(() => response.data.json())();
     if (data.error) return err(data.error);
-    return ok(data.data.id);
+    return ok({ id: data.data.id, createdTime: data.data.createdTime });
   }
   async getFileContent(fileId) {
     const authRes = await this.ensureAuthenticated();
@@ -28083,10 +28087,10 @@ async function getDeviceId() {
   await set4("mmm_device_id", id);
   return id;
 }
-function isLockStale(lockInfo) {
-  const lockedAt = new Date(lockInfo.lockedAt).getTime();
-  if (isNaN(lockedAt)) return true;
-  return Date.now() - lockedAt > LOCK_STALE_MS;
+function isLockStale(createdTime) {
+  const createdAt = new Date(createdTime).getTime();
+  if (isNaN(createdAt)) return true;
+  return Date.now() - createdAt > LOCK_STALE_MS;
 }
 async function findLockFile(folderId) {
   const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
@@ -28094,12 +28098,14 @@ async function findLockFile(folderId) {
   if (folderId) {
     query += ` and '${folderId}' in parents`;
   }
-  const filesRes = await googleDriveService.listFiles(query);
+  const filesRes = await googleDriveService.listFiles(query, ["createdTime"]);
   if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
   if (filesRes.data.length === 0) {
     return ok(null);
   }
-  const lockFileId = filesRes.data[0].id;
+  const file = filesRes.data[0];
+  const lockFileId = file.id;
+  const createdTime = file.createdTime;
   const contentRes = await googleDriveService.getFileContent(lockFileId);
   if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
   const parseRes = withResult(() => JSON.parse(contentRes.data))();
@@ -28107,13 +28113,12 @@ async function findLockFile(folderId) {
     await googleDriveService.deleteFile(lockFileId);
     return ok(null);
   }
-  return ok({ id: lockFileId, content: parseRes.data });
+  return ok({ id: lockFileId, content: parseRes.data, createdTime });
 }
 async function createLockFile(operation, folderId) {
   const deviceId = await getDeviceId();
   const lockInfo = {
     deviceId,
-    lockedAt: (/* @__PURE__ */ new Date()).toISOString(),
     operation
   };
   const uploadRes = await googleDriveService.uploadFile(
@@ -28137,12 +28142,12 @@ async function acquireLock(operation, folderId) {
       const verifyRes = await findAllLockFiles(folderId);
       if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
       if (verifyRes.data.length === 1) {
-        return ok(createRes.data);
+        return ok(createRes.data.id);
       }
       const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
       const winner = verifyRes.data.reduce((a, b) => {
-        const aTime = new Date(a.content.lockedAt).getTime();
-        const bTime = new Date(b.content.lockedAt).getTime();
+        const aTime = new Date(a.createdTime).getTime();
+        const bTime = new Date(b.createdTime).getTime();
         if (aTime !== bTime) return aTime < bTime ? a : b;
         return a.content.deviceId < b.content.deviceId ? a : b;
       });
@@ -28169,9 +28174,9 @@ async function acquireLock(operation, folderId) {
       await googleDriveService.deleteFile(existingLock.id);
       const createRes = await createLockFile(operation, folderId);
       if (createRes.error) return err(createRes.error);
-      return ok(createRes.data);
+      return ok(createRes.data.id);
     }
-    if (isLockStale(existingLock.content)) {
+    if (isLockStale(existingLock.createdTime)) {
       await googleDriveService.deleteFile(existingLock.id);
       continue;
     }
@@ -28198,7 +28203,7 @@ async function findAllLockFiles(folderId) {
   if (folderId) {
     query += ` and '${folderId}' in parents`;
   }
-  const filesRes = await googleDriveService.listFiles(query);
+  const filesRes = await googleDriveService.listFiles(query, ["createdTime"]);
   if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
   const results = [];
   for (const file of filesRes.data) {
@@ -28206,7 +28211,7 @@ async function findAllLockFiles(folderId) {
     if (contentRes.error) continue;
     const parseRes = withResult(() => JSON.parse(contentRes.data))();
     if (parseRes.error) continue;
-    results.push({ id: file.id, content: parseRes.data });
+    results.push({ id: file.id, content: parseRes.data, createdTime: file.createdTime });
   }
   return ok(results);
 }
@@ -28273,7 +28278,7 @@ var GoogleSyncService = class {
     const lockFileId = lockRes.data;
     try {
       if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
-      let query = "name contains 'MMM - ' and mimeType = 'text/csv'";
+      let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
       if (folderId) {
         query += ` and '${folderId}' in parents`;
       }
@@ -28308,7 +28313,18 @@ var GoogleSyncService = class {
         if (res.error) return err(res.error);
         allTransactions.push(...res.data);
       }
-      return ok(allTransactions);
+      const seenUuids = /* @__PURE__ */ new Set();
+      const uniqueTransactions = [];
+      for (const t of allTransactions) {
+        if (t.uuid) {
+          if (seenUuids.has(t.uuid)) {
+            continue;
+          }
+          seenUuids.add(t.uuid);
+        }
+        uniqueTransactions.push(t);
+      }
+      return ok(uniqueTransactions);
     } finally {
       await releaseLock(lockFileId);
     }
@@ -29031,7 +29047,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-04 10:37:42 +0300" : "dev"
+          true ? "2026-07-09 18:45:35 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29242,4 +29258,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-KX5UFLLV.js.map
+//# sourceMappingURL=app-4M7AI3JS.js.map
