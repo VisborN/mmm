@@ -107,15 +107,16 @@ export class GoogleDriveService {
         });
     }
 
-    async listFiles(query: string): Promise<Result<any[]>> {
+    async listFiles(query: string, extraFields?: string[]): Promise<Result<any[]>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
         let allFiles: any[] = [];
         let pageToken: string | undefined = undefined;
 
+        const fileFields = ['id', 'name', ...(extraFields ?? [])].join(',');
         do {
-            let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(id,name)`;
+            let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&pageSize=1000&fields=nextPageToken,files(${fileFields})`;
             if (pageToken) {
                 url += `&pageToken=${pageToken}`;
             }
@@ -183,7 +184,7 @@ export class GoogleDriveService {
         return ok(allFolders);
     }
 
-    async uploadFile(name: string, content: string, mimeType: string, folderId?: string, fileId?: string): Promise<Result<string>> {
+    async uploadFile(name: string, content: string, mimeType: string, folderId?: string, fileId?: string): Promise<Result<{ id: string; createdTime: string }>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
@@ -214,8 +215,8 @@ export class GoogleDriveService {
 
         const method = fileId ? 'PATCH' : 'POST';
         const url = fileId 
-            ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`
-            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart';
+            ? `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart&fields=id,createdTime`
+            : 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,createdTime';
 
         const response = await withResult(fetch)(url, {
             method: method,
@@ -248,7 +249,7 @@ export class GoogleDriveService {
         const data = await withResult(() => response.data.json())();
         if (data.error) return err(data.error);
 
-        return ok(data.data.id);
+        return ok({ id: data.data.id, createdTime: data.data.createdTime });
     }
 
     async getFileContent(fileId: string): Promise<Result<string>> {

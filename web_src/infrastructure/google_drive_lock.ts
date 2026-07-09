@@ -9,8 +9,13 @@ const LOCK_ACQUIRE_MAX_RETRIES = 3;
 
 export interface LockInfo {
     deviceId: string;
-    lockedAt: string; // ISO timestamp
     operation: "export" | "import";
+}
+
+interface LockEntry {
+    id: string;
+    content: LockInfo;
+    createdTime: string; // ISO timestamp from Google Drive server
 }
 
 async function getDeviceId(): Promise<string> {
@@ -22,27 +27,29 @@ async function getDeviceId(): Promise<string> {
     return id;
 }
 
-function isLockStale(lockInfo: LockInfo): boolean {
-    const lockedAt = new Date(lockInfo.lockedAt).getTime();
-    if (isNaN(lockedAt)) return true;
-    return Date.now() - lockedAt > LOCK_STALE_MS;
+function isLockStale(createdTime: string): boolean {
+    const createdAt = new Date(createdTime).getTime();
+    if (isNaN(createdAt)) return true;
+    return Date.now() - createdAt > LOCK_STALE_MS;
 }
 
-async function findLockFile(folderId?: string): Promise<Result<{ id: string; content: LockInfo } | null>> {
+async function findLockFile(folderId?: string): Promise<Result<LockEntry | null>> {
     const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
     let query = `name = '${escapedName}' and mimeType = 'application/json' and trashed = false`;
     if (folderId) {
         query += ` and '${folderId}' in parents`;
     }
 
-    const filesRes = await googleDriveService.listFiles(query);
+    const filesRes = await googleDriveService.listFiles(query, ['createdTime']);
     if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
 
     if (filesRes.data.length === 0) {
         return ok(null);
     }
 
-    const lockFileId = filesRes.data[0].id as string;
+    const file = filesRes.data[0];
+    const lockFileId = file.id as string;
+    const createdTime = file.createdTime as string;
     const contentRes = await googleDriveService.getFileContent(lockFileId);
     if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
 
@@ -53,14 +60,13 @@ async function findLockFile(folderId?: string): Promise<Result<{ id: string; con
         return ok(null);
     }
 
-    return ok({ id: lockFileId, content: parseRes.data });
+    return ok({ id: lockFileId, content: parseRes.data, createdTime });
 }
 
-async function createLockFile(operation: "export" | "import", folderId?: string): Promise<Result<string>> {
+async function createLockFile(operation: "export" | "import", folderId?: string): Promise<Result<{ id: string; createdTime: string }>> {
     const deviceId = await getDeviceId();
     const lockInfo: LockInfo = {
         deviceId,
-        lockedAt: new Date().toISOString(),
         operation,
     };
 
@@ -97,15 +103,15 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
 
             if (verifyRes.data.length === 1) {
                 // We are the sole owner
-                return ok(createRes.data);
+                return ok(createRes.data.id);
             }
 
-            // Multiple lock files — race condition. Keep the one with the earliest lockedAt,
-            // or if tied, the lexicographically smallest deviceId.
+            // Multiple lock files — race condition. Keep the one with the earliest createdTime
+            // (server-assigned, no clock skew), or if tied, the lexicographically smallest deviceId.
             const ours = verifyRes.data.find(l => l.content.deviceId === deviceId);
             const winner = verifyRes.data.reduce((a, b) => {
-                const aTime = new Date(a.content.lockedAt).getTime();
-                const bTime = new Date(b.content.lockedAt).getTime();
+                const aTime = new Date(a.createdTime).getTime();
+                const bTime = new Date(b.createdTime).getTime();
                 if (aTime !== bTime) return aTime < bTime ? a : b;
                 return a.content.deviceId < b.content.deviceId ? a : b;
             });
@@ -141,10 +147,10 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
             await googleDriveService.deleteFile(existingLock.id);
             const createRes = await createLockFile(operation, folderId);
             if (createRes.error) return err(createRes.error);
-            return ok(createRes.data);
+            return ok(createRes.data.id);
         }
 
-        if (isLockStale(existingLock.content)) {
+        if (isLockStale(existingLock.createdTime)) {
             // Another device's stale lock — remove it and retry
             await googleDriveService.deleteFile(existingLock.id);
             continue;
@@ -172,17 +178,17 @@ export async function releaseLock(lockFileId: string): Promise<Result<void>> {
     return ok(undefined);
 }
 
-async function findAllLockFiles(folderId?: string): Promise<Result<Array<{ id: string; content: LockInfo }>>> {
+async function findAllLockFiles(folderId?: string): Promise<Result<LockEntry[]>> {
     const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
     let query = `name = '${escapedName}' and mimeType = 'application/json' and trashed = false`;
     if (folderId) {
         query += ` and '${folderId}' in parents`;
     }
 
-    const filesRes = await googleDriveService.listFiles(query);
+    const filesRes = await googleDriveService.listFiles(query, ['createdTime']);
     if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
 
-    const results: Array<{ id: string; content: LockInfo }> = [];
+    const results: LockEntry[] = [];
     for (const file of filesRes.data) {
         const contentRes = await googleDriveService.getFileContent(file.id as string);
         if (contentRes.error) continue; // Skip unreadable lock files
@@ -190,7 +196,7 @@ async function findAllLockFiles(folderId?: string): Promise<Result<Array<{ id: s
         const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
         if (parseRes.error) continue; // Skip corrupted lock files
 
-        results.push({ id: file.id as string, content: parseRes.data });
+        results.push({ id: file.id as string, content: parseRes.data, createdTime: file.createdTime as string });
     }
 
     return ok(results);
