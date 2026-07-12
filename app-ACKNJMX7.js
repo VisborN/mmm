@@ -1362,7 +1362,7 @@ var require_react_dom_development = __commonJS({
         return dispatcher;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React6 = require_react(), Internals = {
+      var React7 = require_react(), Internals = {
         d: {
           f: noop3,
           r: function() {
@@ -1380,7 +1380,7 @@ var require_react_dom_development = __commonJS({
         },
         p: 0,
         findDOMNode: null
-      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
         "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
       );
@@ -2915,7 +2915,7 @@ var require_react_dom_client_development = __commonJS({
         "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
       }
       function validateOptionProps(element, props) {
-        null == props.value && ("object" === typeof props.children && null !== props.children ? React6.Children.forEach(props.children, function(child) {
+        null == props.value && ("object" === typeof props.children && null !== props.children ? React7.Children.forEach(props.children, function(child) {
           null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
             "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
           ));
@@ -18547,14 +18547,14 @@ var require_react_dom_client_development = __commonJS({
         ));
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var Scheduler = require_scheduler(), React6 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
+      var Scheduler = require_scheduler(), React7 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
       /* @__PURE__ */ Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity");
       /* @__PURE__ */ Symbol.for("react.legacy_hidden");
       /* @__PURE__ */ Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       /* @__PURE__ */ Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
         pending: false,
         data: null,
         method: null,
@@ -21342,7 +21342,7 @@ var require_react_dom_client_development = __commonJS({
         }
       };
       (function() {
-        var isomorphicReactPackageVersion = React6.version;
+        var isomorphicReactPackageVersion = React7.version;
         if ("19.2.6" !== isomorphicReactPackageVersion)
           throw Error(
             'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.2.6\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -21491,7 +21491,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
       function useSyncExternalStore$2(subscribe, getSnapshot) {
-        didWarnOld18Alpha || void 0 === React6.startTransition || (didWarnOld18Alpha = true, console.error(
+        didWarnOld18Alpha || void 0 === React7.startTransition || (didWarnOld18Alpha = true, console.error(
           "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
         ));
         var value = getSnapshot();
@@ -21539,8 +21539,8 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return getSnapshot();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React6 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState9 = React6.useState, useEffect4 = React6.useEffect, useLayoutEffect = React6.useLayoutEffect, useDebugValue = React6.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-      exports.useSyncExternalStore = void 0 !== React6.useSyncExternalStore ? React6.useSyncExternalStore : shim;
+      var React7 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState9 = React7.useState, useEffect4 = React7.useEffect, useLayoutEffect = React7.useLayoutEffect, useDebugValue = React7.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      exports.useSyncExternalStore = void 0 !== React7.useSyncExternalStore ? React7.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
   }
@@ -22363,18 +22363,18 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object2) {
         return "object" === typeof object2 && null !== object2 && object2.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React6 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React6.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React7 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React6 = {
+      React7 = {
         react_stack_bottom_frame: function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React6.react_stack_bottom_frame.bind(
-        React6,
+      var unknownOwnerDebugStack = React7.react_stack_bottom_frame.bind(
+        React7,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -22422,7 +22422,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client());
 
 // app_component.tsx
-var import_react10 = __toESM(require_react());
+var import_react11 = __toESM(require_react());
 
 // ../node_modules/mobx/dist/mobx.esm.js
 var niceErrors = {
@@ -28702,68 +28702,50 @@ var AccountModal = observer(() => {
     const { name, value } = e.target;
     setFormData((prev) => __spreadProps(__spreadValues({}, prev), { [name]: value }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1e3
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "90%",
-    maxWidth: "400px"
-  }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { style: { marginTop: 0 }, children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-content", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "\u0412\u0430\u043B\u044E\u0442\u0430:",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("label", { children: [
-        "\u0411\u0430\u043B\u0430\u043D\u0441:",
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0411\u0430\u043B\u0430\u043D\u0441:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
       ] })
     ] })
   ] }) });
 });
 var AccountsView = observer(() => {
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-    store.accounts.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", { style: { color: "#777", paddingLeft: "20px" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u0441\u0447\u0435\u0442\u043E\u0432." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { backgroundColor: "white", marginTop: "10px" }, children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+    store.accounts.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u0441\u0447\u0435\u0442\u043E\u0432." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
       "div",
       {
         onClick: () => store.openAccountModal(acc),
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          padding: "12px 20px",
-          borderBottom: "1px solid #f0f0f0",
-          cursor: "pointer",
-          alignItems: "center"
-        },
+        className: "list-item",
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px" }, children: acc.id }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "16px" }, children: acc.name })
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-left", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-icon-placeholder", style: { background: "rgba(59, 130, 246, 0.1)", color: "var(--accent-color)", border: "none" }, children: acc.name.charAt(0).toUpperCase() }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-details", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "item-title", children: acc.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-subtitle", children: [
+                "\u0421\u0447\u0435\u0442 ID: ",
+                acc.id
+              ] })
+            ] })
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { style: { fontSize: "16px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-amount", children: [
             formatAmount(acc.balance),
             " ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "14px", color: "#555" }, children: acc.currency })
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "13px", color: "var(--text-secondary)" }, children: acc.currency })
           ] }) })
         ]
       },
@@ -28803,24 +28785,29 @@ var DatabaseExplorer = observer(() => {
     };
     loadData();
   }, []);
-  if (loading) return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { padding: "20px" }, children: "Loading DB Data..." });
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "20px" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { children: "Database Explorer" }),
-    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "40px", overflowX: "auto" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { children: [
+  if (loading) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "loading-container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "spinner" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "var(--text-secondary)" }, children: "Loading DB Data..." })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "24px" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginBottom: "24px", fontSize: "20px" }, children: "Database Explorer" }),
+    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "settings-card", style: { overflowX: "auto" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { borderBottom: "1px solid var(--border-color)", paddingBottom: "12px" }, children: [
         "Table: ",
         storeName,
         " (",
         dbData[storeName].length,
         " rows)"
       ] }),
-      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { border: "1px solid #ddd", padding: "8px", backgroundColor: "#f2f2f2", textAlign: "left" }, children: key }, key)) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => {
+      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px", marginTop: "16px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { borderBottom: "2px solid var(--border-color)", padding: "12px 8px", textAlign: "left", color: "var(--text-secondary)" }, children: key }, key)) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { borderBottom: "1px solid var(--border-color)" }, children: Object.keys(dbData[storeName][0]).map((key) => {
           const val = row[key];
-          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { border: "1px solid #ddd", padding: "8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
+          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { padding: "12px 8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
         }) }, idx)) })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { children: "No rows found." })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)" }, children: "No rows found." })
     ] }, storeName))
   ] });
 });
@@ -28867,99 +28854,59 @@ var FolderSelectionModal = ({ onClose }) => {
     await store.setSyncFolder(idToSave, nameToSave);
     onClose();
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1e3
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "90%",
-    maxWidth: "400px",
-    maxHeight: "80vh",
-    display: "flex",
-    flexDirection: "column"
-  }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginTop: 0, marginBottom: "15px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "15px", display: "flex", flexWrap: "wrap", gap: "5px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-content", style: { display: "flex", flexDirection: "column", height: "80vh" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginBottom: "16px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
       /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
         "span",
         {
           onClick: () => navigateUp(index),
           style: {
             cursor: index === path.length - 1 ? "default" : "pointer",
-            color: index === path.length - 1 ? "#333" : "#007bff",
-            fontWeight: index === path.length - 1 ? "bold" : "normal"
+            color: index === path.length - 1 ? "var(--text-primary)" : "var(--accent-color)",
+            fontWeight: index === path.length - 1 ? "600" : "normal",
+            transition: "color 0.2s"
           },
           children: folder.name
         }
       ),
-      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "#888" }, children: "/" })
+      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--text-secondary)" }, children: "/" })
     ] }, folder.id)) }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { color: "red", marginBottom: "15px" }, children: [
+    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "error-banner", children: [
       "\u041E\u0448\u0438\u0431\u043A\u0430: ",
       error
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
       flex: 1,
       overflowY: "auto",
-      border: "1px solid #eee",
-      borderRadius: "4px",
-      padding: "5px",
-      minHeight: "200px"
-    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px", textAlign: "center", color: "#666" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "20px", textAlign: "center", color: "#666" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(
+      border: "1px solid var(--border-color)",
+      borderRadius: "var(--radius-sm)",
+      background: "rgba(0,0,0,0.2)"
+    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "spinner", style: { margin: "0 auto 16px", width: "24px", height: "24px", borderWidth: "2px" } }),
+      "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."
+    ] }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
       "button",
       {
         onClick: () => navigateTo(folder),
-        style: {
-          width: "100%",
-          textAlign: "left",
-          padding: "10px",
-          background: "none",
-          border: "none",
-          borderBottom: "1px solid #f5f5f5",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: "10px"
-        },
-        children: [
+        className: "list-item",
+        style: { width: "100%", background: "transparent", borderBottom: "1px solid var(--border-color)", borderRadius: 0 },
+        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "item-left", children: [
           /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
-          folder.name
-        ]
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "item-title", children: folder.name })
+        ] })
       }
     ) }, folder.id)) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "20px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, style: { padding: "8px 16px", background: "none", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, style: { padding: "8px 16px", backgroundColor: "#007bff", color: "white", border: "none", borderRadius: "4px", cursor: "pointer" }, children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, className: "btn btn-primary", children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
     ] })
   ] }) });
 };
 
-// app_component.tsx
+// transaction_modal.tsx
+var import_react10 = __toESM(require_react());
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
-var formatDate = (dateStr) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
-};
-var formatAmount2 = (amount) => {
-  return amount.toLocaleString("ru-RU", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }) + " \u20BD";
-};
 var TransactionModal = observer(() => {
   const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
     id: 0,
@@ -28991,48 +28938,29 @@ var TransactionModal = observer(() => {
       [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : value
     }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 1e3
-  }, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: {
-    backgroundColor: "white",
-    padding: "20px",
-    borderRadius: "8px",
-    width: "90%",
-    maxWidth: "400px",
-    maxHeight: "90vh",
-    overflowY: "auto"
-  }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { style: { marginTop: 0 }, children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u0414\u0430\u0442\u0430:",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0414\u0430\u0442\u0430:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u0421\u0443\u043C\u043C\u0430 (\u20BD):",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0443\u043C\u043C\u0430 (\u20BD):" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u0422\u0438\u043F:",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0422\u0438\u043F:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, className: "form-select", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u0421\u0447\u0435\u0442:",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "accountName", value: formData.accountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "accountName", value: formData.accountName || "", onChange: handleChange, required: true, className: "form-select", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
           store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
             acc.name,
@@ -29042,13 +28970,13 @@ var TransactionModal = observer(() => {
           ] }, acc.id))
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" } })
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, className: "form-input" })
       ] }),
-      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(import_jsx_runtime4.Fragment, { children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("label", { children: [
-        "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:",
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, style: { width: "100%", padding: "5px", boxSizing: "border-box" }, children: [
+      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, className: "form-select", children: [
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
           store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
             acc.name,
@@ -29057,14 +28985,31 @@ var TransactionModal = observer(() => {
             ")"
           ] }, `recv-${acc.id}`))
         ] })
-      ] }) }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", marginTop: "10px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), style: { padding: "8px 16px", background: "#ccc", border: "none", borderRadius: "4px" }, children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", style: { padding: "8px 16px", background: "#007bff", color: "white", border: "none", borderRadius: "4px" }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
       ] })
     ] })
   ] }) });
 });
+
+// transactions_view.tsx
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+var formatDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+};
+var formatAmount2 = (amount) => {
+  return amount.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + " \u20BD";
+};
 var TransactionsView = observer(() => {
   const groupedTransactions = store.transactions.reduce((acc, tx) => {
     if (!acc[tx.date]) acc[tx.date] = [];
@@ -29072,50 +29017,120 @@ var TransactionsView = observer(() => {
     return acc;
   }, {});
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("main", { children: [
-    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: {
-        backgroundColor: "#e3f2fd",
-        padding: "8px 20px",
-        textAlign: "right",
-        fontSize: "14px",
-        color: "#555"
-      }, children: formatDate(dateStr) }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { backgroundColor: "white" }, children: groupedTransactions[dateStr].map((tx) => {
+  if (store.transactions.length === 0) {
+    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { children: [
+    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "date-header", children: formatDate(dateStr) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { children: groupedTransactions[dateStr].map((tx) => {
         const isPositive = tx.type === "deposit";
-        const color = isPositive ? "#2e7d32" : "#c62828";
-        const arrow = isPositive ? "\u25BC" : "\u25B2";
-        return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+        const amountClass = isPositive ? "amount-positive" : "amount-negative";
+        const initial = (tx.description || tx.category || "?").charAt(0).toUpperCase();
+        return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
           "div",
           {
             onClick: () => store.openTransactionModal(tx),
-            style: {
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "12px 20px",
-              borderBottom: "1px solid #f0f0f0",
-              cursor: "pointer"
-            },
+            className: "list-item",
             children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px", alignItems: "center" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { color: "#777", width: "40px", fontSize: "14px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }, children: tx.accountName }),
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { fontSize: "16px" }, children: tx.description || tx.category })
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-left", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-icon-placeholder", children: initial }),
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-details", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-title", children: tx.description || tx.category }),
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-subtitle", children: tx.accountName })
+                ] })
               ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { fontSize: "16px" }, children: formatAmount2(tx.amountRubles) }),
-                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { color, fontSize: "12px" }, children: arrow })
-              ] })
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: `item-amount ${amountClass}`, children: [
+                isPositive ? "+" : "",
+                formatAmount2(tx.amountRubles)
+              ] }) })
             ]
           },
           tx.id
         );
       }) })
     ] }, dateStr)),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(TransactionModal, {})
+    /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(TransactionModal, {})
   ] });
 });
+
+// settings_view.tsx
+var import_jsx_runtime6 = __toESM(require_jsx_runtime());
+var SettingsView = observer(() => {
+  return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-section", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F Google Drive" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-text", children: [
+        "\u0422\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u043F\u043A\u0430: ",
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { children: store.syncFolderName || "\u041A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430 (\u041C\u043E\u0439 \u0434\u0438\u0441\u043A)" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "a",
+          {
+            href: store.syncFolderId ? `https://drive.google.com/drive/folders/${store.syncFolderId}` : "https://drive.google.com/drive/my-drive",
+            target: "_blank",
+            rel: "noopener noreferrer",
+            className: "settings-link",
+            style: { marginLeft: "10px" },
+            children: "(\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432 Google Drive \u2197)"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-text", children: [
+        "Google \u0410\u043A\u043A\u0430\u0443\u043D\u0442: ",
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { children: store.googleAccountEmail || "\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D (\u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430/\u0438\u043C\u043F\u043E\u0440\u0442\u0430)" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+        "button",
+        {
+          onClick: () => store.openFolderModal(),
+          className: "btn btn-secondary",
+          style: { marginBottom: "20px" },
+          children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u0443\u044E \u043F\u0430\u043F\u043A\u0443"
+        }
+      ),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "action-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            onClick: () => store.exportToGoogleDrive(),
+            className: "btn btn-primary",
+            disabled: store.isLoading,
+            children: store.isLoading ? "\u042D\u043A\u0441\u043F\u043E\u0440\u0442..." : "\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0432 Google Drive"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            onClick: () => store.importFromGoogleDrive(),
+            className: "btn btn-secondary",
+            disabled: store.isLoading,
+            children: store.isLoading ? "\u0418\u043C\u043F\u043E\u0440\u0442..." : "\u0418\u043C\u043F\u043E\u0440\u0442 \u0438\u0437 Google Drive"
+          }
+        )
+      ] }),
+      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "progress-badge", style: { marginTop: "16px", display: "inline-block" }, children: store.syncProgress })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "action-row", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { id: "open-auth", className: "btn btn-primary", style: { background: "#f59e0b", color: "#fff" }, children: "\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F Tinkoff" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            onClick: () => store.setView("db_explorer"),
+            className: "btn btn-secondary",
+            children: "Database Explorer"
+          }
+        )
+      ] })
+    ] })
+  ] });
+});
+
+// app_component.tsx
+var import_jsx_runtime7 = __toESM(require_jsx_runtime());
 var AppMain = observer(() => {
-  (0, import_react10.useEffect)(() => {
+  (0, import_react11.useEffect)(() => {
     store.loadData().then(() => {
       if (store.currentView === "accounts") {
         store.recalculateBalances();
@@ -29123,161 +29138,85 @@ var AppMain = observer(() => {
     });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: {
-      fontFamily: "sans-serif",
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#f8f9fa"
-    }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "20px", color: "#333", marginBottom: "10px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." }),
-      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "16px", color: "#007bff", backgroundColor: "#e3f2fd", padding: "10px 20px", borderRadius: "20px" }, children: store.syncProgress })
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "loading-container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "spinner" }),
+      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "progress-badge", children: store.syncProgress })
     ] });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { style: {
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-      padding: "16px 20px",
-      backgroundColor: "white",
-      borderBottom: "1px solid #eee"
-    }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "app-container", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("header", { className: "app-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-07-13 00:49:52 +0300" : "dev"
+          true ? "2026-07-13 01:40:34 +0300" : "dev"
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "header-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
           "button",
           {
             onClick: () => store.currentView === "transactions" ? store.openTransactionModal() : store.openAccountModal(),
-            style: { background: "none", border: "none", fontSize: "24px", cursor: "pointer", padding: 0 },
+            className: "icon-btn",
+            title: "Add",
             children: "\u2795"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
           "button",
           {
             onClick: () => store.setView("settings"),
-            style: { background: "none", border: "none", fontSize: "24px", cursor: "pointer", padding: 0 },
+            className: "icon-btn",
+            title: "Settings",
             children: "\u2699\uFE0F"
           }
         )
       ] })
     ] }),
-    store.error && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "10px", backgroundColor: "#ffcccc", color: "red" }, children: [
+    store.error && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "error-banner", children: [
       "\u041E\u0448\u0438\u0431\u043A\u0430: ",
       store.error.message
     ] }),
-    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", backgroundColor: "white", borderBottom: "1px solid #ddd" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "nav-tabs", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "button",
         {
           onClick: () => store.setView("transactions"),
-          style: { flex: 1, padding: "12px", background: "none", border: "none", cursor: "pointer", fontWeight: store.currentView === "transactions" ? "bold" : "normal", borderBottom: store.currentView === "transactions" ? "2px solid #007bff" : "2px solid transparent" },
+          className: `nav-tab ${store.currentView === "transactions" ? "active" : ""}`,
           children: "\u041E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "button",
         {
           onClick: () => {
             store.setView("accounts");
             store.recalculateBalances();
           },
-          style: { flex: 1, padding: "12px", background: "none", border: "none", cursor: "pointer", fontWeight: store.currentView === "accounts" ? "bold" : "normal", borderBottom: store.currentView === "accounts" ? "2px solid #007bff" : "2px solid transparent" },
+          className: `nav-tab ${store.currentView === "accounts" ? "active" : ""}`,
           children: "\u0421\u0447\u0435\u0442\u0430"
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { flex: 1, overflowY: "auto" }, children: [
-      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(TransactionsView, {}),
-      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(AccountsView, {}),
-      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "20px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h2", { children: "\u041D\u0430\u0441\u0442\u0440\u043E\u0439\u043A\u0438" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px", alignItems: "flex-start", width: "100%" }, children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { padding: "15px", backgroundColor: "#f0f8ff", borderRadius: "8px", width: "100%", boxSizing: "border-box" }, children: [
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { style: { margin: "0 0 10px 0", fontSize: "16px" }, children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F Google Drive" }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { marginBottom: "10px", fontSize: "14px", color: "#555" }, children: [
-              "\u0422\u0435\u043A\u0443\u0449\u0430\u044F \u043F\u0430\u043F\u043A\u0430: ",
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.syncFolderName || "\u041A\u043E\u0440\u043D\u0435\u0432\u0430\u044F \u043F\u0430\u043F\u043A\u0430 (\u041C\u043E\u0439 \u0434\u0438\u0441\u043A)" }),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                "a",
-                {
-                  href: store.syncFolderId ? `https://drive.google.com/drive/folders/${store.syncFolderId}` : "https://drive.google.com/drive/my-drive",
-                  target: "_blank",
-                  rel: "noopener noreferrer",
-                  style: { marginLeft: "10px", color: "#007bff", textDecoration: "none" },
-                  children: "(\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0432 Google Drive \u2197)"
-                }
-              )
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { marginBottom: "10px", fontSize: "14px", color: "#555" }, children: [
-              "Google \u0410\u043A\u043A\u0430\u0443\u043D\u0442: ",
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("strong", { children: store.googleAccountEmail || "\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D (\u043F\u043E\u044F\u0432\u0438\u0442\u0441\u044F \u043F\u043E\u0441\u043B\u0435 \u043F\u0435\u0440\u0432\u043E\u0433\u043E \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430/\u0438\u043C\u043F\u043E\u0440\u0442\u0430)" })
-            ] }),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-              "button",
-              {
-                onClick: () => store.openFolderModal(),
-                style: { padding: "8px 16px", backgroundColor: "#fff", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontSize: "14px", marginBottom: "15px" },
-                children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u0434\u0440\u0443\u0433\u0443\u044E \u043F\u0430\u043F\u043A\u0443"
-              }
-            ),
-            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "10px" }, children: [
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                "button",
-                {
-                  onClick: () => store.exportToGoogleDrive(),
-                  style: { padding: "10px 20px", backgroundColor: "#4285F4", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
-                  disabled: store.isLoading,
-                  children: store.isLoading ? "\u042D\u043A\u0441\u043F\u043E\u0440\u0442..." : "Export to Google Drive"
-                }
-              ),
-              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-                "button",
-                {
-                  onClick: () => store.importFromGoogleDrive(),
-                  style: { padding: "10px 20px", backgroundColor: "#34A853", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
-                  disabled: store.isLoading,
-                  children: store.isLoading ? "\u0418\u043C\u043F\u043E\u0440\u0442..." : "Import from Google Drive"
-                }
-              )
-            ] }),
-            store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { marginTop: "10px", fontSize: "14px", color: "#007bff" }, children: store.syncProgress })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { id: "open-auth", style: { padding: "10px 20px", backgroundColor: "#ffdd2d", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" }, children: "Open Tinkoff Login" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            "button",
-            {
-              onClick: () => store.setView("db_explorer"),
-              style: { padding: "10px 20px", backgroundColor: "#eee", border: "1px solid #ccc", borderRadius: "4px", cursor: "pointer", fontWeight: "bold" },
-              children: "Database Explorer"
-            }
-          )
-        ] })
-      ] }),
-      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(DatabaseExplorer, {})
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "main-content", children: [
+      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TransactionsView, {}),
+      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(AccountsView, {}),
+      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(SettingsView, {}),
+      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatabaseExplorer, {})
     ] }),
-    store.isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(FolderSelectionModal, { onClose: () => store.closeFolderModal() })
+    store.isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(FolderSelectionModal, { onClose: () => store.closeFolderModal() })
   ] });
 });
 
 // app.tsx
-var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+var import_jsx_runtime8 = __toESM(require_jsx_runtime());
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("app");
   if (!el) {
     throw new Error(`Container with id 'app' not found.`);
   }
   const root = (0, import_client.createRoot)(el);
-  root.render(/* @__PURE__ */ (0, import_jsx_runtime5.jsx)(AppMain, {}));
+  root.render(/* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AppMain, {}));
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -29360,4 +29299,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-JK3UIGMG.js.map
+//# sourceMappingURL=app-ACKNJMX7.js.map
