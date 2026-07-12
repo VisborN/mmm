@@ -77,7 +77,7 @@ export const TransactionsView = observer(() => {
                     </div>
                 </div>
             ))}
-            <TransactionModal />
+            {store.isTransactionModalOpen && <TransactionModal />}
         </main>
     );
 });

@@ -20,19 +20,6 @@ export const AccountModal = observer(() => {
         balance: '0'
     });
 
-    React.useEffect(() => {
-        if (store.isAccountModalOpen) {
-            setFormData(store.currentAccount || {
-                id: 0,
-                name: '',
-                currency: 'RUB',
-                balance: '0'
-            });
-        }
-    }, [store.isAccountModalOpen, store.currentAccount]);
-
-    if (!store.isAccountModalOpen) return null;
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         await store.saveAccount(formData as Account);
@@ -105,7 +92,7 @@ export const AccountsView = observer(() => {
                 </div>
             )}
 
-            <AccountModal />
+            {store.isAccountModalOpen && <AccountModal />}
         </div>
     );
 });

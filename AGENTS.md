@@ -31,7 +31,7 @@ When working on this repository, please adhere to the following guidelines:
 - Use React for the UI.
 - Use MobX for state management.
 - **MobX Async Actions**: When updating MobX observables after an `await` in an asynchronous function, you MUST wrap the state updates in `runInAction(() => { ... })`. Failure to do so will cause MobX strict mode errors.
-- **Component Architecture**: The UI is modularized (e.g., `transactions_view.tsx`, `settings_view.tsx`, etc.). When creating new features, extract them into separate files. For modal dialogues, remember to handle state reset upon opening using React `useEffect`, as modals may stay mounted while hidden.
+- **Component Architecture**: The UI is modularized (e.g., `transactions_view.tsx`, `settings_view.tsx`, etc.). When creating new features, extract them into separate files. For modal dialogues, conditionally render them in their parent components (e.g., `{store.isModalOpen && <Modal />}`) to ensure they unmount when closed, preventing stale local state issues without needing `useEffect`.
 
 ## Go/Serverless
 - Serverless functions are written in Go.
