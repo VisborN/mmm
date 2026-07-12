@@ -27881,21 +27881,27 @@ var GoogleDriveService = class {
         resolve(err(new Error("Google Identity Services not initialized")));
         return;
       }
-      const originalCallback = this.tokenClient.callback;
-      this.tokenClient.callback = (response) => {
-        this.tokenClient.callback = originalCallback;
-        if (response.error !== void 0) {
-          resolve(err(new Error(`Authentication failed: ${response.error}`)));
-          return;
+      this.tokenClient.requestAccessToken({
+        callback: (response) => {
+          if (response.error !== void 0) {
+            resolve(err(new Error(`Authentication failed: ${response.error}`)));
+            return;
+          }
+          this.accessToken = response.access_token;
+          if (response.expires_in) {
+            localStorage.setItem("gdrive_access_token", response.access_token);
+            localStorage.setItem("gdrive_token_expires_at", (Date.now() + response.expires_in * 1e3).toString());
+          }
+          resolve(ok(this.accessToken));
+        },
+        error_callback: (error) => {
+          let errorType = error;
+          if (error && typeof error === "object") {
+            errorType = error.type || error.message || JSON.stringify(error);
+          }
+          resolve(err(new Error(`Authentication error: ${errorType}. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0449\u0438\u043A \u0432\u0441\u043F\u043B\u044B\u0432\u0430\u044E\u0449\u0438\u0445 \u043E\u043A\u043E\u043D.`)));
         }
-        this.accessToken = response.access_token;
-        if (response.expires_in) {
-          localStorage.setItem("gdrive_access_token", response.access_token);
-          localStorage.setItem("gdrive_token_expires_at", (Date.now() + response.expires_in * 1e3).toString());
-        }
-        resolve(ok(this.accessToken));
-      };
-      this.tokenClient.requestAccessToken();
+      });
     });
   }
   async listFiles(query, extraFields) {
@@ -28086,7 +28092,12 @@ var LOCK_ACQUIRE_MAX_RETRIES = 3;
 async function getDeviceId() {
   const stored = await get3("mmm_device_id");
   if (stored) return stored;
-  const id = crypto.randomUUID();
+  let id;
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    id = crypto.randomUUID();
+  } else {
+    id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+  }
   await set4("mmm_device_id", id);
   return id;
 }
@@ -28427,59 +28438,94 @@ var AppStore = class {
   }
   async exportToGoogleDrive() {
     this.isLoading = true;
-    this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
-    const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0, (progress) => {
+    this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    const authRes = await googleDriveService.ensureAuthenticated();
+    if (authRes.error) {
       runInAction(() => {
-        this.syncProgress = progress;
+        this.error = authRes.error;
+        this.isLoading = false;
+        this.syncProgress = "";
       });
-    });
-    this.loadGoogleAccountEmail();
-    runInAction(() => {
-      if (result.error) {
-        this.error = result.error;
-        alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430: ${result.error.message}`);
-      } else {
-        this.error = null;
-        alert("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D!");
-      }
-      this.isLoading = false;
-      this.syncProgress = "";
-    });
+      return;
+    }
+    this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
+    try {
+      const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0, (progress) => {
+        runInAction(() => {
+          this.syncProgress = progress;
+        });
+      });
+      this.loadGoogleAccountEmail();
+      runInAction(() => {
+        if (result.error) {
+          this.error = result.error;
+          alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430: ${result.error.message}`);
+        } else {
+          this.error = null;
+          alert("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D!");
+        }
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.error = e instanceof Error ? e : new Error(String(e));
+        alert(`\u041D\u0435\u043F\u0440\u0435\u0434\u0432\u0438\u0434\u0435\u043D\u043D\u0430\u044F \u043E\u0448\u0438\u0431\u043A\u0430: ${this.error.message}`);
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+    }
   }
   async importFromGoogleDrive() {
     this.isLoading = true;
+    this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    const authRes = await googleDriveService.ensureAuthenticated();
+    if (authRes.error) {
+      runInAction(() => {
+        this.error = authRes.error;
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+      return;
+    }
     this.syncProgress = "\u041F\u043E\u0438\u0441\u043A \u0444\u0430\u0439\u043B\u043E\u0432...";
-    const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0, (progress) => {
-      runInAction(() => {
-        this.syncProgress = progress;
+    try {
+      const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0, (progress) => {
+        runInAction(() => {
+          this.syncProgress = progress;
+        });
       });
-    });
-    if (result.error) {
+      if (result.error) {
+        runInAction(() => {
+          this.error = result.error;
+        });
+        return;
+      }
+      this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
+      const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+      if (replaceRes.error) {
+        runInAction(() => {
+          this.error = replaceRes.error;
+        });
+        return;
+      }
+      await this.loadData();
+      this.loadGoogleAccountEmail();
       runInAction(() => {
-        this.error = result.error;
+        this.error = null;
+      });
+      this.recalculateBalances();
+    } catch (e) {
+      runInAction(() => {
+        this.error = e instanceof Error ? e : new Error(String(e));
+      });
+    } finally {
+      runInAction(() => {
         this.isLoading = false;
         this.syncProgress = "";
       });
-      return;
     }
-    this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
-    const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
-    if (replaceRes.error) {
-      runInAction(() => {
-        this.error = replaceRes.error;
-        this.isLoading = false;
-        this.syncProgress = "";
-      });
-      return;
-    }
-    await this.loadData();
-    this.loadGoogleAccountEmail();
-    runInAction(() => {
-      this.isLoading = false;
-      this.syncProgress = "";
-      this.error = null;
-    });
-    this.recalculateBalances();
   }
   recalculateBalances() {
     if (this.isRecalculating) return;
@@ -28591,7 +28637,19 @@ var AppStore = class {
     await this.loadData();
     this.closeAccountModal();
   }
-  openFolderModal() {
+  async openFolderModal() {
+    this.isLoading = true;
+    const authRes = await googleDriveService.ensureAuthenticated();
+    runInAction(() => {
+      this.isLoading = false;
+    });
+    if (authRes.error) {
+      runInAction(() => {
+        this.error = authRes.error;
+      });
+      alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438: ${authRes.error.message}`);
+      return;
+    }
     window.location.hash = "modal-folder";
   }
   closeFolderModal() {
@@ -29055,7 +29113,18 @@ var AppMain = observer(() => {
     });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: {
+      fontFamily: "sans-serif",
+      minHeight: "100vh",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      backgroundColor: "#f8f9fa"
+    }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "20px", color: "#333", marginBottom: "10px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." }),
+      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "16px", color: "#007bff", backgroundColor: "#e3f2fd", padding: "10px 20px", borderRadius: "20px" }, children: store.syncProgress })
+    ] });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { style: {
@@ -29070,7 +29139,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 17:06:05 +0300" : "dev"
+          true ? "2026-07-12 17:11:34 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29281,4 +29350,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-5E2QR2TI.js.map
+//# sourceMappingURL=app-SWGTMAUH.js.map
