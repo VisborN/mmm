@@ -95,27 +95,39 @@ async function createLockFile(operation: "export" | "import", folderId?: string)
 export async function acquireLock(operation: "export" | "import", folderId?: string): Promise<Result<string>> {
     const deviceId = await getDeviceId();
 
+    console.log(`[Lock] Attempting to acquire lock for operation: ${operation}. Max retries: ${LOCK_ACQUIRE_MAX_RETRIES}`);
     for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
+        console.log(`[Lock] --- Attempt ${attempt + 1} ---`);
+        console.time(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
         const lockRes = await findLockFile(folderId);
+        console.timeEnd(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
         if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
 
         const existingLock = lockRes.data;
 
         if (existingLock === null) {
+            console.log(`[Lock] No existing lock found. Proceeding to create one.`);
             // No lock — create one
+            console.time(`[Lock] Phase 2: Create lock file`);
             const createRes = await createLockFile(operation, folderId);
+            console.timeEnd(`[Lock] Phase 2: Create lock file`);
             if (createRes.error) return err(createRes.error);
 
             // Verify we own the lock (race condition check):
             // Re-read the lock file to ensure our device wrote it.
             // If there are multiple lock files, another device raced with us.
+            console.time(`[Lock] Phase 3: Verify race condition`);
             const verifyRes = await findAllLockFiles(folderId);
+            console.timeEnd(`[Lock] Phase 3: Verify race condition`);
             if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
 
             if (verifyRes.data.length === 1) {
                 // We are the sole owner
+                console.log(`[Lock] Acquired lock successfully without collision.`);
                 return ok(createRes.data.id);
             }
+
+            console.log(`[Lock] Collision detected: ${verifyRes.data.length} locks found. Resolving...`);
 
             // Multiple lock files — race condition. Keep the one with the earliest createdTime
             // (server-assigned, no clock skew), or if tied, the lexicographically smallest deviceId.
@@ -139,10 +151,12 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
 
             // We lost — delete our lock file and retry
             if (ours) {
+                console.log(`[Lock] Deleting our losing lock...`);
                 await googleDriveService.deleteFile(ours.id);
             }
 
             if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+                console.log(`[Lock] Waiting before retry...`);
                 await sleep(LOCK_ACQUIRE_RETRY_MS);
                 continue;
             }
@@ -153,21 +167,27 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
         }
 
         // Lock exists
+        console.log(`[Lock] Existing lock found (owned by: ${existingLock.content.deviceId}, age: ${Date.now() - new Date(existingLock.createdTime).getTime()}ms).`);
         if (existingLock.content.deviceId === deviceId) {
             // Our own stale lock — overwrite it
+            console.log(`[Lock] Overwriting our own stale lock...`);
             await googleDriveService.deleteFile(existingLock.id);
+            console.time(`[Lock] Phase 2: Create lock file`);
             const createRes = await createLockFile(operation, folderId);
+            console.timeEnd(`[Lock] Phase 2: Create lock file`);
             if (createRes.error) return err(createRes.error);
             return ok(createRes.data.id);
         }
 
         if (isLockStale(existingLock.createdTime)) {
             // Another device's stale lock — remove it and retry
+            console.log(`[Lock] Removing stale lock from another device...`);
             await googleDriveService.deleteFile(existingLock.id);
             continue;
         }
 
         // Another device holds an active lock
+        console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
         if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
             await sleep(LOCK_ACQUIRE_RETRY_MS);
             continue;
