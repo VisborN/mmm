@@ -40,7 +40,7 @@ async function findLockFile(folderId?: string): Promise<Result<LockEntry | null>
         query += ` and '${folderId}' in parents`;
     }
 
-    const filesRes = await googleDriveService.listFiles(query, ['createdTime']);
+    const filesRes = await googleDriveService.listFiles(query, ['createdTime', 'appProperties']);
     if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
 
     if (filesRes.data.length === 0) {
@@ -50,17 +50,27 @@ async function findLockFile(folderId?: string): Promise<Result<LockEntry | null>
     const file = filesRes.data[0];
     const lockFileId = file.id as string;
     const createdTime = file.createdTime as string;
-    const contentRes = await googleDriveService.getFileContent(lockFileId);
-    if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
+    
+    let lockInfo: LockInfo;
+    if (file.appProperties && file.appProperties.deviceId) {
+        lockInfo = {
+            deviceId: file.appProperties.deviceId,
+            operation: file.appProperties.operation as "export" | "import"
+        };
+    } else {
+        const contentRes = await googleDriveService.getFileContent(lockFileId);
+        if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
 
-    const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
-    if (parseRes.error) {
-        // Lock file exists but is corrupted — treat as stale, delete it
-        await googleDriveService.deleteFile(lockFileId);
-        return ok(null);
+        const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
+        if (parseRes.error) {
+            // Lock file exists but is corrupted — treat as stale, delete it
+            await googleDriveService.deleteFile(lockFileId);
+            return ok(null);
+        }
+        lockInfo = parseRes.data;
     }
 
-    return ok({ id: lockFileId, content: parseRes.data, createdTime });
+    return ok({ id: lockFileId, content: lockInfo, createdTime });
 }
 
 async function createLockFile(operation: "export" | "import", folderId?: string): Promise<Result<{ id: string; createdTime: string }>> {
@@ -75,6 +85,8 @@ async function createLockFile(operation: "export" | "import", folderId?: string)
         JSON.stringify(lockInfo),
         "application/json",
         folderId,
+        undefined,
+        lockInfo as unknown as Record<string, string>
     );
     if (uploadRes.error) return err(new AggregateError([uploadRes.error], "failed to create lock file"));
 
@@ -185,18 +197,27 @@ async function findAllLockFiles(folderId?: string): Promise<Result<LockEntry[]>>
         query += ` and '${folderId}' in parents`;
     }
 
-    const filesRes = await googleDriveService.listFiles(query, ['createdTime']);
+    const filesRes = await googleDriveService.listFiles(query, ['createdTime', 'appProperties']);
     if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
 
     const results: LockEntry[] = [];
     for (const file of filesRes.data) {
-        const contentRes = await googleDriveService.getFileContent(file.id as string);
-        if (contentRes.error) continue; // Skip unreadable lock files
+        let lockInfo: LockInfo;
+        if (file.appProperties && file.appProperties.deviceId) {
+            lockInfo = {
+                deviceId: file.appProperties.deviceId,
+                operation: file.appProperties.operation as "export" | "import"
+            };
+        } else {
+            const contentRes = await googleDriveService.getFileContent(file.id as string);
+            if (contentRes.error) continue; // Skip unreadable lock files
 
-        const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
-        if (parseRes.error) continue; // Skip corrupted lock files
+            const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
+            if (parseRes.error) continue; // Skip corrupted lock files
+            lockInfo = parseRes.data;
+        }
 
-        results.push({ id: file.id as string, content: parseRes.data, createdTime: file.createdTime as string });
+        results.push({ id: file.id as string, content: lockInfo, createdTime: file.createdTime as string });
     }
 
     return ok(results);

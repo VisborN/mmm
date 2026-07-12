@@ -184,7 +184,7 @@ export class GoogleDriveService {
         return ok(allFolders);
     }
 
-    async uploadFile(name: string, content: string, mimeType: string, folderId?: string, fileId?: string): Promise<Result<{ id: string; createdTime: string }>> {
+    async uploadFile(name: string, content: string, mimeType: string, folderId?: string, fileId?: string, appProperties?: Record<string, string>): Promise<Result<{ id: string; createdTime: string }>> {
         const authRes = await this.ensureAuthenticated();
         if (authRes.error) return err(authRes.error);
 
@@ -194,6 +194,9 @@ export class GoogleDriveService {
         };
         if (folderId && !fileId) {
             metadata.parents = [folderId];
+        }
+        if (appProperties) {
+            metadata.appProperties = appProperties;
         }
 
         const boundary = '-------314159265358979323846';
