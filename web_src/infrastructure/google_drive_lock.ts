@@ -22,7 +22,13 @@ async function getDeviceId(): Promise<string> {
     const stored = await get("mmm_device_id");
     if (stored) return stored as string;
 
-    const id = crypto.randomUUID();
+    let id: string;
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        id = crypto.randomUUID();
+    } else {
+        id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    }
+    
     await set("mmm_device_id", id);
     return id;
 }

@@ -88,22 +88,27 @@ export class GoogleDriveService {
                 return;
             }
 
-            const originalCallback = this.tokenClient.callback;
-            this.tokenClient.callback = (response: any): void => {
-                this.tokenClient.callback = originalCallback;
-                if (response.error !== undefined) {
-                    resolve(err(new Error(`Authentication failed: ${response.error}`)));
-                    return;
+            this.tokenClient.requestAccessToken({
+                callback: (response: any): void => {
+                    if (response.error !== undefined) {
+                        resolve(err(new Error(`Authentication failed: ${response.error}`)));
+                        return;
+                    }
+                    this.accessToken = response.access_token;
+                    if (response.expires_in) {
+                        localStorage.setItem('gdrive_access_token', response.access_token);
+                        localStorage.setItem('gdrive_token_expires_at', (Date.now() + response.expires_in * 1000).toString());
+                    }
+                    resolve(ok(this.accessToken!));
+                },
+                error_callback: (error: any): void => {
+                    let errorType = error;
+                    if (error && typeof error === 'object') {
+                        errorType = error.type || error.message || JSON.stringify(error);
+                    }
+                    resolve(err(new Error(`Authentication error: ${errorType}. Пожалуйста, отключите блокировщик всплывающих окон.`)));
                 }
-                this.accessToken = response.access_token;
-                if (response.expires_in) {
-                    localStorage.setItem('gdrive_access_token', response.access_token);
-                    localStorage.setItem('gdrive_token_expires_at', (Date.now() + response.expires_in * 1000).toString());
-                }
-                resolve(ok(this.accessToken!));
-            };
-
-            this.tokenClient.requestAccessToken();
+            });
         });
     }
 
