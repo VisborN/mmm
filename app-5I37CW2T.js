@@ -28693,6 +28693,16 @@ var AccountModal = observer(() => {
     currency: "RUB",
     balance: "0"
   });
+  import_react7.default.useEffect(() => {
+    if (store.isAccountModalOpen) {
+      setFormData(store.currentAccount || {
+        id: 0,
+        name: "",
+        currency: "RUB",
+        balance: "0"
+      });
+    }
+  }, [store.isAccountModalOpen, store.currentAccount]);
   if (!store.isAccountModalOpen) return null;
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -28920,6 +28930,22 @@ var TransactionModal = observer(() => {
     transferReceiveAccountName: null,
     transferReceiveAmountAccountCurrency: null
   });
+  import_react10.default.useEffect(() => {
+    if (store.isTransactionModalOpen) {
+      setFormData(store.currentTransaction || {
+        id: 0,
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        amountRubles: 0,
+        amountAccountCurrency: "0",
+        accountName: "",
+        category: "",
+        description: "",
+        type: "withdraw",
+        transferReceiveAccountName: null,
+        transferReceiveAmountAccountCurrency: null
+      });
+    }
+  }, [store.isTransactionModalOpen, store.currentTransaction]);
   if (!store.isTransactionModalOpen) return null;
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -29149,7 +29175,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-07-13 01:40:34 +0300" : "dev"
+          true ? "2026-07-13 01:54:57 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "header-actions", children: [
@@ -29299,4 +29325,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-ACKNJMX7.js.map
+//# sourceMappingURL=app-5I37CW2T.js.map
