@@ -28106,32 +28106,6 @@ function isLockStale(createdTime) {
   if (isNaN(createdAt)) return true;
   return Date.now() - createdAt > LOCK_STALE_MS;
 }
-async function findLockFile(folderId) {
-  const escapedName = LOCK_FILE_NAME.replace(/'/g, "\\'");
-  let query = `name = '${escapedName}' and mimeType = 'application/json' and trashed = false`;
-  if (folderId) {
-    query += ` and '${folderId}' in parents`;
-  }
-  const filesRes = await googleDriveService.listFiles(query, ["createdTime", "appProperties"]);
-  if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
-  if (filesRes.data.length === 0) {
-    return ok(null);
-  }
-  const file = filesRes.data[0];
-  const lockFileId = file.id;
-  const createdTime = file.createdTime;
-  let lockInfo;
-  if (file.appProperties && file.appProperties.deviceId) {
-    lockInfo = {
-      deviceId: file.appProperties.deviceId,
-      operation: file.appProperties.operation
-    };
-  } else {
-    await googleDriveService.deleteFile(lockFileId);
-    return ok(null);
-  }
-  return ok({ id: lockFileId, content: lockInfo, createdTime });
-}
 async function createLockFile(operation, folderId) {
   const deviceId = await getDeviceId();
   const lockInfo = {
@@ -28157,103 +28131,99 @@ async function acquireLock(operation, folderId, onProgress) {
     const progressMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 (\u043F\u043E\u043F\u044B\u0442\u043A\u0430 ${attempt + 1}): \u041F\u043E\u0438\u0441\u043A \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0435\u0439 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
     if (onProgress) onProgress(progressMsg);
     const t0 = Date.now();
-    const lockRes = await findLockFile(folderId);
+    const lockRes = await findAllLockFiles(folderId);
     const t1 = Date.now();
     if (onProgress) onProgress(`${progressMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t1 - t0}\u043C\u0441`);
-    const existingLock = lockRes.data;
-    if (existingLock === null) {
-      console.log(`[Lock] No existing lock found. Proceeding to create one.`);
-      const createMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0421\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
-      if (onProgress) onProgress(createMsg);
-      const t2 = Date.now();
-      const createRes = await createLockFile(operation, folderId);
-      const t3 = Date.now();
-      if (onProgress) onProgress(`${createMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t3 - t2}\u043C\u0441`);
-      if (createRes.error) return err(createRes.error);
-      const verifyMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u044F \u0433\u043E\u043D\u043A\u0438 \u0434\u0430\u043D\u043D\u044B\u0445...`;
-      if (onProgress) onProgress(verifyMsg);
-      const t4 = Date.now();
-      let verifyRes = await findAllLockFiles(folderId);
-      let verifyTries = 0;
-      while (!verifyRes.error && !verifyRes.data.find((l) => l.content.deviceId === deviceId) && verifyTries < 5) {
-        verifyTries++;
-        console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
-        if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0418\u043D\u0434\u0435\u043A\u0441\u0430\u0446\u0438\u044F Google Drive \u0437\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044F. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 (${verifyTries}/5)...`);
-        await sleep(1e3);
-        verifyRes = await findAllLockFiles(folderId);
+    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
+    const existingLocks = lockRes.data;
+    let hasOtherActiveLock = false;
+    let otherActiveOperation = "";
+    for (const lock of existingLocks) {
+      if (lock.content.deviceId === deviceId) {
+        console.log(`[Lock] Removing our previous lock...`);
+        await googleDriveService.deleteFile(lock.id);
+      } else if (isLockStale(lock.createdTime)) {
+        console.log(`[Lock] Removing stale lock from another device...`);
+        await googleDriveService.deleteFile(lock.id);
+      } else {
+        hasOtherActiveLock = true;
+        otherActiveOperation = lock.content.operation;
       }
-      const t5 = Date.now();
-      if (onProgress) onProgress(`${verifyMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t5 - t4}\u043C\u0441`);
-      if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
-      const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
-      if (!ours) {
-        console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
-        await googleDriveService.deleteFile(createRes.data.id);
-        if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
-          await sleep(LOCK_ACQUIRE_RETRY_MS);
-          continue;
-        }
-        return err(new Error(`\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`));
-      }
-      if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
-        console.log(`[Lock] Acquired lock successfully without collision.`);
-        return ok(createRes.data.id);
-      }
-      console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
-      const winner = verifyRes.data.reduce((a, b) => {
-        const aTime = new Date(a.createdTime).getTime();
-        const bTime = new Date(b.createdTime).getTime();
-        if (aTime !== bTime) return aTime < bTime ? a : b;
-        return a.content.deviceId < b.content.deviceId ? a : b;
-      });
-      if (winner.content.deviceId === deviceId) {
-        for (const lock of verifyRes.data) {
-          if (lock.id !== winner.id) {
-            await googleDriveService.deleteFile(lock.id);
-          }
-        }
-        return ok(winner.id);
-      }
-      if (ours) {
-        console.log(`[Lock] Deleting our losing lock...`);
-        await googleDriveService.deleteFile(ours.id);
-      }
+    }
+    if (hasOtherActiveLock) {
+      console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
+      if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0410\u043A\u0442\u0438\u0432\u043D\u0430\u044F \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435...`);
       if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
-        console.log(`[Lock] Waiting before retry...`);
         await sleep(LOCK_ACQUIRE_RETRY_MS);
         continue;
       }
       return err(new Error(
-        `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${winner.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
+        `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${otherActiveOperation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
       ));
     }
-    console.log(`[Lock] Existing lock found (owned by: ${existingLock.content.deviceId}, age: ${Date.now() - new Date(existingLock.createdTime).getTime()}ms).`);
-    if (existingLock.content.deviceId === deviceId) {
-      console.log(`[Lock] Overwriting our own stale lock...`);
-      const overwriteMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u041F\u0435\u0440\u0435\u0437\u0430\u043F\u0438\u0441\u044C \u0441\u043E\u0431\u0441\u0442\u0432\u0435\u043D\u043D\u043E\u0439 \u0441\u0442\u0430\u0440\u043E\u0439 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
-      if (onProgress) onProgress(overwriteMsg);
-      const t6 = Date.now();
-      await googleDriveService.deleteFile(existingLock.id);
-      const createRes = await createLockFile(operation, folderId);
-      const t7 = Date.now();
-      if (onProgress) onProgress(`${overwriteMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t7 - t6}\u043C\u0441`);
-      if (createRes.error) return err(createRes.error);
+    console.log(`[Lock] No active locks found. Proceeding to create one.`);
+    const createMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0421\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
+    if (onProgress) onProgress(createMsg);
+    const t2 = Date.now();
+    const createRes = await createLockFile(operation, folderId);
+    const t3 = Date.now();
+    if (onProgress) onProgress(`${createMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t3 - t2}\u043C\u0441`);
+    if (createRes.error) return err(createRes.error);
+    const verifyMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u044F \u0433\u043E\u043D\u043A\u0438 \u0434\u0430\u043D\u043D\u044B\u0445...`;
+    if (onProgress) onProgress(verifyMsg);
+    const t4 = Date.now();
+    let verifyRes = await findAllLockFiles(folderId);
+    let verifyTries = 0;
+    while (!verifyRes.error && !verifyRes.data.find((l) => l.content.deviceId === deviceId) && verifyTries < 5) {
+      verifyTries++;
+      console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
+      if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0418\u043D\u0434\u0435\u043A\u0441\u0430\u0446\u0438\u044F Google Drive \u0437\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044F. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 (${verifyTries}/5)...`);
+      await sleep(1e3);
+      verifyRes = await findAllLockFiles(folderId);
+    }
+    const t5 = Date.now();
+    if (onProgress) onProgress(`${verifyMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t5 - t4}\u043C\u0441`);
+    if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
+    const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
+    if (!ours) {
+      console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
+      await googleDriveService.deleteFile(createRes.data.id);
+      if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+        await sleep(LOCK_ACQUIRE_RETRY_MS);
+        continue;
+      }
+      return err(new Error(`\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`));
+    }
+    if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
+      console.log(`[Lock] Acquired lock successfully without collision.`);
       return ok(createRes.data.id);
     }
-    if (isLockStale(existingLock.createdTime)) {
-      console.log(`[Lock] Removing stale lock from another device...`);
-      if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0423\u0434\u0430\u043B\u0435\u043D\u0438\u0435 \u0443\u0441\u0442\u0430\u0440\u0435\u0432\u0448\u0435\u0439 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0434\u0440\u0443\u0433\u043E\u0433\u043E \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430...`);
-      await googleDriveService.deleteFile(existingLock.id);
-      continue;
+    console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
+    const winner = verifyRes.data.reduce((a, b) => {
+      const aTime = new Date(a.createdTime).getTime();
+      const bTime = new Date(b.createdTime).getTime();
+      if (aTime !== bTime) return aTime < bTime ? a : b;
+      return a.content.deviceId < b.content.deviceId ? a : b;
+    });
+    if (winner.content.deviceId === deviceId) {
+      for (const lock of verifyRes.data) {
+        if (lock.id !== winner.id) {
+          await googleDriveService.deleteFile(lock.id);
+        }
+      }
+      return ok(winner.id);
     }
-    console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
-    if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0410\u043A\u0442\u0438\u0432\u043D\u0430\u044F \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435...`);
+    if (ours) {
+      console.log(`[Lock] Deleting our losing lock...`);
+      await googleDriveService.deleteFile(ours.id);
+    }
     if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+      console.log(`[Lock] Waiting before retry...`);
       await sleep(LOCK_ACQUIRE_RETRY_MS);
       continue;
     }
     return err(new Error(
-      `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${existingLock.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
+      `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${winner.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
     ));
   }
   return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0443 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438 \u043F\u043E\u0441\u043B\u0435 \u043D\u0435\u0441\u043A\u043E\u043B\u044C\u043A\u0438\u0445 \u043F\u043E\u043F\u044B\u0442\u043E\u043A."));
@@ -28276,6 +28246,8 @@ async function findAllLockFiles(folderId) {
   const results = [];
   for (const file of filesRes.data) {
     if (!file.appProperties || !file.appProperties.deviceId) {
+      console.log(`[Lock] Found unreadable/old lock file, deleting...`);
+      await googleDriveService.deleteFile(file.id);
       continue;
     }
     const lockInfo = {
@@ -29176,7 +29148,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:37:22 +0300" : "dev"
+          true ? "2026-07-12 18:46:23 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29387,4 +29359,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-BK73W46S.js.map
+//# sourceMappingURL=app-IXYDVFSH.js.map
