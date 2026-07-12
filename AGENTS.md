@@ -42,3 +42,5 @@ When working on this repository, please adhere to the following guidelines:
 - **Metadata**: Prefer using `appProperties` to store small bits of application-specific metadata on files instead of writing to the file content. 
   - `appProperties` must be requested explicitly via the `fields` query parameter (e.g. `fields=files(id,name,appProperties)`).
   - Property keys and values must be strings.
+- **Synchronization Locking**: When acquiring locks on Google Drive, use an optimistic approach: create the lock immediately without pre-checking, and rely on eventual consistency polling and server-side `createdTime` to gracefully resolve collisions. The winner should NOT aggressively delete active competitors' locks; losers must discover they lost and delete their own locks.
+- **Local Cross-Tab Locking**: Use the browser's native `navigator.locks` API to ensure that multiple tabs from the same device do not concurrently perform sync operations.
