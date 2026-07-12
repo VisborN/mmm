@@ -64,16 +64,9 @@ async function findLockFile(folderId?: string): Promise<Result<LockEntry | null>
             operation: file.appProperties.operation as "export" | "import"
         };
     } else {
-        const contentRes = await googleDriveService.getFileContent(lockFileId);
-        if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
-
-        const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
-        if (parseRes.error) {
-            // Lock file exists but is corrupted — treat as stale, delete it
-            await googleDriveService.deleteFile(lockFileId);
-            return ok(null);
-        }
-        lockInfo = parseRes.data;
+        // Lock file exists but lacks appProperties — treat as stale, delete it
+        await googleDriveService.deleteFile(lockFileId);
+        return ok(null);
     }
 
     return ok({ id: lockFileId, content: lockInfo, createdTime });
@@ -208,20 +201,14 @@ async function findAllLockFiles(folderId?: string): Promise<Result<LockEntry[]>>
 
     const results: LockEntry[] = [];
     for (const file of filesRes.data) {
-        let lockInfo: LockInfo;
-        if (file.appProperties && file.appProperties.deviceId) {
-            lockInfo = {
-                deviceId: file.appProperties.deviceId,
-                operation: file.appProperties.operation as "export" | "import"
-            };
-        } else {
-            const contentRes = await googleDriveService.getFileContent(file.id as string);
-            if (contentRes.error) continue; // Skip unreadable lock files
-
-            const parseRes = withResult(() => JSON.parse(contentRes.data) as LockInfo)();
-            if (parseRes.error) continue; // Skip corrupted lock files
-            lockInfo = parseRes.data;
+        if (!file.appProperties || !file.appProperties.deviceId) {
+            continue; // Skip unreadable/old lock files
         }
+
+        const lockInfo: LockInfo = {
+            deviceId: file.appProperties.deviceId,
+            operation: file.appProperties.operation as "export" | "import"
+        };
 
         results.push({ id: file.id as string, content: lockInfo, createdTime: file.createdTime as string });
     }
