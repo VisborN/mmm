@@ -34,3 +34,9 @@ When working on this repository, please adhere to the following guidelines:
 ## Go/Serverless
 - Serverless functions are written in Go.
 - Handle errors idiomatically in Go, returning errors with appropriate context.
+
+## Google Drive API Integration
+- **Eventual Consistency**: Google Drive search indexes have eventual consistency delays. Files created via API might not immediately appear in `listFiles` search results. Implement polling or retries when verifying creation of files (e.g. locks) using search.
+- **Metadata**: Prefer using `appProperties` to store small bits of application-specific metadata on files instead of writing to the file content. 
+  - `appProperties` must be requested explicitly via the `fields` query parameter (e.g. `fields=files(id,name,appProperties)`).
+  - Property keys and values must be strings.
