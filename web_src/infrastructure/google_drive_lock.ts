@@ -126,18 +126,34 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
             if (onProgress) onProgress(verifyMsg);
             
             const t4 = Date.now();
-            const verifyRes = await findAllLockFiles(folderId);
+            let verifyRes = await findAllLockFiles(folderId);
+            let verifyTries = 0;
+            
+            // Poll until we see our lock file (Google Drive search eventual consistency)
+            while (!verifyRes.error && !verifyRes.data.find(l => l.content.deviceId === deviceId) && verifyTries < 5) {
+                verifyTries++;
+                console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
+                if (onProgress) onProgress(`Блокировка: Индексация Google Drive задерживается. Ожидание (${verifyTries}/5)...`);
+                await sleep(1000);
+                verifyRes = await findAllLockFiles(folderId);
+            }
+            
             const t5 = Date.now();
             
             if (onProgress) onProgress(`${verifyMsg} завершено за ${t5 - t4}мс`);
             if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
 
-            if (verifyRes.data.length === 0) {
-                // Google Drive search index eventual consistency delay.
-                // We know we just created a lock, but it's not showing up yet.
-                // Assuming we are the sole owner.
-                console.log(`[Lock] No locks found during verification (search delay). Assuming sole ownership.`);
-                return ok(createRes.data.id);
+            const ours = verifyRes.data.find(l => l.content.deviceId === deviceId);
+            if (!ours) {
+                // Google Drive search index eventual consistency delay was too long.
+                // We know we created a lock, but it's not showing up.
+                console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
+                await googleDriveService.deleteFile(createRes.data.id);
+                if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+                    await sleep(LOCK_ACQUIRE_RETRY_MS);
+                    continue;
+                }
+                return err(new Error(`Не удалось подтвердить создание файла блокировки. Попробуйте позже.`));
             }
 
             if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
@@ -150,7 +166,6 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
 
             // Multiple lock files — race condition. Keep the one with the earliest createdTime
             // (server-assigned, no clock skew), or if tied, the lexicographically smallest deviceId.
-            const ours = verifyRes.data.find(l => l.content.deviceId === deviceId);
             const winner = verifyRes.data.reduce((a, b) => {
                 const aTime = new Date(a.createdTime).getTime();
                 const bTime = new Date(b.createdTime).getTime();
