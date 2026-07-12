@@ -79,36 +79,34 @@ export class GoogleDriveService {
         }
 
         return new Promise((resolve) => {
-            if (!this.tokenClient) {
-                this.initTokenClient();
-            }
-
-            if (!this.tokenClient) {
+            if (typeof window !== 'undefined' && (window as any).google) {
+                this.tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response: any): void => {
+                        if (response.error !== undefined) {
+                            resolve(err(new Error(`Authentication failed: ${response.error}`)));
+                            return;
+                        }
+                        this.accessToken = response.access_token;
+                        if (response.expires_in) {
+                            localStorage.setItem('gdrive_access_token', response.access_token);
+                            localStorage.setItem('gdrive_token_expires_at', (Date.now() + response.expires_in * 1000).toString());
+                        }
+                        resolve(ok(this.accessToken!));
+                    },
+                    error_callback: (error: any): void => {
+                        let errorType = error;
+                        if (error && typeof error === 'object') {
+                            errorType = error.type || error.message || JSON.stringify(error);
+                        }
+                        resolve(err(new Error(`Authentication error: ${errorType}. Пожалуйста, отключите блокировщик всплывающих окон.`)));
+                    }
+                });
+                this.tokenClient.requestAccessToken();
+            } else {
                 resolve(err(new Error('Google Identity Services not initialized')));
-                return;
             }
-
-            this.tokenClient.requestAccessToken({
-                callback: (response: any): void => {
-                    if (response.error !== undefined) {
-                        resolve(err(new Error(`Authentication failed: ${response.error}`)));
-                        return;
-                    }
-                    this.accessToken = response.access_token;
-                    if (response.expires_in) {
-                        localStorage.setItem('gdrive_access_token', response.access_token);
-                        localStorage.setItem('gdrive_token_expires_at', (Date.now() + response.expires_in * 1000).toString());
-                    }
-                    resolve(ok(this.accessToken!));
-                },
-                error_callback: (error: any): void => {
-                    let errorType = error;
-                    if (error && typeof error === 'object') {
-                        errorType = error.type || error.message || JSON.stringify(error);
-                    }
-                    resolve(err(new Error(`Authentication error: ${errorType}. Пожалуйста, отключите блокировщик всплывающих окон.`)));
-                }
-            });
         });
     }
 
