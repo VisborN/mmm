@@ -90,8 +90,10 @@ export class AppStore {
     }
 
     async exportToGoogleDrive(): Promise<void> {
-        this.isLoading = true;
-        this.syncProgress = 'Аутентификация...';
+        runInAction(() => {
+            this.isLoading = true;
+            this.syncProgress = 'Аутентификация...';
+        });
         
         const authRes = await googleDriveService.ensureAuthenticated();
         if (authRes.error) {
@@ -103,7 +105,9 @@ export class AppStore {
             return;
         }
 
-        this.syncProgress = 'Подготовка к экспорту...';
+        runInAction(() => {
+            this.syncProgress = 'Подготовка к экспорту...';
+        });
         try {
             const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
                 runInAction(() => { this.syncProgress = progress; });
@@ -132,8 +136,10 @@ export class AppStore {
     }
 
     async importFromGoogleDrive(): Promise<void> {
-        this.isLoading = true;
-        this.syncProgress = 'Аутентификация...';
+        runInAction(() => {
+            this.isLoading = true;
+            this.syncProgress = 'Аутентификация...';
+        });
         
         const authRes = await googleDriveService.ensureAuthenticated();
         if (authRes.error) {
@@ -145,7 +151,9 @@ export class AppStore {
             return;
         }
 
-        this.syncProgress = 'Поиск файлов...';
+        runInAction(() => {
+            this.syncProgress = 'Поиск файлов...';
+        });
         try {
             const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined, (progress) => {
                 runInAction(() => { this.syncProgress = progress; });
@@ -156,7 +164,9 @@ export class AppStore {
                 return;
             }
 
-            this.syncProgress = 'Сохранение в базу данных...';
+            runInAction(() => {
+                this.syncProgress = 'Сохранение в базу данных...';
+            });
             const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
             if (replaceRes.error) {
                 runInAction(() => { this.error = replaceRes.error; });
@@ -308,7 +318,7 @@ export class AppStore {
     }
 
     async openFolderModal(): Promise<void> {
-        this.isLoading = true;
+        runInAction(() => { this.isLoading = true; });
         const authRes = await googleDriveService.ensureAuthenticated();
         runInAction(() => { this.isLoading = false; });
         

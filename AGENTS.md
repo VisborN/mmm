@@ -30,6 +30,7 @@ When working on this repository, please adhere to the following guidelines:
 ## UI/State
 - Use React for the UI.
 - Use MobX for state management.
+- **MobX Async Actions**: When updating MobX observables after an `await` in an asynchronous function, you MUST wrap the state updates in `runInAction(() => { ... })`. Failure to do so will cause MobX strict mode errors.
 
 ## Go/Serverless
 - Serverless functions are written in Go.
