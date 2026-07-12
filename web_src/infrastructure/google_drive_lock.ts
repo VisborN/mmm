@@ -132,13 +132,21 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
             if (onProgress) onProgress(`${verifyMsg} завершено за ${t5 - t4}мс`);
             if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
 
-            if (verifyRes.data.length === 1) {
+            if (verifyRes.data.length === 0) {
+                // Google Drive search index eventual consistency delay.
+                // We know we just created a lock, but it's not showing up yet.
+                // Assuming we are the sole owner.
+                console.log(`[Lock] No locks found during verification (search delay). Assuming sole ownership.`);
+                return ok(createRes.data.id);
+            }
+
+            if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
                 // We are the sole owner
                 console.log(`[Lock] Acquired lock successfully without collision.`);
                 return ok(createRes.data.id);
             }
 
-            console.log(`[Lock] Collision detected: ${verifyRes.data.length} locks found. Resolving...`);
+            console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
 
             // Multiple lock files — race condition. Keep the one with the earliest createdTime
             // (server-assigned, no clock skew), or if tied, the lexicographically smallest deviceId.
