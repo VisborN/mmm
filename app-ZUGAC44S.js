@@ -25463,12 +25463,12 @@ function createObservableArray(initialValues, enhancer, name, owned) {
   return initObservable(function() {
     var adm = new ObservableArrayAdministration(name, enhancer, owned, false);
     addHiddenFinalProp(adm.values_, $mobx, adm);
-    var proxy = new Proxy(adm.values_, arrayTraps);
-    adm.proxy_ = proxy;
+    var proxy3 = new Proxy(adm.values_, arrayTraps);
+    adm.proxy_ = proxy3;
     if (initialValues && initialValues.length) {
       adm.spliceWithArray_(0, 0, initialValues);
     }
-    return proxy;
+    return proxy3;
   });
 }
 var arrayExtensions = {
@@ -29052,6 +29052,457 @@ var TransactionsView = observer(() => {
   ] });
 });
 
+// tinkoff_auth_service.ts
+var import_globals10 = __toESM(require_globals());
+
+// infrastructure/tinkoff.ts
+var import_globals8 = __toESM(require_globals());
+
+// infrastructure/proxy.ts
+var import_globals7 = __toESM(require_globals());
+async function proxy(method, url, body, headers) {
+  const request = {
+    method,
+    url,
+    body: body !== void 0 ? JSON.stringify(body) : null,
+    multiValueHeaders: headers
+  };
+  const response = await withResult(fetch)("/proxy", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(request)
+  });
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], `failed to make request to proxy`));
+  }
+  if (!response.data.ok) {
+    return err(new Error(`proxy HTTP error! status: ${response.data.status}`));
+  }
+  const data = await withResult(response.data.json)();
+  if (data.error !== null) {
+    return err(new AggregateError([data.error], `proxy response isnt json`));
+  }
+  if (!isResponse(data.data)) {
+    return err(new Error(`proxy response isnt of valid format: ${data.data}`));
+  }
+  return ok(data.data);
+}
+async function proxy200JSON(method, url, body, headers) {
+  const response = await proxy(method, url, body, headers);
+  if (response.error !== null) {
+    return response;
+  }
+  if (response.data.statusCode !== 200) {
+    return err(new Error(`fetch HTTP error! status: ${response.data.statusCode}`));
+  }
+  const parsedBody = await withResult(JSON.parse)(response.data.body);
+  if (parsedBody.error !== null) {
+    return err(new AggregateError([parsedBody.error], "failed to parse response"));
+  }
+  return ok(parsedBody.data);
+}
+function isResponse(obj) {
+  return typeof obj.statusCode === "string" && typeof obj.body === "string" && (obj.multiValueHeaders === void 0 || typeof obj.multiValueHeaders === "object" && Object.values(obj).every(
+    (value) => Array.isArray(value) && value.every((item) => typeof item === "string")
+  ));
+}
+
+// infrastructure/tinkoff.ts
+var BASE_URL = "https://www.tinkoff.ru/api/common/v1";
+async function signupPost({
+  wuid,
+  password,
+  phone,
+  session,
+  origin
+}) {
+  const signUpBody = {
+    wuid,
+    entrypoint_type: "context",
+    device_type: "desktop",
+    form_view_mode: "desktop"
+  };
+  if (password) signUpBody["password"] = password;
+  if (phone) signUpBody["phone"] = phone;
+  const url = `${BASE_URL}/sign_up?origin=${origin}&sessionid=${session}&wuid=${wuid}`;
+  const response = await proxy200JSON("POST", url, new URLSearchParams(signUpBody).toString());
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call sign_up"));
+  }
+  return response;
+}
+async function levelUp(origin, session) {
+  const url = `${BASE_URL}/level_up?origin=${origin}&sessionid=${session}`;
+  const response = await proxy200JSON("GET", url);
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call level_up"));
+  }
+  return response;
+}
+async function getOperations({
+  session,
+  start,
+  end
+}) {
+  const url = `${BASE_URL}/operations?end=${end.getTime()}&start=${start.getTime()}&sessionid=${session}`;
+  const response = await proxy200JSON("GET", url);
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call operations"));
+  }
+  const resJson = await response.data;
+  return ok(resJson);
+}
+async function confirmPost({
+  wuid,
+  session,
+  origin,
+  operationTicket,
+  code
+}) {
+  const body = {
+    initialOperationTicket: operationTicket,
+    initialOperation: "sign_up",
+    confirmationData: JSON.stringify({ SMSBYID: code })
+  };
+  const url = `${BASE_URL}/confirm?origin=${origin}&sessionid=${session}&wuid=${wuid}`;
+  const response = await proxy200JSON("POST", url, new URLSearchParams(body).toString());
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call confirm"));
+  }
+  return response;
+}
+async function getWebUser() {
+  const response = await proxy200JSON("GET", `${BASE_URL}/webuser`);
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call webuser"));
+  }
+  return response;
+}
+async function sessionStatus(session, origin) {
+  const url = `${BASE_URL}/session_status?origin=${origin}&sessionid=${session}`;
+  const response = await proxy200JSON("GET", url);
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call session_status"));
+  }
+  return response;
+}
+async function getSession({
+  origin,
+  wuid,
+  oldSession
+}) {
+  let url = `${BASE_URL}/session?origin=${origin}&wuid=${wuid}`;
+  if (oldSession) {
+    url += `&${oldSession}`;
+  }
+  const response = await proxy200JSON("GET", url);
+  if (response.error !== null) {
+    return err(new AggregateError([response.error], "failed to call session_status"));
+  }
+  return response;
+}
+
+// infrastructure/json_store.ts
+var import_globals9 = __toESM(require_globals());
+var JsonStore = class {
+  /**
+   * Saves a value to IndexedDB.
+   * * @param key - The identifier for the data.
+   * @param value - Any JSON-serializable object.
+   * @param replacer - Optional function to transform nested values (Dart's toEncodable).
+   */
+  static async setJson(key, value, replacer) {
+    const jsonValue = JSON.stringify(value, replacer);
+    await set4(key, jsonValue);
+  }
+  /**
+   * Reads a value from IndexedDB and parses it.
+   * Throws an Error if the stored value is not valid JSON.
+   */
+  static async getJson(key) {
+    const jsonValueRes = await withResult(get3)(key);
+    if (jsonValueRes.error !== null) {
+      return err(new AggregateError([jsonValueRes.error], `Failed to retrieve key "${key}" from IDB`));
+    }
+    const jsonValue = jsonValueRes.data;
+    if (jsonValue === void 0 || jsonValue === null) {
+      return ok(null);
+    }
+    const parseRes = withResult(JSON.parse)(jsonValue);
+    if (parseRes.error !== null) {
+      return err(new AggregateError([parseRes.error], `FormatException: Invalid JSON text for key "${key}"`));
+    }
+    return ok(parseRes.data);
+  }
+};
+
+// tinkoff_auth_service.ts
+var _TinkoffAuthService = class _TinkoffAuthService {
+  constructor() {
+    __publicField(this, "origin", "web%2Cib5%2Cplatform");
+    __publicField(this, "operationTicket", "");
+  }
+  // --- Persistent Getters/Setters (mimicking SharedPreferences) ---
+  async getWuid() {
+    const r = await JsonStore.getJson(_TinkoffAuthService.WUID_KEY);
+    return r.error ? "" : r.data || "";
+  }
+  async setWuid(val) {
+    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, val);
+  }
+  async getSession() {
+    const r = await JsonStore.getJson(_TinkoffAuthService.SESSION_KEY);
+    return r.error ? "" : r.data || "";
+  }
+  async setSession(val) {
+    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, val);
+  }
+  async getPhone() {
+    const r = await JsonStore.getJson(_TinkoffAuthService.PHONE_KEY);
+    return r.error ? "" : r.data || "";
+  }
+  async setPhone(val) {
+    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, val);
+  }
+  async getPassword() {
+    const r = await JsonStore.getJson(_TinkoffAuthService.PWD_KEY);
+    return r.error ? "" : r.data || "";
+  }
+  async setPassword(val) {
+    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, val);
+  }
+  // --- Auth Logic ---
+  /**
+   * Manages session lifecycle. Mimics getSession in Dart.
+   */
+  async refreshSession() {
+    let wuid = await this.getWuid();
+    const session = await this.getSession();
+    if (!wuid) {
+      const res = await getWebUser();
+      if (res.error !== null) {
+        return err(new AggregateError([res.error], "Failed to get web user"));
+      }
+      if (res.data.resultCode !== "OK") return ok("");
+      wuid = res.data.payload.wuid;
+      await this.setWuid(wuid);
+    }
+    if (session) {
+      const status = await sessionStatus(session, this.origin);
+      if (status.error !== null) {
+        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
+      } else if (status.data.resultCode !== "OK") {
+        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
+      }
+    }
+    if (!session) {
+      const res = await getSession({ origin: this.origin, wuid, oldSession: session });
+      if (res.error !== null) {
+        return err(new AggregateError([res.error], "Failed to get session"));
+      }
+      if (res.data.resultCode === "OK") {
+        const newSession = typeof res.data.payload === "string" ? res.data.payload : res.data.payload.sessionId;
+        await this.setSession(newSession);
+        return ok("updated_session");
+      }
+    }
+    return ok("");
+  }
+  async loginPhone(phone) {
+    await this.setPhone(phone);
+    const refreshRes = await this.refreshSession();
+    if (refreshRes.error !== null) return err(refreshRes.error);
+    const session = await this.getSession();
+    const wuid = await this.getWuid();
+    const res = await signupPost({
+      origin: this.origin,
+      wuid,
+      session,
+      phone
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to login with phone"));
+    }
+    if (res.data.resultCode === "WAITING_CONFIRMATION") {
+      this.operationTicket = res.data.operationTicket;
+      return ok(true);
+    }
+    return ok(false);
+  }
+  async confirmOTP(code) {
+    const session = await this.getSession();
+    const wuid = await this.getWuid();
+    const res = await confirmPost({
+      code,
+      operationTicket: this.operationTicket,
+      origin: this.origin,
+      session,
+      wuid
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to confirm OTP"));
+    }
+    if (res.data.resultCode === "OK") {
+      await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, true);
+      return ok(true);
+    }
+    return ok(false);
+  }
+  async loginPassword(password) {
+    await this.setPassword(password);
+    const refreshRes = await this.refreshSession();
+    if (refreshRes.error !== null) return err(refreshRes.error);
+    const session = await this.getSession();
+    const wuid = await this.getWuid();
+    const res = await signupPost({
+      origin: this.origin,
+      wuid,
+      password,
+      session
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to login with password"));
+    }
+    if (res.data.resultCode === "OK") {
+      const levelRes = await levelUp(this.origin, session);
+      if (levelRes.error !== null) return err(new AggregateError([levelRes.error], "Failed to level up"));
+      return ok(true);
+    }
+    return ok(false);
+  }
+  async getOperations() {
+    const statusRes = await this.refreshSession();
+    if (statusRes.error !== null) return err(statusRes.error);
+    if (statusRes.data === "updated_session") {
+      const pwd = await this.getPassword();
+      const pwdRes = await this.loginPassword(pwd);
+      if (pwdRes.error !== null) return err(pwdRes.error);
+    }
+    const session = await this.getSession();
+    const end = /* @__PURE__ */ new Date();
+    const start = /* @__PURE__ */ new Date();
+    start.setDate(start.getDate() - 31);
+    const res = await getOperations({ session, start, end });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to get operations"));
+    }
+    return ok(res.data.payload || []);
+  }
+  async signOut() {
+    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, "");
+    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, "");
+    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, "");
+    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, "");
+    await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, false);
+  }
+};
+__publicField(_TinkoffAuthService, "PWD_KEY", "tinkoff_password");
+__publicField(_TinkoffAuthService, "WUID_KEY", "tinkoff_wuid");
+__publicField(_TinkoffAuthService, "PHONE_KEY", "tinkoff_phone");
+__publicField(_TinkoffAuthService, "SESSION_KEY", "tinkoff_session");
+__publicField(_TinkoffAuthService, "TIMEOUT_KEY", "tinkoff_session_timeout");
+__publicField(_TinkoffAuthService, "START_KEY", "tinkoff_session_start");
+__publicField(_TinkoffAuthService, "LOGGED_PHONE_KEY", "tinkoff_logged_with_phone");
+var TinkoffAuthService = _TinkoffAuthService;
+
+// auth_store.ts
+var AuthStore = class {
+  constructor() {
+    // --- Observable State ---
+    __publicField(this, "step", "IDLE" /* IDLE */);
+    __publicField(this, "inputValue", "");
+    __publicField(this, "isLoading", false);
+    __publicField(this, "error", null);
+    __publicField(this, "operations", []);
+    __publicField(this, "authService", new TinkoffAuthService());
+    makeAutoObservable(this);
+  }
+  // --- Actions ---
+  setInputValue(val) {
+    this.inputValue = val;
+  }
+  /**
+   * Resets the store and closes the dialog
+   */
+  reset() {
+    this.step = "IDLE" /* IDLE */;
+    this.inputValue = "";
+    this.error = null;
+    this.isLoading = false;
+  }
+  /**
+   * Starts the login flow
+   */
+  startLogin() {
+    this.step = "PHONE" /* PHONE */;
+    this.inputValue = "";
+    this.error = null;
+    this.isLoading = false;
+  }
+  /**
+   * The main submission logic loop
+   */
+  async submit() {
+    this.isLoading = true;
+    this.error = null;
+    if (this.step === "PHONE" /* PHONE */) {
+      const needsOtpRes = await this.authService.loginPhone(this.inputValue);
+      runInAction(() => {
+        if (needsOtpRes.error) {
+          this.error = needsOtpRes.error.message || "An unexpected error occurred";
+        } else {
+          this.step = needsOtpRes.data ? "OTP" /* OTP */ : "PASSWORD" /* PASSWORD */;
+          this.inputValue = "";
+        }
+        this.isLoading = false;
+      });
+    } else if (this.step === "OTP" /* OTP */) {
+      const okRes = await this.authService.confirmOTP(this.inputValue);
+      runInAction(() => {
+        if (okRes.error) {
+          this.error = okRes.error.message || "An unexpected error occurred";
+        } else if (okRes.data) {
+          this.step = "PASSWORD" /* PASSWORD */;
+          this.inputValue = "";
+        } else {
+          this.error = "Invalid OTP code";
+        }
+        this.isLoading = false;
+      });
+    } else if (this.step === "PASSWORD" /* PASSWORD */) {
+      const okRes = await this.authService.loginPassword(this.inputValue);
+      runInAction(() => {
+        if (okRes.error) {
+          this.error = okRes.error.message || "An unexpected error occurred";
+        } else if (okRes.data) {
+          this.step = "SUCCESS" /* SUCCESS */;
+        } else {
+          this.error = "Incorrect password";
+        }
+        this.isLoading = false;
+      });
+    }
+  }
+  /**
+   * Fetches operations and updates the local observable list
+   */
+  async loadOperations() {
+    this.isLoading = true;
+    const res = await this.authService.getOperations();
+    runInAction(() => {
+      if (res.error) {
+        this.error = res.error.message;
+      } else {
+        this.operations = res.data;
+      }
+      this.isLoading = false;
+    });
+  }
+};
+var authStore = new AuthStore();
+
 // settings_view.tsx
 var import_jsx_runtime6 = __toESM(require_jsx_runtime());
 var SettingsView = observer(() => {
@@ -29111,7 +29562,7 @@ var SettingsView = observer(() => {
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
       /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "action-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { id: "open-auth", className: "btn btn-primary", style: { background: "#f59e0b", color: "#fff" }, children: "\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F Tinkoff" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { id: "open-auth", onClick: () => authStore.startLogin(), className: "btn btn-primary", style: { background: "#f59e0b", color: "#fff" }, children: "\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F Tinkoff" }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           "button",
           {
@@ -29125,8 +29576,67 @@ var SettingsView = observer(() => {
   ] });
 });
 
-// app_component.tsx
+// tinkoff_login.tsx
 var import_jsx_runtime7 = __toESM(require_jsx_runtime());
+var TinkoffLoginDialog = observer(() => {
+  const { step, inputValue, isLoading, error } = authStore;
+  if (step === "SUCCESS" /* SUCCESS */) {
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "modal-content", style: { textAlign: "center", padding: "40px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { style: { fontSize: "24px", fontWeight: "bold", marginBottom: "16px", color: "var(--success-color)" }, children: "Success!" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { style: { color: "var(--text-secondary)", marginBottom: "24px" }, children: "You are now logged in." }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: () => authStore.reset(), className: "btn btn-primary", style: { width: "100%" }, children: "Done" })
+    ] }) });
+  }
+  const config = {
+    ["IDLE" /* IDLE */]: { title: "Login", label: "Input", type: "text" },
+    ["PHONE" /* PHONE */]: { title: "Login", label: "Phone Number", type: "text" },
+    ["OTP" /* OTP */]: { title: "Verification", label: "Enter SMS Code", type: "number" },
+    ["PASSWORD" /* PASSWORD */]: { title: "Identity", label: "Enter Password", type: "password" },
+    ["LOADING" /* LOADING */]: { title: "Wait", label: "Processing...", type: "text" },
+    ["SUCCESS" /* SUCCESS */]: { title: "success", label: "success", type: "text" }
+  }[step];
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    authStore.submit();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "modal-content", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { style: { margin: 0 }, children: config.title }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: () => authStore.reset(), style: { background: "none", border: "none", color: "var(--text-secondary)", fontSize: "24px", cursor: "pointer" }, children: "\xD7" })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("form", { onSubmit: handleSubmit, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("label", { className: "form-label", children: config.label }),
+        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+          "input",
+          {
+            className: "form-input",
+            type: config.type,
+            value: inputValue,
+            disabled: isLoading,
+            onChange: (e) => authStore.setInputValue(e.target.value),
+            required: true,
+            autoFocus: true
+          }
+        )
+      ] }),
+      error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "error-banner", style: { margin: "16px 0", padding: "12px" }, children: error }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          type: "submit",
+          disabled: isLoading,
+          className: "btn btn-primary",
+          style: { width: "100%", marginTop: "8px", background: "#f59e0b", color: "#fff" },
+          children: isLoading ? "Loading..." : "Submit"
+        }
+      )
+    ] })
+  ] }) });
+});
+
+// app_component.tsx
+var import_jsx_runtime8 = __toESM(require_jsx_runtime());
 var AppMain = observer(() => {
   (0, import_react11.useEffect)(() => {
     store.loadData().then(() => {
@@ -29136,22 +29646,22 @@ var AppMain = observer(() => {
     });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "loading-container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "spinner" }),
-      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "progress-badge", children: store.syncProgress })
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "loading-container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "spinner" }),
+      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "progress-badge", children: store.syncProgress })
     ] });
   }
-  return /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "app-container", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("header", { className: "app-header", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "app-version", children: [
+  return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-container", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("header", { className: "app-header", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-07-13 01:59:56 +0300" : "dev"
+          true ? "2026-07-13 02:08:00 +0300" : "dev"
         ] })
       ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "header-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
           "button",
           {
             onClick: () => store.currentView === "transactions" ? store.openTransactionModal() : store.openAccountModal(),
@@ -29160,7 +29670,7 @@ var AppMain = observer(() => {
             children: "\u2795"
           }
         ),
-        /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
           "button",
           {
             onClick: () => store.setView("settings"),
@@ -29171,12 +29681,12 @@ var AppMain = observer(() => {
         )
       ] })
     ] }),
-    store.error && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "error-banner", children: [
+    store.error && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "error-banner", children: [
       "\u041E\u0448\u0438\u0431\u043A\u0430: ",
       store.error.message
     ] }),
-    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "nav-tabs", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+    store.currentView !== "settings" && store.currentView !== "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "nav-tabs", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
         "button",
         {
           onClick: () => store.setView("transactions"),
@@ -29184,7 +29694,7 @@ var AppMain = observer(() => {
           children: "\u041E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
         }
       ),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
         "button",
         {
           onClick: () => {
@@ -29196,25 +29706,26 @@ var AppMain = observer(() => {
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "main-content", children: [
-      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(TransactionsView, {}),
-      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(AccountsView, {}),
-      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(SettingsView, {}),
-      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(DatabaseExplorer, {})
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "main-content", children: [
+      store.currentView === "transactions" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TransactionsView, {}),
+      store.currentView === "accounts" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AccountsView, {}),
+      store.currentView === "settings" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(SettingsView, {}),
+      store.currentView === "db_explorer" && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(DatabaseExplorer, {})
     ] }),
-    store.isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(FolderSelectionModal, { onClose: () => store.closeFolderModal() })
+    store.isFolderModalOpen && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(FolderSelectionModal, { onClose: () => store.closeFolderModal() }),
+    authStore.step !== "IDLE" /* IDLE */ && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(TinkoffLoginDialog, {})
   ] });
 });
 
 // app.tsx
-var import_jsx_runtime8 = __toESM(require_jsx_runtime());
+var import_jsx_runtime9 = __toESM(require_jsx_runtime());
 document.addEventListener("DOMContentLoaded", () => {
   const el = document.getElementById("app");
   if (!el) {
     throw new Error(`Container with id 'app' not found.`);
   }
   const root = (0, import_client.createRoot)(el);
-  root.render(/* @__PURE__ */ (0, import_jsx_runtime8.jsx)(AppMain, {}));
+  root.render(/* @__PURE__ */ (0, import_jsx_runtime9.jsx)(AppMain, {}));
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
@@ -29297,4 +29808,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-KFPH6FKD.js.map
+//# sourceMappingURL=app-ZUGAC44S.js.map
