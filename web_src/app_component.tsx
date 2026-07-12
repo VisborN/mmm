@@ -6,6 +6,8 @@ import { DatabaseExplorer } from './db_explorer_view';
 import { FolderSelectionModal } from './folder_selection_modal';
 import { TransactionsView } from './transactions_view';
 import { SettingsView } from './settings_view';
+import { TinkoffLoginDialog } from './tinkoff_login';
+import { authStore, LoginStep } from './auth_store';
 
 declare const __COMMIT_TIME__: string;
 
@@ -90,6 +92,7 @@ export const AppMain = observer(() => {
             </div>
             
             {store.isFolderModalOpen && <FolderSelectionModal onClose={() => store.closeFolderModal()} />}
+            {authStore.step !== LoginStep.IDLE && <TinkoffLoginDialog />}
         </div>
     );
 });

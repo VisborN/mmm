@@ -35,9 +35,19 @@ export class AuthStore {
   }
 
   /**
-   * Resets the store to initial state
+   * Resets the store and closes the dialog
    */
   reset() {
+    this.step = LoginStep.IDLE;
+    this.inputValue = "";
+    this.error = null;
+    this.isLoading = false;
+  }
+
+  /**
+   * Starts the login flow
+   */
+  startLogin() {
     this.step = LoginStep.PHONE;
     this.inputValue = "";
     this.error = null;

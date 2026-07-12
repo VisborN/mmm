@@ -1,6 +1,7 @@
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
+import { authStore } from './auth_store';
 
 export const SettingsView = observer(() => {
     return (
@@ -56,7 +57,7 @@ export const SettingsView = observer(() => {
             <div className="settings-card">
                 <h3>Дополнительно</h3>
                 <div className="action-row">
-                    <button id="open-auth" className="btn btn-primary" style={{ background: '#f59e0b', color: '#fff' }}>
+                    <button id="open-auth" onClick={() => authStore.startLogin()} className="btn btn-primary" style={{ background: '#f59e0b', color: '#fff' }}>
                         Авторизация Tinkoff
                     </button>
                     <button

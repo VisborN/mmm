@@ -32,6 +32,7 @@ When working on this repository, please adhere to the following guidelines:
 - Use MobX for state management.
 - **MobX Async Actions**: When updating MobX observables after an `await` in an asynchronous function, you MUST wrap the state updates in `runInAction(() => { ... })`. Failure to do so will cause MobX strict mode errors.
 - **Component Architecture**: The UI is modularized (e.g., `transactions_view.tsx`, `settings_view.tsx`, etc.). When creating new features, extract them into separate files. For modal dialogues, conditionally render them in their parent components (e.g., `{store.isModalOpen && <Modal />}`) to ensure they unmount when closed, preventing stale local state issues without needing `useEffect`.
+- **Authentication State**: Tinkoff authorization logic is managed by its own `authStore` (`web_src/auth_store.ts`). Use `authStore.startLogin()` to initiate the flow, which conditionally renders `TinkoffLoginDialog`.
 
 ## Go/Serverless
 - Serverless functions are written in Go.
