@@ -3,6 +3,7 @@ import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
 import { googleSyncService } from "./google_sync_service";
 import { get, set } from "idb-keyval";
+import { googleDriveService } from "../infrastructure/google_drive";
 
 declare const __WORKER_URL__: string;
 
@@ -89,49 +90,103 @@ export class AppStore {
     }
 
     async exportToGoogleDrive(): Promise<void> {
-        this.isLoading = true;
-        this.syncProgress = 'Подготовка к экспорту...';
-        const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
-            runInAction(() => { this.syncProgress = progress; });
-        });
-        this.loadGoogleAccountEmail();
         runInAction(() => {
-            if (result.error) {
-                this.error = result.error;
-                alert(`Ошибка экспорта: ${result.error.message}`);
-            } else {
-                this.error = null;
-                alert('Экспорт успешно завершен!');
-            }
-            this.isLoading = false;
-            this.syncProgress = '';
+            this.isLoading = true;
+            this.syncProgress = 'Аутентификация...';
         });
+        
+        const authRes = await googleDriveService.ensureAuthenticated();
+        if (authRes.error) {
+            runInAction(() => {
+                this.error = authRes.error;
+                this.isLoading = false;
+                this.syncProgress = '';
+            });
+            return;
+        }
+
+        runInAction(() => {
+            this.syncProgress = 'Подготовка к экспорту...';
+        });
+        try {
+            const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || undefined, (progress) => {
+                runInAction(() => { this.syncProgress = progress; });
+            });
+            this.loadGoogleAccountEmail();
+            runInAction(() => {
+                if (result.error) {
+                    this.error = result.error;
+                    alert(`Ошибка экспорта: ${result.error.message}`);
+                } else {
+                    this.error = null;
+                    alert('Экспорт успешно завершен!');
+                }
+            });
+        } catch (e: unknown) {
+            runInAction(() => {
+                this.error = e instanceof Error ? e : new Error(String(e));
+                alert(`Непредвиденная ошибка: ${this.error.message}`);
+            });
+        } finally {
+            runInAction(() => {
+                this.isLoading = false;
+                this.syncProgress = '';
+            });
+        }
     }
 
     async importFromGoogleDrive(): Promise<void> {
-        this.isLoading = true;
-        this.syncProgress = 'Поиск файлов...';
-        
-        const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined, (progress) => {
-            runInAction(() => { this.syncProgress = progress; });
+        runInAction(() => {
+            this.isLoading = true;
+            this.syncProgress = 'Аутентификация...';
         });
         
-        if (result.error) {
-            runInAction(() => { this.error = result.error; this.isLoading = false; this.syncProgress = ''; });
+        const authRes = await googleDriveService.ensureAuthenticated();
+        if (authRes.error) {
+            runInAction(() => {
+                this.error = authRes.error;
+                this.isLoading = false;
+                this.syncProgress = '';
+            });
             return;
         }
 
-        this.syncProgress = 'Сохранение в базу данных...';
-        const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
-        if (replaceRes.error) {
-            runInAction(() => { this.error = replaceRes.error; this.isLoading = false; this.syncProgress = ''; });
-            return;
-        }
+        runInAction(() => {
+            this.syncProgress = 'Поиск файлов...';
+        });
+        try {
+            const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || undefined, (progress) => {
+                runInAction(() => { this.syncProgress = progress; });
+            });
+            
+            if (result.error) {
+                runInAction(() => { this.error = result.error; });
+                return;
+            }
 
-        await this.loadData();
-        this.loadGoogleAccountEmail();
-        runInAction(() => { this.isLoading = false; this.syncProgress = ''; this.error = null; });
-        this.recalculateBalances();
+            runInAction(() => {
+                this.syncProgress = 'Сохранение в базу данных...';
+            });
+            const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+            if (replaceRes.error) {
+                runInAction(() => { this.error = replaceRes.error; });
+                return;
+            }
+
+            await this.loadData();
+            this.loadGoogleAccountEmail();
+            runInAction(() => { this.error = null; });
+            this.recalculateBalances();
+        } catch (e: unknown) {
+            runInAction(() => {
+                this.error = e instanceof Error ? e : new Error(String(e));
+            });
+        } finally {
+            runInAction(() => {
+                this.isLoading = false;
+                this.syncProgress = '';
+            });
+        }
     }
 
     recalculateBalances(): void {
@@ -262,7 +317,17 @@ export class AppStore {
         this.closeAccountModal();
     }
 
-    openFolderModal(): void {
+    async openFolderModal(): Promise<void> {
+        runInAction(() => { this.isLoading = true; });
+        const authRes = await googleDriveService.ensureAuthenticated();
+        runInAction(() => { this.isLoading = false; });
+        
+        if (authRes.error) {
+            runInAction(() => { this.error = authRes.error; });
+            alert(`Ошибка авторизации: ${authRes.error.message}`);
+            return;
+        }
+        
         window.location.hash = 'modal-folder';
     }
 
