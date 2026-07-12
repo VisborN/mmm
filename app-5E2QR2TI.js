@@ -27956,7 +27956,7 @@ var GoogleDriveService = class {
     allFolders.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
     return ok(allFolders);
   }
-  async uploadFile(name, content, mimeType, folderId, fileId) {
+  async uploadFile(name, content, mimeType, folderId, fileId, appProperties) {
     const authRes = await this.ensureAuthenticated();
     if (authRes.error) return err(authRes.error);
     const metadata = {
@@ -27965,6 +27965,9 @@ var GoogleDriveService = class {
     };
     if (folderId && !fileId) {
       metadata.parents = [folderId];
+    }
+    if (appProperties) {
+      metadata.appProperties = appProperties;
     }
     const boundary = "-------314159265358979323846";
     const delimiter = "\r\n--" + boundary + "\r\n";
@@ -28098,7 +28101,7 @@ async function findLockFile(folderId) {
   if (folderId) {
     query += ` and '${folderId}' in parents`;
   }
-  const filesRes = await googleDriveService.listFiles(query, ["createdTime"]);
+  const filesRes = await googleDriveService.listFiles(query, ["createdTime", "appProperties"]);
   if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to search for lock file"));
   if (filesRes.data.length === 0) {
     return ok(null);
@@ -28106,14 +28109,23 @@ async function findLockFile(folderId) {
   const file = filesRes.data[0];
   const lockFileId = file.id;
   const createdTime = file.createdTime;
-  const contentRes = await googleDriveService.getFileContent(lockFileId);
-  if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
-  const parseRes = withResult(() => JSON.parse(contentRes.data))();
-  if (parseRes.error) {
-    await googleDriveService.deleteFile(lockFileId);
-    return ok(null);
+  let lockInfo;
+  if (file.appProperties && file.appProperties.deviceId) {
+    lockInfo = {
+      deviceId: file.appProperties.deviceId,
+      operation: file.appProperties.operation
+    };
+  } else {
+    const contentRes = await googleDriveService.getFileContent(lockFileId);
+    if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
+    const parseRes = withResult(() => JSON.parse(contentRes.data))();
+    if (parseRes.error) {
+      await googleDriveService.deleteFile(lockFileId);
+      return ok(null);
+    }
+    lockInfo = parseRes.data;
   }
-  return ok({ id: lockFileId, content: parseRes.data, createdTime });
+  return ok({ id: lockFileId, content: lockInfo, createdTime });
 }
 async function createLockFile(operation, folderId) {
   const deviceId = await getDeviceId();
@@ -28125,7 +28137,9 @@ async function createLockFile(operation, folderId) {
     LOCK_FILE_NAME,
     JSON.stringify(lockInfo),
     "application/json",
-    folderId
+    folderId,
+    void 0,
+    lockInfo
   );
   if (uploadRes.error) return err(new AggregateError([uploadRes.error], "failed to create lock file"));
   return ok(uploadRes.data);
@@ -28203,15 +28217,24 @@ async function findAllLockFiles(folderId) {
   if (folderId) {
     query += ` and '${folderId}' in parents`;
   }
-  const filesRes = await googleDriveService.listFiles(query, ["createdTime"]);
+  const filesRes = await googleDriveService.listFiles(query, ["createdTime", "appProperties"]);
   if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
   const results = [];
   for (const file of filesRes.data) {
-    const contentRes = await googleDriveService.getFileContent(file.id);
-    if (contentRes.error) continue;
-    const parseRes = withResult(() => JSON.parse(contentRes.data))();
-    if (parseRes.error) continue;
-    results.push({ id: file.id, content: parseRes.data, createdTime: file.createdTime });
+    let lockInfo;
+    if (file.appProperties && file.appProperties.deviceId) {
+      lockInfo = {
+        deviceId: file.appProperties.deviceId,
+        operation: file.appProperties.operation
+      };
+    } else {
+      const contentRes = await googleDriveService.getFileContent(file.id);
+      if (contentRes.error) continue;
+      const parseRes = withResult(() => JSON.parse(contentRes.data))();
+      if (parseRes.error) continue;
+      lockInfo = parseRes.data;
+    }
+    results.push({ id: file.id, content: lockInfo, createdTime: file.createdTime });
   }
   return ok(results);
 }
@@ -29032,18 +29055,7 @@ var AppMain = observer(() => {
     });
   }, []);
   if (store.isLoading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: {
-      fontFamily: "sans-serif",
-      minHeight: "100vh",
-      display: "flex",
-      flexDirection: "column",
-      alignItems: "center",
-      justifyContent: "center",
-      backgroundColor: "#f8f9fa"
-    }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "20px", color: "#333", marginBottom: "10px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." }),
-      store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { fontSize: "16px", color: "#007bff", backgroundColor: "#e3f2fd", padding: "10px 20px", borderRadius: "20px" }, children: store.syncProgress })
-    ] });
+    return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { padding: "20px" }, children: "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." });
   }
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontFamily: "sans-serif", maxWidth: "600px", margin: "0 auto", backgroundColor: "#f8f9fa", minHeight: "100vh", display: "flex", flexDirection: "column" }, children: [
     /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("header", { style: {
@@ -29058,7 +29070,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 16:57:50 +0300" : "dev"
+          true ? "2026-07-12 17:06:05 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29269,4 +29281,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-PWNH5SUA.js.map
+//# sourceMappingURL=app-5E2QR2TI.js.map
