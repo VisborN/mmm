@@ -59,58 +59,55 @@ export const FolderSelectionModal: React.FC<{ onClose: () => void }> = ({ onClos
     };
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-            <div style={{
-                backgroundColor: 'white', padding: '20px', borderRadius: '8px', width: '90%', maxWidth: '400px',
-                maxHeight: '80vh', display: 'flex', flexDirection: 'column'
-            }}>
-                <h3 style={{ marginTop: 0, marginBottom: '15px' }}>Выбор папки для синхронизации</h3>
+        <div className="modal-overlay">
+            <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
+                <h3 style={{ marginBottom: '16px' }}>Выбор папки для синхронизации</h3>
                 
-                <div style={{ marginBottom: '15px', display: 'flex', flexWrap: 'wrap', gap: '5px', alignItems: 'center', fontSize: '14px' }}>
+                <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
                     {path.map((folder, index) => (
                         <React.Fragment key={folder.id}>
                             <span 
                                 onClick={() => navigateUp(index)}
                                 style={{ 
                                     cursor: index === path.length - 1 ? 'default' : 'pointer', 
-                                    color: index === path.length - 1 ? '#333' : '#007bff',
-                                    fontWeight: index === path.length - 1 ? 'bold' : 'normal'
+                                    color: index === path.length - 1 ? 'var(--text-primary)' : 'var(--accent-color)',
+                                    fontWeight: index === path.length - 1 ? '600' : 'normal',
+                                    transition: 'color 0.2s'
                                 }}
                             >
                                 {folder.name}
                             </span>
-                            {index < path.length - 1 && <span style={{ color: '#888' }}>/</span>}
+                            {index < path.length - 1 && <span style={{ color: 'var(--text-secondary)' }}>/</span>}
                         </React.Fragment>
                     ))}
                 </div>
 
-                {error && <div style={{ color: 'red', marginBottom: '15px' }}>Ошибка: {error}</div>}
+                {error && <div className="error-banner">Ошибка: {error}</div>}
 
                 <div style={{ 
-                    flex: 1, overflowY: 'auto', border: '1px solid #eee', borderRadius: '4px', padding: '5px',
-                    minHeight: '200px'
+                    flex: 1, overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)',
+                    background: 'rgba(0,0,0,0.2)'
                 }}>
                     {isLoading ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Загрузка...</div>
+                        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <div className="spinner" style={{ margin: '0 auto 16px', width: '24px', height: '24px', borderWidth: '2px' }}></div>
+                            Загрузка...
+                        </div>
                     ) : folders.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>Папка пуста</div>
+                        <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-secondary)' }}>Папка пуста</div>
                     ) : (
                         <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                             {folders.map(folder => (
                                 <li key={folder.id}>
                                     <button 
                                         onClick={() => navigateTo(folder)}
-                                        style={{
-                                            width: '100%', textAlign: 'left', padding: '10px', background: 'none',
-                                            border: 'none', borderBottom: '1px solid #f5f5f5', cursor: 'pointer',
-                                            display: 'flex', alignItems: 'center', gap: '10px'
-                                        }}
+                                        className="list-item"
+                                        style={{ width: '100%', background: 'transparent', borderBottom: '1px solid var(--border-color)', borderRadius: 0 }}
                                     >
-                                        <span style={{ fontSize: '20px' }}>📁</span>
-                                        {folder.name}
+                                        <div className="item-left">
+                                            <span style={{ fontSize: '20px' }}>📁</span>
+                                            <span className="item-title">{folder.name}</span>
+                                        </div>
                                     </button>
                                 </li>
                             ))}
@@ -118,13 +115,9 @@ export const FolderSelectionModal: React.FC<{ onClose: () => void }> = ({ onClos
                     )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-                    <button onClick={onClose} style={{ padding: '8px 16px', background: 'none', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer' }}>
-                        Отмена
-                    </button>
-                    <button onClick={selectCurrentFolder} style={{ padding: '8px 16px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                        Выбрать эту папку
-                    </button>
+                <div className="modal-actions">
+                    <button onClick={onClose} className="btn btn-secondary">Отмена</button>
+                    <button onClick={selectCurrentFolder} className="btn btn-primary">Выбрать эту папку</button>
                 </div>
             </div>
         </div>

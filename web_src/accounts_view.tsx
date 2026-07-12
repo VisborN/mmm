@@ -4,7 +4,6 @@ import { store } from './domain/store';
 import { Account } from './domain/types';
 
 const formatAmount = (amountStr: string) => {
-    // Basic formatting for the string amount
     const num = parseFloat(amountStr);
     if (isNaN(num)) return amountStr;
     return num.toLocaleString('ru-RU', {
@@ -21,8 +20,6 @@ export const AccountModal = observer(() => {
         balance: '0'
     });
 
-    if (!store.isAccountModalOpen) return null;
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         await store.saveAccount(formData as Account);
@@ -34,33 +31,26 @@ export const AccountModal = observer(() => {
     };
 
     return (
-        <div style={{
-            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex',
-            alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-            <div style={{
-                backgroundColor: 'white', padding: '20px', borderRadius: '8px',
-                width: '90%', maxWidth: '400px'
-            }}>
-                <h3 style={{marginTop: 0}}>{store.currentAccount ? 'Редактировать счет' : 'Новый счет'}</h3>
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <label>
-                        Название:
-                        <input type="text" name="name" value={formData.name || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
-                    </label>
-                    <label>
-                        Валюта:
-                        <input type="text" name="currency" value={formData.currency || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
-                    </label>
-                    <label>
-                        Баланс:
-                        <input type="text" name="balance" value={formData.balance || ''} onChange={handleChange} required style={{width: '100%', padding: '5px', boxSizing: 'border-box'}} />
-                    </label>
+        <div className="modal-overlay">
+            <div className="modal-content">
+                <h3>{store.currentAccount ? 'Редактировать счет' : 'Новый счет'}</h3>
+                <form onSubmit={handleSubmit}>
+                    <div className="form-group">
+                        <label className="form-label">Название:</label>
+                        <input type="text" name="name" value={formData.name || ''} onChange={handleChange} required className="form-input" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Валюта:</label>
+                        <input type="text" name="currency" value={formData.currency || ''} onChange={handleChange} required className="form-input" />
+                    </div>
+                    <div className="form-group">
+                        <label className="form-label">Баланс:</label>
+                        <input type="text" name="balance" value={formData.balance || ''} onChange={handleChange} required className="form-input" />
+                    </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-                        <button type="button" onClick={() => store.closeAccountModal()} style={{padding: '8px 16px', background: '#ccc', border: 'none', borderRadius: '4px'}}>Отмена</button>
-                        <button type="submit" style={{padding: '8px 16px', background: '#007bff', color: 'white', border: 'none', borderRadius: '4px'}}>Сохранить</button>
+                    <div className="modal-actions">
+                        <button type="button" onClick={() => store.closeAccountModal()} className="btn btn-secondary">Отмена</button>
+                        <button type="submit" className="btn btn-primary">Сохранить</button>
                     </div>
                 </form>
             </div>
@@ -72,35 +62,37 @@ export const AccountsView = observer(() => {
     return (
         <div>
             {store.accounts.length === 0 ? (
-                <p style={{ color: '#777', paddingLeft: '20px' }}>Нет добавленных счетов.</p>
+                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    Нет добавленных счетов.
+                </div>
             ) : (
-                <div style={{ backgroundColor: 'white', marginTop: '10px' }}>
+                <div>
                     {store.accounts.map(acc => (
                         <div
                             key={acc.id}
                             onClick={() => store.openAccountModal(acc)}
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                padding: '12px 20px',
-                                borderBottom: '1px solid #f0f0f0',
-                                cursor: 'pointer',
-                                alignItems: 'center'
-                            }}
+                            className="list-item"
                         >
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                <span style={{ color: '#777', width: '40px', fontSize: '14px' }}>{acc.id}</span>
-                                <span style={{ fontSize: '16px' }}>{acc.name}</span>
+                            <div className="item-left">
+                                <div className="item-icon-placeholder" style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--accent-color)', border: 'none' }}>
+                                    {acc.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="item-details">
+                                    <span className="item-title">{acc.name}</span>
+                                    <span className="item-subtitle">Счет ID: {acc.id}</span>
+                                </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '16px' }}>{formatAmount(acc.balance)} <span style={{ fontSize: '14px', color: '#555' }}>{acc.currency}</span></span>
+                            <div className="item-right">
+                                <span className="item-amount">
+                                    {formatAmount(acc.balance)} <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>{acc.currency}</span>
+                                </span>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
 
-            <AccountModal />
+            {store.isAccountModalOpen && <AccountModal />}
         </div>
     );
 });
