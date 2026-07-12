@@ -28177,11 +28177,15 @@ async function acquireLock(operation, folderId, onProgress) {
       const t5 = Date.now();
       if (onProgress) onProgress(`${verifyMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t5 - t4}\u043C\u0441`);
       if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
-      if (verifyRes.data.length === 1) {
+      if (verifyRes.data.length === 0) {
+        console.log(`[Lock] No locks found during verification (search delay). Assuming sole ownership.`);
+        return ok(createRes.data.id);
+      }
+      if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
         console.log(`[Lock] Acquired lock successfully without collision.`);
         return ok(createRes.data.id);
       }
-      console.log(`[Lock] Collision detected: ${verifyRes.data.length} locks found. Resolving...`);
+      console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
       const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
       const winner = verifyRes.data.reduce((a, b) => {
         const aTime = new Date(a.createdTime).getTime();
@@ -29159,7 +29163,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:16:39 +0300" : "dev"
+          true ? "2026-07-12 18:25:02 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29370,4 +29374,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-5CGMFBZC.js.map
+//# sourceMappingURL=app-HR62MX5A.js.map
