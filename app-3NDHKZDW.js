@@ -28127,14 +28127,8 @@ async function findLockFile(folderId) {
       operation: file.appProperties.operation
     };
   } else {
-    const contentRes = await googleDriveService.getFileContent(lockFileId);
-    if (contentRes.error) return err(new AggregateError([contentRes.error], "failed to read lock file content"));
-    const parseRes = withResult(() => JSON.parse(contentRes.data))();
-    if (parseRes.error) {
-      await googleDriveService.deleteFile(lockFileId);
-      return ok(null);
-    }
-    lockInfo = parseRes.data;
+    await googleDriveService.deleteFile(lockFileId);
+    return ok(null);
   }
   return ok({ id: lockFileId, content: lockInfo, createdTime });
 }
@@ -28232,19 +28226,13 @@ async function findAllLockFiles(folderId) {
   if (filesRes.error) return err(new AggregateError([filesRes.error], "failed to list lock files"));
   const results = [];
   for (const file of filesRes.data) {
-    let lockInfo;
-    if (file.appProperties && file.appProperties.deviceId) {
-      lockInfo = {
-        deviceId: file.appProperties.deviceId,
-        operation: file.appProperties.operation
-      };
-    } else {
-      const contentRes = await googleDriveService.getFileContent(file.id);
-      if (contentRes.error) continue;
-      const parseRes = withResult(() => JSON.parse(contentRes.data))();
-      if (parseRes.error) continue;
-      lockInfo = parseRes.data;
+    if (!file.appProperties || !file.appProperties.deviceId) {
+      continue;
     }
+    const lockInfo = {
+      deviceId: file.appProperties.deviceId,
+      operation: file.appProperties.operation
+    };
     results.push({ id: file.id, content: lockInfo, createdTime: file.createdTime });
   }
   return ok(results);
@@ -29139,7 +29127,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 17:11:34 +0300" : "dev"
+          true ? "2026-07-12 18:01:34 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29350,4 +29338,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-SWGTMAUH.js.map
+//# sourceMappingURL=app-3NDHKZDW.js.map
