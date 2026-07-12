@@ -199,7 +199,24 @@ export const AppMain = observer(() => {
     }, []);
 
     if (store.isLoading) {
-        return <div style={{padding: '20px'}}>Загрузка...</div>;
+        return (
+            <div style={{
+                fontFamily: 'sans-serif',
+                minHeight: '100vh',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#f8f9fa'
+            }}>
+                <div style={{ fontSize: '20px', color: '#333', marginBottom: '10px' }}>Загрузка...</div>
+                {store.syncProgress && (
+                    <div style={{ fontSize: '16px', color: '#007bff', backgroundColor: '#e3f2fd', padding: '10px 20px', borderRadius: '20px' }}>
+                        {store.syncProgress}
+                    </div>
+                )}
+            </div>
+        );
     }
 
     return (
