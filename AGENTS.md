@@ -44,3 +44,8 @@ When working on this repository, please adhere to the following guidelines:
   - Property keys and values must be strings.
 - **Synchronization Locking**: When acquiring locks on Google Drive, use an optimistic approach: create the lock immediately without pre-checking, and rely on eventual consistency polling and server-side `createdTime` to gracefully resolve collisions. The winner should NOT aggressively delete active competitors' locks; losers must discover they lost and delete their own locks.
 - **Local Cross-Tab Locking**: Use the browser's native `navigator.locks` API to ensure that multiple tabs from the same device do not concurrently perform sync operations.
+
+## Design System
+- Use the Vanilla CSS defined in `web_src/index.css`.
+- Rely on defined CSS variables (`--bg-color`, `--accent-color`, etc.) and semantic classes (`.btn`, `.form-input`, `.modal-overlay`, `.app-container`) instead of Tailwind or inline styles.
+- Maintain the glassmorphism aesthetic and rich modern typography.

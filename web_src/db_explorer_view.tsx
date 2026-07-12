@@ -37,20 +37,27 @@ export const DatabaseExplorer = observer(() => {
         loadData();
     }, []);
 
-    if (loading) return <div style={{ padding: '20px' }}>Loading DB Data...</div>;
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="spinner"></div>
+                <div style={{ color: 'var(--text-secondary)' }}>Loading DB Data...</div>
+            </div>
+        );
+    }
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>Database Explorer</h2>
+        <div style={{ padding: '24px' }}>
+            <h2 style={{ marginBottom: '24px', fontSize: '20px' }}>Database Explorer</h2>
             {Object.keys(dbData).map(storeName => (
-                <div key={storeName} style={{ marginBottom: '40px', overflowX: 'auto' }}>
-                    <h3>Table: {storeName} ({dbData[storeName].length} rows)</h3>
+                <div key={storeName} className="settings-card" style={{ overflowX: 'auto' }}>
+                    <h3 style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>Table: {storeName} ({dbData[storeName].length} rows)</h3>
                     {dbData[storeName].length > 0 ? (
-                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', marginTop: '16px' }}>
                             <thead>
                                 <tr>
                                     {Object.keys(dbData[storeName][0]).map(key => (
-                                        <th key={key} style={{ border: '1px solid #ddd', padding: '8px', backgroundColor: '#f2f2f2', textAlign: 'left' }}>
+                                        <th key={key} style={{ borderBottom: '2px solid var(--border-color)', padding: '12px 8px', textAlign: 'left', color: 'var(--text-secondary)' }}>
                                             {key}
                                         </th>
                                     ))}
@@ -58,11 +65,11 @@ export const DatabaseExplorer = observer(() => {
                             </thead>
                             <tbody>
                                 {dbData[storeName].map((row, idx) => (
-                                    <tr key={idx}>
+                                    <tr key={idx} style={{ borderBottom: '1px solid var(--border-color)' }}>
                                         {Object.keys(dbData[storeName][0]).map(key => {
                                             const val = row[key];
                                             return (
-                                                <td key={key} style={{ border: '1px solid #ddd', padding: '8px' }}>
+                                                <td key={key} style={{ padding: '12px 8px' }}>
                                                     {typeof val === 'object' && val !== null ? JSON.stringify(val) : String(val)}
                                                 </td>
                                             );
@@ -72,7 +79,7 @@ export const DatabaseExplorer = observer(() => {
                             </tbody>
                         </table>
                     ) : (
-                        <p>No rows found.</p>
+                        <p style={{ color: 'var(--text-secondary)' }}>No rows found.</p>
                     )}
                 </div>
             ))}
