@@ -92,33 +92,44 @@ async function createLockFile(operation: "export" | "import", folderId?: string)
     return ok(uploadRes.data);
 }
 
-export async function acquireLock(operation: "export" | "import", folderId?: string): Promise<Result<string>> {
+export async function acquireLock(operation: "export" | "import", folderId?: string, onProgress?: (msg: string) => void): Promise<Result<string>> {
     const deviceId = await getDeviceId();
 
     console.log(`[Lock] Attempting to acquire lock for operation: ${operation}. Max retries: ${LOCK_ACQUIRE_MAX_RETRIES}`);
     for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
         console.log(`[Lock] --- Attempt ${attempt + 1} ---`);
-        console.time(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
+        const progressMsg = `Блокировка (попытка ${attempt + 1}): Поиск существующей блокировки...`;
+        if (onProgress) onProgress(progressMsg);
+        
+        const t0 = Date.now();
         const lockRes = await findLockFile(folderId);
-        console.timeEnd(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
-        if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
+        const t1 = Date.now();
+        
+        if (onProgress) onProgress(`${progressMsg} завершено за ${t1 - t0}мс`);
 
         const existingLock = lockRes.data;
 
         if (existingLock === null) {
             console.log(`[Lock] No existing lock found. Proceeding to create one.`);
-            // No lock — create one
-            console.time(`[Lock] Phase 2: Create lock file`);
+            const createMsg = `Блокировка: Создание нового файла блокировки...`;
+            if (onProgress) onProgress(createMsg);
+            
+            const t2 = Date.now();
             const createRes = await createLockFile(operation, folderId);
-            console.timeEnd(`[Lock] Phase 2: Create lock file`);
+            const t3 = Date.now();
+            
+            if (onProgress) onProgress(`${createMsg} завершено за ${t3 - t2}мс`);
             if (createRes.error) return err(createRes.error);
 
             // Verify we own the lock (race condition check):
-            // Re-read the lock file to ensure our device wrote it.
-            // If there are multiple lock files, another device raced with us.
-            console.time(`[Lock] Phase 3: Verify race condition`);
+            const verifyMsg = `Блокировка: Проверка отсутствия гонки данных...`;
+            if (onProgress) onProgress(verifyMsg);
+            
+            const t4 = Date.now();
             const verifyRes = await findAllLockFiles(folderId);
-            console.timeEnd(`[Lock] Phase 3: Verify race condition`);
+            const t5 = Date.now();
+            
+            if (onProgress) onProgress(`${verifyMsg} завершено за ${t5 - t4}мс`);
             if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
 
             if (verifyRes.data.length === 1) {
@@ -171,10 +182,15 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
         if (existingLock.content.deviceId === deviceId) {
             // Our own stale lock — overwrite it
             console.log(`[Lock] Overwriting our own stale lock...`);
+            const overwriteMsg = `Блокировка: Перезапись собственной старой блокировки...`;
+            if (onProgress) onProgress(overwriteMsg);
+            
+            const t6 = Date.now();
             await googleDriveService.deleteFile(existingLock.id);
-            console.time(`[Lock] Phase 2: Create lock file`);
             const createRes = await createLockFile(operation, folderId);
-            console.timeEnd(`[Lock] Phase 2: Create lock file`);
+            const t7 = Date.now();
+            
+            if (onProgress) onProgress(`${overwriteMsg} завершено за ${t7 - t6}мс`);
             if (createRes.error) return err(createRes.error);
             return ok(createRes.data.id);
         }
@@ -182,12 +198,14 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
         if (isLockStale(existingLock.createdTime)) {
             // Another device's stale lock — remove it and retry
             console.log(`[Lock] Removing stale lock from another device...`);
+            if (onProgress) onProgress(`Блокировка: Удаление устаревшей блокировки другого устройства...`);
             await googleDriveService.deleteFile(existingLock.id);
             continue;
         }
 
         // Another device holds an active lock
         console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
+        if (onProgress) onProgress(`Блокировка: Активная блокировка другим устройством. Ожидание...`);
         if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
             await sleep(LOCK_ACQUIRE_RETRY_MS);
             continue;

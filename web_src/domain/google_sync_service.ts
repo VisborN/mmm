@@ -15,7 +15,7 @@ export class GoogleSyncService {
         }
 
         if (onProgress) onProgress('Получение блокировки синхронизации...');
-        const lockRes = await acquireLock("export", folderId);
+        const lockRes = await acquireLock("export", folderId, onProgress);
         if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for export"));
 
         const lockFileId = lockRes.data;
@@ -71,7 +71,7 @@ export class GoogleSyncService {
 
     async importFromGoogleDrive(folderId?: string, onProgress?: (progress: string) => void): Promise<Result<Transaction[], Error>> {
         if (onProgress) onProgress('Получение блокировки синхронизации...');
-        const lockRes = await acquireLock("import", folderId);
+        const lockRes = await acquireLock("import", folderId, onProgress);
         if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for import"));
 
         const lockFileId = lockRes.data;
