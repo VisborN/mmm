@@ -17,6 +17,23 @@ export const TransactionModal = observer(() => {
         transferReceiveAmountAccountCurrency: null
     });
 
+    React.useEffect(() => {
+        if (store.isTransactionModalOpen) {
+            setFormData(store.currentTransaction || {
+                id: 0,
+                date: new Date().toISOString().split('T')[0],
+                amountRubles: 0,
+                amountAccountCurrency: '0',
+                accountName: '',
+                category: '',
+                description: '',
+                type: 'withdraw',
+                transferReceiveAccountName: null,
+                transferReceiveAmountAccountCurrency: null
+            });
+        }
+    }, [store.isTransactionModalOpen, store.currentTransaction]);
+
     if (!store.isTransactionModalOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
