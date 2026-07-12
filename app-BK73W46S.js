@@ -28173,20 +28173,33 @@ async function acquireLock(operation, folderId, onProgress) {
       const verifyMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0438\u044F \u0433\u043E\u043D\u043A\u0438 \u0434\u0430\u043D\u043D\u044B\u0445...`;
       if (onProgress) onProgress(verifyMsg);
       const t4 = Date.now();
-      const verifyRes = await findAllLockFiles(folderId);
+      let verifyRes = await findAllLockFiles(folderId);
+      let verifyTries = 0;
+      while (!verifyRes.error && !verifyRes.data.find((l) => l.content.deviceId === deviceId) && verifyTries < 5) {
+        verifyTries++;
+        console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
+        if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0418\u043D\u0434\u0435\u043A\u0441\u0430\u0446\u0438\u044F Google Drive \u0437\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044F. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 (${verifyTries}/5)...`);
+        await sleep(1e3);
+        verifyRes = await findAllLockFiles(folderId);
+      }
       const t5 = Date.now();
       if (onProgress) onProgress(`${verifyMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t5 - t4}\u043C\u0441`);
       if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
-      if (verifyRes.data.length === 0) {
-        console.log(`[Lock] No locks found during verification (search delay). Assuming sole ownership.`);
-        return ok(createRes.data.id);
+      const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
+      if (!ours) {
+        console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
+        await googleDriveService.deleteFile(createRes.data.id);
+        if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+          await sleep(LOCK_ACQUIRE_RETRY_MS);
+          continue;
+        }
+        return err(new Error(`\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`));
       }
       if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
         console.log(`[Lock] Acquired lock successfully without collision.`);
         return ok(createRes.data.id);
       }
       console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
-      const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
       const winner = verifyRes.data.reduce((a, b) => {
         const aTime = new Date(a.createdTime).getTime();
         const bTime = new Date(b.createdTime).getTime();
@@ -29163,7 +29176,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:25:02 +0300" : "dev"
+          true ? "2026-07-12 18:37:22 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29374,4 +29387,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-HR62MX5A.js.map
+//# sourceMappingURL=app-BK73W46S.js.map
