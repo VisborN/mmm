@@ -27874,34 +27874,34 @@ var GoogleDriveService = class {
       return ok(this.accessToken);
     }
     return new Promise((resolve) => {
-      if (!this.tokenClient) {
-        this.initTokenClient();
-      }
-      if (!this.tokenClient) {
+      if (typeof window !== "undefined" && window.google) {
+        this.tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPES,
+          callback: (response) => {
+            if (response.error !== void 0) {
+              resolve(err(new Error(`Authentication failed: ${response.error}`)));
+              return;
+            }
+            this.accessToken = response.access_token;
+            if (response.expires_in) {
+              localStorage.setItem("gdrive_access_token", response.access_token);
+              localStorage.setItem("gdrive_token_expires_at", (Date.now() + response.expires_in * 1e3).toString());
+            }
+            resolve(ok(this.accessToken));
+          },
+          error_callback: (error) => {
+            let errorType = error;
+            if (error && typeof error === "object") {
+              errorType = error.type || error.message || JSON.stringify(error);
+            }
+            resolve(err(new Error(`Authentication error: ${errorType}. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0449\u0438\u043A \u0432\u0441\u043F\u043B\u044B\u0432\u0430\u044E\u0449\u0438\u0445 \u043E\u043A\u043E\u043D.`)));
+          }
+        });
+        this.tokenClient.requestAccessToken();
+      } else {
         resolve(err(new Error("Google Identity Services not initialized")));
-        return;
       }
-      this.tokenClient.requestAccessToken({
-        callback: (response) => {
-          if (response.error !== void 0) {
-            resolve(err(new Error(`Authentication failed: ${response.error}`)));
-            return;
-          }
-          this.accessToken = response.access_token;
-          if (response.expires_in) {
-            localStorage.setItem("gdrive_access_token", response.access_token);
-            localStorage.setItem("gdrive_token_expires_at", (Date.now() + response.expires_in * 1e3).toString());
-          }
-          resolve(ok(this.accessToken));
-        },
-        error_callback: (error) => {
-          let errorType = error;
-          if (error && typeof error === "object") {
-            errorType = error.type || error.message || JSON.stringify(error);
-          }
-          resolve(err(new Error(`Authentication error: ${errorType}. \u041F\u043E\u0436\u0430\u043B\u0443\u0439\u0441\u0442\u0430, \u043E\u0442\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0449\u0438\u043A \u0432\u0441\u043F\u043B\u044B\u0432\u0430\u044E\u0449\u0438\u0445 \u043E\u043A\u043E\u043D.`)));
-        }
-      });
     });
   }
   async listFiles(query, extraFields) {
@@ -29127,7 +29127,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:01:34 +0300" : "dev"
+          true ? "2026-07-12 18:04:22 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29338,4 +29338,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-3NDHKZDW.js.map
+//# sourceMappingURL=app-6JSDSTW7.js.map
