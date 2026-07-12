@@ -28151,18 +28151,29 @@ async function createLockFile(operation, folderId) {
 }
 async function acquireLock(operation, folderId) {
   const deviceId = await getDeviceId();
+  console.log(`[Lock] Attempting to acquire lock for operation: ${operation}. Max retries: ${LOCK_ACQUIRE_MAX_RETRIES}`);
   for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
+    console.log(`[Lock] --- Attempt ${attempt + 1} ---`);
+    console.time(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
     const lockRes = await findLockFile(folderId);
+    console.timeEnd(`[Lock] Phase 1: Search existing lock (Attempt ${attempt + 1})`);
     if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
     const existingLock = lockRes.data;
     if (existingLock === null) {
+      console.log(`[Lock] No existing lock found. Proceeding to create one.`);
+      console.time(`[Lock] Phase 2: Create lock file`);
       const createRes = await createLockFile(operation, folderId);
+      console.timeEnd(`[Lock] Phase 2: Create lock file`);
       if (createRes.error) return err(createRes.error);
+      console.time(`[Lock] Phase 3: Verify race condition`);
       const verifyRes = await findAllLockFiles(folderId);
+      console.timeEnd(`[Lock] Phase 3: Verify race condition`);
       if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
       if (verifyRes.data.length === 1) {
+        console.log(`[Lock] Acquired lock successfully without collision.`);
         return ok(createRes.data.id);
       }
+      console.log(`[Lock] Collision detected: ${verifyRes.data.length} locks found. Resolving...`);
       const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
       const winner = verifyRes.data.reduce((a, b) => {
         const aTime = new Date(a.createdTime).getTime();
@@ -28179,9 +28190,11 @@ async function acquireLock(operation, folderId) {
         return ok(winner.id);
       }
       if (ours) {
+        console.log(`[Lock] Deleting our losing lock...`);
         await googleDriveService.deleteFile(ours.id);
       }
       if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
+        console.log(`[Lock] Waiting before retry...`);
         await sleep(LOCK_ACQUIRE_RETRY_MS);
         continue;
       }
@@ -28189,16 +28202,22 @@ async function acquireLock(operation, folderId) {
         `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${winner.content.operation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
       ));
     }
+    console.log(`[Lock] Existing lock found (owned by: ${existingLock.content.deviceId}, age: ${Date.now() - new Date(existingLock.createdTime).getTime()}ms).`);
     if (existingLock.content.deviceId === deviceId) {
+      console.log(`[Lock] Overwriting our own stale lock...`);
       await googleDriveService.deleteFile(existingLock.id);
+      console.time(`[Lock] Phase 2: Create lock file`);
       const createRes = await createLockFile(operation, folderId);
+      console.timeEnd(`[Lock] Phase 2: Create lock file`);
       if (createRes.error) return err(createRes.error);
       return ok(createRes.data.id);
     }
     if (isLockStale(existingLock.createdTime)) {
+      console.log(`[Lock] Removing stale lock from another device...`);
       await googleDriveService.deleteFile(existingLock.id);
       continue;
     }
+    console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
     if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
       await sleep(LOCK_ACQUIRE_RETRY_MS);
       continue;
@@ -29127,7 +29146,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:04:22 +0300" : "dev"
+          true ? "2026-07-12 18:09:47 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29338,4 +29357,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-6JSDSTW7.js.map
+//# sourceMappingURL=app-SGQWIVHZ.js.map
