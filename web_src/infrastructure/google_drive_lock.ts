@@ -67,47 +67,8 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
     console.log(`[Lock] Attempting to acquire lock for operation: ${operation}. Max retries: ${LOCK_ACQUIRE_MAX_RETRIES}`);
     for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
         console.log(`[Lock] --- Attempt ${attempt + 1} ---`);
-        const progressMsg = `Блокировка (попытка ${attempt + 1}): Поиск существующей блокировки...`;
-        if (onProgress) onProgress(progressMsg);
         
-        const t0 = Date.now();
-        const lockRes = await findAllLockFiles(folderId);
-        const t1 = Date.now();
-        
-        if (onProgress) onProgress(`${progressMsg} завершено за ${t1 - t0}мс`);
-        if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
-
-        const existingLocks = lockRes.data;
-        let hasOtherActiveLock = false;
-        let otherActiveOperation = "";
-
-        for (const lock of existingLocks) {
-            if (lock.content.deviceId === deviceId) {
-                console.log(`[Lock] Removing our previous lock...`);
-                await googleDriveService.deleteFile(lock.id);
-            } else if (isLockStale(lock.createdTime)) {
-                console.log(`[Lock] Removing stale lock from another device...`);
-                await googleDriveService.deleteFile(lock.id);
-            } else {
-                hasOtherActiveLock = true;
-                otherActiveOperation = lock.content.operation;
-            }
-        }
-
-        if (hasOtherActiveLock) {
-            console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
-            if (onProgress) onProgress(`Блокировка: Активная блокировка другим устройством. Ожидание...`);
-            if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
-                await sleep(LOCK_ACQUIRE_RETRY_MS);
-                continue;
-            }
-            return err(new Error(
-                `Синхронизация заблокирована другим устройством (операция: ${otherActiveOperation}). Попробуйте позже.`
-            ));
-        }
-
-        console.log(`[Lock] No active locks found. Proceeding to create one.`);
-        const createMsg = `Блокировка: Создание нового файла блокировки...`;
+        const createMsg = `Блокировка (попытка ${attempt + 1}): Создание файла блокировки...`;
         if (onProgress) onProgress(createMsg);
         
         const t2 = Date.now();
@@ -125,8 +86,8 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
         let verifyRes = await findAllLockFiles(folderId);
         let verifyTries = 0;
         
-        // Poll until we see our lock file (Google Drive search eventual consistency)
-        while (!verifyRes.error && !verifyRes.data.find(l => l.content.deviceId === deviceId) && verifyTries < 5) {
+        // Poll until we see our newly created lock file (Google Drive search eventual consistency)
+        while (!verifyRes.error && !verifyRes.data.find(l => l.id === createRes.data.id) && verifyTries < 5) {
             verifyTries++;
             console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
             if (onProgress) onProgress(`Блокировка: Индексация Google Drive задерживается. Ожидание (${verifyTries}/5)...`);
@@ -139,10 +100,8 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
         if (onProgress) onProgress(`${verifyMsg} завершено за ${t5 - t4}мс`);
         if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
 
-        const ours = verifyRes.data.find(l => l.content.deviceId === deviceId);
+        const ours = verifyRes.data.find(l => l.id === createRes.data.id);
         if (!ours) {
-            // Google Drive search index eventual consistency delay was too long.
-            // We know we created a lock, but it's not showing up.
             console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
             await googleDriveService.deleteFile(createRes.data.id);
             if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
@@ -152,41 +111,51 @@ export async function acquireLock(operation: "export" | "import", folderId?: str
             return err(new Error(`Не удалось подтвердить создание файла блокировки. Попробуйте позже.`));
         }
 
-        if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
-            // We are the sole owner
-            console.log(`[Lock] Acquired lock successfully without collision.`);
+        console.log(`[Lock] Resolving locks: ${verifyRes.data.length} locks found.`);
+
+        const validLocks: typeof verifyRes.data = [];
+        for (const lock of verifyRes.data) {
+            if (lock.id === createRes.data.id) {
+                validLocks.push(lock);
+            } else if (lock.content.deviceId === deviceId) {
+                console.log(`[Lock] Removing leftover lock from our own device...`);
+                await googleDriveService.deleteFile(lock.id);
+            } else if (isLockStale(lock.createdTime)) {
+                console.log(`[Lock] Removing stale lock from device ${lock.content.deviceId}...`);
+                await googleDriveService.deleteFile(lock.id);
+            } else {
+                validLocks.push(lock);
+            }
+        }
+
+        if (validLocks.length === 1 && validLocks[0].id === createRes.data.id) {
+            console.log(`[Lock] Acquired lock successfully without active collisions.`);
             return ok(createRes.data.id);
         }
 
-        console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
-
-        // Multiple lock files — race condition. Keep the one with the earliest createdTime
-        // (server-assigned, no clock skew), or if tied, the lexicographically smallest deviceId.
-        const winner = verifyRes.data.reduce((a, b) => {
+        // Multiple valid lock files — collision or active lock from another device. 
+        // Find the "winner" (earliest createdTime, tiebreak by deviceId).
+        const winner = validLocks.reduce((a, b) => {
             const aTime = new Date(a.createdTime).getTime();
             const bTime = new Date(b.createdTime).getTime();
             if (aTime !== bTime) return aTime < bTime ? a : b;
             return a.content.deviceId < b.content.deviceId ? a : b;
         });
 
-        if (winner.content.deviceId === deviceId) {
-            // We won — delete the other lock files
-            for (const lock of verifyRes.data) {
-                if (lock.id !== winner.id) {
-                    await googleDriveService.deleteFile(lock.id);
-                }
-            }
-            return ok(winner.id);
+        if (winner.id === createRes.data.id) {
+            // We won! We DO NOT delete the other valid locks here. 
+            // The other devices will see our older lock, realize they lost, and delete their own locks.
+            console.log(`[Lock] We won the collision resolution. Proceeding with sync.`);
+            return ok(createRes.data.id);
         }
 
         // We lost — delete our lock file and retry
-        if (ours) {
-            console.log(`[Lock] Deleting our losing lock...`);
-            await googleDriveService.deleteFile(ours.id);
-        }
+        console.log(`[Lock] We lost the collision resolution (active lock held by ${winner.content.deviceId}). Deleting our losing lock...`);
+        await googleDriveService.deleteFile(createRes.data.id);
 
         if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
             console.log(`[Lock] Waiting before retry...`);
+            if (onProgress) onProgress(`Блокировка: Активная блокировка другим устройством. Ожидание...`);
             await sleep(LOCK_ACQUIRE_RETRY_MS);
             continue;
         }
