@@ -28128,41 +28128,7 @@ async function acquireLock(operation, folderId, onProgress) {
   console.log(`[Lock] Attempting to acquire lock for operation: ${operation}. Max retries: ${LOCK_ACQUIRE_MAX_RETRIES}`);
   for (let attempt = 0; attempt <= LOCK_ACQUIRE_MAX_RETRIES; attempt++) {
     console.log(`[Lock] --- Attempt ${attempt + 1} ---`);
-    const progressMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 (\u043F\u043E\u043F\u044B\u0442\u043A\u0430 ${attempt + 1}): \u041F\u043E\u0438\u0441\u043A \u0441\u0443\u0449\u0435\u0441\u0442\u0432\u0443\u044E\u0449\u0435\u0439 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
-    if (onProgress) onProgress(progressMsg);
-    const t0 = Date.now();
-    const lockRes = await findAllLockFiles(folderId);
-    const t1 = Date.now();
-    if (onProgress) onProgress(`${progressMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t1 - t0}\u043C\u0441`);
-    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to check lock"));
-    const existingLocks = lockRes.data;
-    let hasOtherActiveLock = false;
-    let otherActiveOperation = "";
-    for (const lock of existingLocks) {
-      if (lock.content.deviceId === deviceId) {
-        console.log(`[Lock] Removing our previous lock...`);
-        await googleDriveService.deleteFile(lock.id);
-      } else if (isLockStale(lock.createdTime)) {
-        console.log(`[Lock] Removing stale lock from another device...`);
-        await googleDriveService.deleteFile(lock.id);
-      } else {
-        hasOtherActiveLock = true;
-        otherActiveOperation = lock.content.operation;
-      }
-    }
-    if (hasOtherActiveLock) {
-      console.log(`[Lock] Active lock held by another device. Waiting before retry...`);
-      if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0410\u043A\u0442\u0438\u0432\u043D\u0430\u044F \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435...`);
-      if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
-        await sleep(LOCK_ACQUIRE_RETRY_MS);
-        continue;
-      }
-      return err(new Error(
-        `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C (\u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F: ${otherActiveOperation}). \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`
-      ));
-    }
-    console.log(`[Lock] No active locks found. Proceeding to create one.`);
-    const createMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0421\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u043D\u043E\u0432\u043E\u0433\u043E \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
+    const createMsg = `\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 (\u043F\u043E\u043F\u044B\u0442\u043A\u0430 ${attempt + 1}): \u0421\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438...`;
     if (onProgress) onProgress(createMsg);
     const t2 = Date.now();
     const createRes = await createLockFile(operation, folderId);
@@ -28174,7 +28140,7 @@ async function acquireLock(operation, folderId, onProgress) {
     const t4 = Date.now();
     let verifyRes = await findAllLockFiles(folderId);
     let verifyTries = 0;
-    while (!verifyRes.error && !verifyRes.data.find((l) => l.content.deviceId === deviceId) && verifyTries < 5) {
+    while (!verifyRes.error && !verifyRes.data.find((l) => l.id === createRes.data.id) && verifyTries < 5) {
       verifyTries++;
       console.log(`[Lock] Our lock not found in search results, retrying verification (attempt ${verifyTries})...`);
       if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0418\u043D\u0434\u0435\u043A\u0441\u0430\u0446\u0438\u044F Google Drive \u0437\u0430\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044F. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435 (${verifyTries}/5)...`);
@@ -28184,7 +28150,7 @@ async function acquireLock(operation, folderId, onProgress) {
     const t5 = Date.now();
     if (onProgress) onProgress(`${verifyMsg} \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u043E \u0437\u0430 ${t5 - t4}\u043C\u0441`);
     if (verifyRes.error) return err(new AggregateError([verifyRes.error], "failed to verify lock ownership"));
-    const ours = verifyRes.data.find((l) => l.content.deviceId === deviceId);
+    const ours = verifyRes.data.find((l) => l.id === createRes.data.id);
     if (!ours) {
       console.log(`[Lock] Created lock still missing from search results. Deleting by ID and retrying outer loop.`);
       await googleDriveService.deleteFile(createRes.data.id);
@@ -28194,31 +28160,40 @@ async function acquireLock(operation, folderId, onProgress) {
       }
       return err(new Error(`\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u0435 \u0444\u0430\u0439\u043B\u0430 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438. \u041F\u043E\u043F\u0440\u043E\u0431\u0443\u0439\u0442\u0435 \u043F\u043E\u0437\u0436\u0435.`));
     }
-    if (verifyRes.data.length === 1 && verifyRes.data[0].content.deviceId === deviceId) {
-      console.log(`[Lock] Acquired lock successfully without collision.`);
+    console.log(`[Lock] Resolving locks: ${verifyRes.data.length} locks found.`);
+    const validLocks = [];
+    for (const lock of verifyRes.data) {
+      if (lock.id === createRes.data.id) {
+        validLocks.push(lock);
+      } else if (lock.content.deviceId === deviceId) {
+        console.log(`[Lock] Removing leftover lock from our own device...`);
+        await googleDriveService.deleteFile(lock.id);
+      } else if (isLockStale(lock.createdTime)) {
+        console.log(`[Lock] Removing stale lock from device ${lock.content.deviceId}...`);
+        await googleDriveService.deleteFile(lock.id);
+      } else {
+        validLocks.push(lock);
+      }
+    }
+    if (validLocks.length === 1 && validLocks[0].id === createRes.data.id) {
+      console.log(`[Lock] Acquired lock successfully without active collisions.`);
       return ok(createRes.data.id);
     }
-    console.log(`[Lock] Collision detected or other lock found: ${verifyRes.data.length} locks. Resolving...`);
-    const winner = verifyRes.data.reduce((a, b) => {
+    const winner = validLocks.reduce((a, b) => {
       const aTime = new Date(a.createdTime).getTime();
       const bTime = new Date(b.createdTime).getTime();
       if (aTime !== bTime) return aTime < bTime ? a : b;
       return a.content.deviceId < b.content.deviceId ? a : b;
     });
-    if (winner.content.deviceId === deviceId) {
-      for (const lock of verifyRes.data) {
-        if (lock.id !== winner.id) {
-          await googleDriveService.deleteFile(lock.id);
-        }
-      }
-      return ok(winner.id);
+    if (winner.id === createRes.data.id) {
+      console.log(`[Lock] We won the collision resolution. Proceeding with sync.`);
+      return ok(createRes.data.id);
     }
-    if (ours) {
-      console.log(`[Lock] Deleting our losing lock...`);
-      await googleDriveService.deleteFile(ours.id);
-    }
+    console.log(`[Lock] We lost the collision resolution (active lock held by ${winner.content.deviceId}). Deleting our losing lock...`);
+    await googleDriveService.deleteFile(createRes.data.id);
     if (attempt < LOCK_ACQUIRE_MAX_RETRIES) {
       console.log(`[Lock] Waiting before retry...`);
+      if (onProgress) onProgress(`\u0411\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430: \u0410\u043A\u0442\u0438\u0432\u043D\u0430\u044F \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0430 \u0434\u0440\u0443\u0433\u0438\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u043E\u043C. \u041E\u0436\u0438\u0434\u0430\u043D\u0438\u0435...`);
       await sleep(LOCK_ACQUIRE_RETRY_MS);
       continue;
     }
@@ -28264,113 +28239,127 @@ function sleep(ms) {
 
 // domain/google_sync_service.ts
 var import_papaparse = __toESM(require_papaparse_min());
+async function withLocalLock(fn) {
+  if (typeof navigator !== "undefined" && navigator.locks) {
+    return new Promise((resolve) => {
+      navigator.locks.request("mmm_sync", async () => {
+        resolve(await fn());
+      });
+    });
+  }
+  return fn();
+}
 var GoogleSyncService = class {
   async getUserEmail() {
     return googleDriveService.getUserEmail();
   }
   async exportToGoogleDrive(transactions, folderId, onProgress) {
-    if (!transactions || transactions.length === 0) {
-      return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
-    }
-    if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
-    const lockRes = await acquireLock("export", folderId, onProgress);
-    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for export"));
-    const lockFileId = lockRes.data;
-    try {
-      const groups = {};
-      for (const t of transactions) {
-        const month = t.date.substring(0, 7);
-        const key = `MMM - ${t.accountName} - ${month}.csv`;
-        if (!groups[key]) groups[key] = [];
-        groups[key].push(t);
+    return withLocalLock(async () => {
+      if (!transactions || transactions.length === 0) {
+        return err(new Error("\u041D\u0435\u0442 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0434\u043B\u044F \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430"));
       }
-      const entries = Object.entries(groups);
-      let completed = 0;
-      const uploadPromises = entries.map(async ([name, txs]) => {
-        const escapedName = name.replace(/'/g, "\\'");
-        let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
+      if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
+      const lockRes = await acquireLock("export", folderId, onProgress);
+      if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for export"));
+      const lockFileId = lockRes.data;
+      try {
+        const groups = {};
+        for (const t of transactions) {
+          const month = t.date.substring(0, 7);
+          const key = `MMM - ${t.accountName} - ${month}.csv`;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(t);
+        }
+        const entries = Object.entries(groups);
+        let completed = 0;
+        const uploadPromises = entries.map(async ([name, txs]) => {
+          const escapedName = name.replace(/'/g, "\\'");
+          let query = `name = '${escapedName}' and mimeType = 'text/csv' and trashed = false`;
+          if (folderId) {
+            query += ` and '${folderId}' in parents`;
+          }
+          const filesRes = await googleDriveService.listFiles(query);
+          let fileId;
+          if (filesRes.error) return err(filesRes.error);
+          if (filesRes.data.length > 0) {
+            fileId = filesRes.data[0].id;
+          }
+          const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
+          const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
+          if (uploadRes.error) return err(uploadRes.error);
+          completed++;
+          if (onProgress) onProgress(`\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E ${completed} \u0438\u0437 ${entries.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
+          return ok(void 0);
+        });
+        const results = await Promise.all(uploadPromises);
+        for (const res of results) {
+          if (res.error) return err(res.error);
+        }
+        return ok(void 0);
+      } finally {
+        await releaseLock(lockFileId);
+      }
+    });
+  }
+  async importFromGoogleDrive(folderId, onProgress) {
+    return withLocalLock(async () => {
+      if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
+      const lockRes = await acquireLock("import", folderId, onProgress);
+      if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for import"));
+      const lockFileId = lockRes.data;
+      try {
+        if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
+        let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
         if (folderId) {
           query += ` and '${folderId}' in parents`;
         }
         const filesRes = await googleDriveService.listFiles(query);
-        let fileId;
         if (filesRes.error) return err(filesRes.error);
-        if (filesRes.data.length > 0) {
-          fileId = filesRes.data[0].id;
+        const allTransactions = [];
+        const files = filesRes.data;
+        let completed = 0;
+        const fetchPromises = files.map(async (file) => {
+          const contentRes = await googleDriveService.getFileContent(file.id);
+          if (contentRes.error) return err(contentRes.error);
+          const parsed = import_papaparse.default.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
+          const fileTransactions = parsed.data.map((t) => ({
+            id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
+            uuid: t.uuid || "",
+            date: t.date || "",
+            amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
+            amountAccountCurrency: String(t.amountAccountCurrency || "0"),
+            accountName: t.accountName || "",
+            category: t.category || "",
+            description: t.description || "",
+            type: t.type || "withdraw",
+            transferReceiveAccountName: t.transferReceiveAccountName || null,
+            transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
+          }));
+          completed++;
+          if (onProgress) onProgress(`\u0421\u043A\u0430\u0447\u0430\u043D\u043E ${completed} \u0438\u0437 ${files.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
+          return ok(fileTransactions);
+        });
+        const results = await Promise.all(fetchPromises);
+        for (const res of results) {
+          if (res.error) return err(res.error);
+          allTransactions.push(...res.data);
         }
-        const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
-        const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
-        if (uploadRes.error) return err(uploadRes.error);
-        completed++;
-        if (onProgress) onProgress(`\u0417\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E ${completed} \u0438\u0437 ${entries.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
-        return ok(void 0);
-      });
-      const results = await Promise.all(uploadPromises);
-      for (const res of results) {
-        if (res.error) return err(res.error);
-      }
-      return ok(void 0);
-    } finally {
-      await releaseLock(lockFileId);
-    }
-  }
-  async importFromGoogleDrive(folderId, onProgress) {
-    if (onProgress) onProgress("\u041F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u0435 \u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u043A\u0438 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...");
-    const lockRes = await acquireLock("import", folderId, onProgress);
-    if (lockRes.error) return err(new AggregateError([lockRes.error], "failed to acquire sync lock for import"));
-    const lockFileId = lockRes.data;
-    try {
-      if (onProgress) onProgress("\u041F\u043E\u0438\u0441\u043A CSV \u0444\u0430\u0439\u043B\u043E\u0432...");
-      let query = "name contains 'MMM - ' and mimeType = 'text/csv' and trashed = false";
-      if (folderId) {
-        query += ` and '${folderId}' in parents`;
-      }
-      const filesRes = await googleDriveService.listFiles(query);
-      if (filesRes.error) return err(filesRes.error);
-      const allTransactions = [];
-      const files = filesRes.data;
-      let completed = 0;
-      const fetchPromises = files.map(async (file) => {
-        const contentRes = await googleDriveService.getFileContent(file.id);
-        if (contentRes.error) return err(contentRes.error);
-        const parsed = import_papaparse.default.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
-        const fileTransactions = parsed.data.map((t) => ({
-          id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
-          uuid: t.uuid || "",
-          date: t.date || "",
-          amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
-          amountAccountCurrency: String(t.amountAccountCurrency || "0"),
-          accountName: t.accountName || "",
-          category: t.category || "",
-          description: t.description || "",
-          type: t.type || "withdraw",
-          transferReceiveAccountName: t.transferReceiveAccountName || null,
-          transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
-        }));
-        completed++;
-        if (onProgress) onProgress(`\u0421\u043A\u0430\u0447\u0430\u043D\u043E ${completed} \u0438\u0437 ${files.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
-        return ok(fileTransactions);
-      });
-      const results = await Promise.all(fetchPromises);
-      for (const res of results) {
-        if (res.error) return err(res.error);
-        allTransactions.push(...res.data);
-      }
-      const seenUuids = /* @__PURE__ */ new Set();
-      const uniqueTransactions = [];
-      for (const t of allTransactions) {
-        if (t.uuid) {
-          if (seenUuids.has(t.uuid)) {
-            continue;
+        const seenUuids = /* @__PURE__ */ new Set();
+        const uniqueTransactions = [];
+        for (const t of allTransactions) {
+          if (t.uuid) {
+            if (seenUuids.has(t.uuid)) {
+              continue;
+            }
+            seenUuids.add(t.uuid);
           }
-          seenUuids.add(t.uuid);
+          uniqueTransactions.push(t);
         }
-        uniqueTransactions.push(t);
+        return ok(uniqueTransactions);
+      } finally {
+        await releaseLock(lockFileId);
       }
-      return ok(uniqueTransactions);
-    } finally {
-      await releaseLock(lockFileId);
-    }
+    });
   }
 };
 var googleSyncService = new GoogleSyncService();
@@ -29160,7 +29149,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:59:51 +0300" : "dev"
+          true ? "2026-07-13 00:32:03 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29371,4 +29360,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-SSJ6ZIR7.js.map
+//# sourceMappingURL=app-PTSTQSS4.js.map
