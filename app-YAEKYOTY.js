@@ -28446,8 +28446,10 @@ var AppStore = class {
     await set4("syncFolderName", name);
   }
   async exportToGoogleDrive() {
-    this.isLoading = true;
-    this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    runInAction(() => {
+      this.isLoading = true;
+      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    });
     const authRes = await googleDriveService.ensureAuthenticated();
     if (authRes.error) {
       runInAction(() => {
@@ -28457,7 +28459,9 @@ var AppStore = class {
       });
       return;
     }
-    this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
+    runInAction(() => {
+      this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
+    });
     try {
       const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0, (progress) => {
         runInAction(() => {
@@ -28487,8 +28491,10 @@ var AppStore = class {
     }
   }
   async importFromGoogleDrive() {
-    this.isLoading = true;
-    this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    runInAction(() => {
+      this.isLoading = true;
+      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    });
     const authRes = await googleDriveService.ensureAuthenticated();
     if (authRes.error) {
       runInAction(() => {
@@ -28498,7 +28504,9 @@ var AppStore = class {
       });
       return;
     }
-    this.syncProgress = "\u041F\u043E\u0438\u0441\u043A \u0444\u0430\u0439\u043B\u043E\u0432...";
+    runInAction(() => {
+      this.syncProgress = "\u041F\u043E\u0438\u0441\u043A \u0444\u0430\u0439\u043B\u043E\u0432...";
+    });
     try {
       const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0, (progress) => {
         runInAction(() => {
@@ -28511,7 +28519,9 @@ var AppStore = class {
         });
         return;
       }
-      this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
+      runInAction(() => {
+        this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
+      });
       const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
       if (replaceRes.error) {
         runInAction(() => {
@@ -28647,7 +28657,9 @@ var AppStore = class {
     this.closeAccountModal();
   }
   async openFolderModal() {
-    this.isLoading = true;
+    runInAction(() => {
+      this.isLoading = true;
+    });
     const authRes = await googleDriveService.ensureAuthenticated();
     runInAction(() => {
       this.isLoading = false;
@@ -29148,7 +29160,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h1", { style: { margin: 0, fontSize: "24px", fontWeight: "normal" }, children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { fontSize: "10px", color: "#888", marginTop: "2px" }, children: [
           "v. ",
-          true ? "2026-07-12 18:46:23 +0300" : "dev"
+          true ? "2026-07-12 18:55:12 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "16px" }, children: [
@@ -29359,4 +29371,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-IXYDVFSH.js.map
+//# sourceMappingURL=app-YAEKYOTY.js.map
