@@ -2346,8 +2346,8 @@ var require_react_dom_client_development = __commonJS({
           ), true;
         try {
           rendererID = hook.inject(internals), injectedHook = hook;
-        } catch (err3) {
-          console.error("React instrumentation encountered an error: %o.", err3);
+        } catch (err2) {
+          console.error("React instrumentation encountered an error: %o.", err2);
         }
         return hook.checkDCE ? true : false;
       }
@@ -2356,10 +2356,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.setStrictMode)
           try {
             injectedHook.setStrictMode(rendererID, newIsStrictMode);
-          } catch (err3) {
+          } catch (err2) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err3
+              err2
             ));
           }
       }
@@ -4175,7 +4175,7 @@ var require_react_dom_client_development = __commonJS({
         for (var element = getActiveElement(containerInfo.document); element instanceof containerInfo.HTMLIFrameElement; ) {
           try {
             var JSCompiler_inline_result = "string" === typeof element.contentWindow.location.href;
-          } catch (err3) {
+          } catch (err2) {
             JSCompiler_inline_result = false;
           }
           if (JSCompiler_inline_result) containerInfo = element.contentWindow;
@@ -11413,10 +11413,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.onCommitFiberUnmount)
           try {
             injectedHook.onCommitFiberUnmount(rendererID, deletedFiber);
-          } catch (err3) {
+          } catch (err2) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err3
+              err2
             ));
           }
         var prevEffectStart = pushComponentEffectStart(), prevEffectDuration = pushComponentEffectDuration(), prevEffectErrors = pushComponentEffectErrors(), prevEffectDidSpawnUpdate = pushComponentEffectDidSpawnUpdate();
@@ -14322,10 +14322,10 @@ var require_react_dom_client_development = __commonJS({
                 schedulerPriority,
                 didError
               );
-            } catch (err3) {
+            } catch (err2) {
               hasLoggedError || (hasLoggedError = true, console.error(
                 "React instrumentation encountered an error: %o",
-                err3
+                err2
               ));
             }
           isDevToolsPresent && startViewTransitionStartTime.memoizedUpdaters.clear();
@@ -14481,10 +14481,10 @@ var require_react_dom_client_development = __commonJS({
           if (injectedHook && "function" === typeof injectedHook.onPostCommitFiberRoot)
             try {
               injectedHook.onPostCommitFiberRoot(rendererID, priority);
-            } catch (err3) {
+            } catch (err2) {
               hasLoggedError || (hasLoggedError = true, console.error(
                 "React instrumentation encountered an error: %o",
-                err3
+                err2
               ));
             }
           var stateNode = priority.current.stateNode;
@@ -17996,10 +17996,10 @@ var require_react_dom_client_development = __commonJS({
         if (injectedHook && "function" === typeof injectedHook.onScheduleFiberRoot)
           try {
             injectedHook.onScheduleFiberRoot(rendererID, container, element);
-          } catch (err3) {
+          } catch (err2) {
             hasLoggedError || (hasLoggedError = true, console.error(
               "React instrumentation encountered an error: %o",
-              err3
+              err2
             ));
           }
         parentComponent = getContextForSubtree(parentComponent);
@@ -21599,13 +21599,13 @@ var require_lib = __commonJS({
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     exports.ResultIs = exports.withResult = void 0;
-    exports.err = err3;
+    exports.err = err2;
     exports.ok = ok2;
     var with_result_1 = require_with_result();
     Object.defineProperty(exports, "withResult", { enumerable: true, get: function() {
       return with_result_1.withResult;
     } });
-    function err3(error) {
+    function err2(error) {
       return {
         data: null,
         error,
@@ -21616,7 +21616,7 @@ var require_lib = __commonJS({
           return defaultValue;
         },
         transformOnFailure(fn) {
-          return err3(fn(error));
+          return err2(fn(error));
         },
         transformOnSuccess() {
           return this;
@@ -21643,7 +21643,7 @@ var require_lib = __commonJS({
     }
     exports.ResultIs = {
       success: ok2,
-      failure: err3
+      failure: err2
     };
   }
 });
@@ -23528,9 +23528,9 @@ function executeAction(actionName, canRunAsDerivation, fn, scope, args) {
   var runInfo = _startAction(actionName, canRunAsDerivation, scope, args);
   try {
     return fn.apply(scope, args);
-  } catch (err3) {
-    runInfo.error_ = err3;
-    throw err3;
+  } catch (err2) {
+    runInfo.error_ = err2;
+    throw err2;
   } finally {
     _endAction(runInfo);
   }
@@ -24899,11 +24899,11 @@ var flow = /* @__PURE__ */ Object.assign(function flow2(arg1, arg2) {
         }
         next(ret);
       }
-      function onRejected(err3) {
+      function onRejected(err2) {
         pendingPromise = void 0;
         var ret;
         try {
-          ret = action(name + " - runid: " + runId + " - yield " + stepId++, gen["throw"]).call(gen, err3);
+          ret = action(name + " - runid: " + runId + " - yield " + stepId++, gen["throw"]).call(gen, err2);
         } catch (e) {
           return reject(e);
         }
@@ -27437,10 +27437,7 @@ observerBatching(import_react_dom.unstable_batchedUpdates);
 var clearTimers = (_a2 = observerFinalizationRegistry["finalizeAllImmediately"]) !== null && _a2 !== void 0 ? _a2 : (function() {
 });
 
-// infrastructure/repository.ts
-var import_globals2 = __toESM(require_globals());
-
-// infrastructure/db_wrapper.ts
+// infrastructure/db.ts
 var import_globals = __toESM(require_globals());
 
 // ../node_modules/idb/build/index.js
@@ -27707,109 +27704,82 @@ function getDB() {
   }
   return dbPromise;
 }
-
-// infrastructure/db_wrapper.ts
-var import_ts_error_as_value = __toESM(require_lib());
-async function withDB(operation) {
+async function replaceAllTransactions(transactions) {
   const { data: db, error: dbErr } = await withResult(getDB)();
-  if (dbErr) return (0, import_ts_error_as_value.err)(new AggregateError([dbErr], "failed to open database"));
-  const { data, error: opErr } = await withResult(operation)(db);
-  if (opErr) {
-    console.error("Database operation failed:", opErr);
-    return (0, import_ts_error_as_value.err)(new AggregateError([opErr], "database operation failed"));
-  }
+  if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
+  const { error: opErr } = await withResult(async () => {
+    const tx = db.transaction("transactions", "readwrite");
+    await tx.store.clear();
+    const sorted = [...transactions].sort((a, b) => {
+      if (a.date !== b.date) return a.date.localeCompare(b.date);
+      return a.id - b.id;
+    });
+    for (const t of sorted) {
+      const data = __spreadValues({}, t);
+      if (!data.uuid) data.uuid = crypto.randomUUID();
+      delete data.id;
+      await tx.store.add(data);
+    }
+    await tx.done;
+  })();
+  if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+  return ok(void 0);
+}
+async function getTransactions() {
+  const { data: db, error: dbErr } = await withResult(getDB)();
+  if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
+  const { data, error: opErr } = await withResult(() => db.getAllFromIndex("transactions", "by-date"))();
+  if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+  data.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.id - a.id;
+  });
   return ok(data);
 }
-
-// infrastructure/repository.ts
-var indexedDBRepository = {
-  async replaceAllTransactions(transactions) {
-    const result = await withDB(async (db) => {
-      const tx = db.transaction("transactions", "readwrite");
-      await tx.store.clear();
-      const sorted = [...transactions].sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return a.id - b.id;
-      });
-      for (const t of sorted) {
-        const data = __spreadValues({}, t);
-        if (!data.uuid) data.uuid = crypto.randomUUID();
-        delete data.id;
-        await tx.store.add(data);
-      }
-      await tx.done;
-    });
-    if (result.error) return result;
-    return ok(void 0);
-  },
-  async getTransactions() {
-    const result = await withDB((db) => db.getAllFromIndex("transactions", "by-date"));
-    if (result.error) return result;
-    result.data.sort((a, b) => {
-      if (a.date !== b.date) return b.date.localeCompare(a.date);
-      return b.id - a.id;
-    });
-    return ok(result.data);
-  },
-  async getTransaction(id) {
-    return withDB((db) => db.get("transactions", id));
-  },
-  async saveTransaction(transaction2) {
-    const result = await withDB(async (db) => {
-      if (!transaction2.uuid) {
-        transaction2.uuid = crypto.randomUUID();
-      }
-      if (transaction2.id === 0) {
-        const data = __spreadValues({}, transaction2);
-        delete data.id;
-        await db.add("transactions", data);
-      } else {
-        await db.put("transactions", transaction2);
-      }
-    });
-    if (result.error) return result;
-    return ok(void 0);
-  },
-  async deleteTransaction(id) {
-    const result = await withDB(async (db) => {
-      await db.delete("transactions", id);
-    });
-    if (result.error) return result;
-    return ok(void 0);
-  },
-  async getAccounts() {
-    return withDB((db) => db.getAll("accounts"));
-  },
-  async getAccount(id) {
-    return withDB((db) => db.get("accounts", id));
-  },
-  async saveAccount(account) {
-    const result = await withDB(async (db) => {
-      if (account.id === 0) {
-        const data = __spreadValues({}, account);
-        delete data.id;
-        await db.add("accounts", data);
-      } else {
-        await db.put("accounts", account);
-      }
-    });
-    if (result.error) return result;
-    return ok(void 0);
-  },
-  async deleteAccount(id) {
-    const result = await withDB(async (db) => {
-      await db.delete("accounts", id);
-    });
-    if (result.error) return result;
-    return ok(void 0);
-  }
-};
+async function saveTransaction(transaction2) {
+  const { data: db, error: dbErr } = await withResult(getDB)();
+  if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
+  const { error: opErr } = await withResult(async () => {
+    if (!transaction2.uuid) transaction2.uuid = crypto.randomUUID();
+    if (transaction2.id === 0) {
+      const data = __spreadValues({}, transaction2);
+      delete data.id;
+      await db.add("transactions", data);
+    } else {
+      await db.put("transactions", transaction2);
+    }
+  })();
+  if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+  return ok(void 0);
+}
+async function getAccounts() {
+  const { data: db, error: dbErr } = await withResult(getDB)();
+  if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
+  const { data, error: opErr } = await withResult(() => db.getAll("accounts"))();
+  if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+  return ok(data);
+}
+async function saveAccount(account) {
+  const { data: db, error: dbErr } = await withResult(getDB)();
+  if (dbErr) return err(new AggregateError([dbErr], "failed to open database"));
+  const { error: opErr } = await withResult(async () => {
+    if (account.id === 0) {
+      const data = __spreadValues({}, account);
+      delete data.id;
+      await db.add("accounts", data);
+    } else {
+      await db.put("accounts", account);
+    }
+  })();
+  if (opErr) return err(new AggregateError([opErr], "database operation failed"));
+  return ok(void 0);
+}
 
 // domain/google_sync_service.ts
-var import_globals5 = __toESM(require_globals());
+var import_globals4 = __toESM(require_globals());
 
 // infrastructure/google_drive.ts
-var import_globals3 = __toESM(require_globals());
+var import_globals2 = __toESM(require_globals());
 var CLIENT_ID = "26384778878-6ev9883mob866lnecidhqeudl4461pvd.apps.googleusercontent.com";
 var SCOPES = "https://www.googleapis.com/auth/drive";
 var GoogleDriveService = class {
@@ -28042,7 +28012,7 @@ var GoogleDriveService = class {
 var googleDriveService = new GoogleDriveService();
 
 // infrastructure/google_drive_lock.ts
-var import_globals4 = __toESM(require_globals());
+var import_globals3 = __toESM(require_globals());
 
 // ../node_modules/idb-keyval/dist/index.js
 function promisifyRequest2(request) {
@@ -28511,7 +28481,7 @@ var AppStore = class {
       runInAction(() => {
         this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
       });
-      const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+      const replaceRes = await replaceAllTransactions(result.data);
       if (replaceRes.error) {
         runInAction(() => {
           this.error = replaceRes.error;
@@ -28538,7 +28508,7 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-KNJTZRHR.js" : "/domain/recalculate_worker.js";
+    const workerUrl = true ? "/domain/recalculate_worker-5E3BBBYI.js" : "/domain/recalculate_worker.js";
     const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
@@ -28575,7 +28545,7 @@ var AppStore = class {
       if (folderId !== void 0) this.syncFolderId = folderId;
       if (folderName !== void 0) this.syncFolderName = folderName;
     });
-    const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
+    const { data: accountsData, error: accountsErr } = await getAccounts();
     if (accountsErr) {
       runInAction(() => {
         this.error = accountsErr;
@@ -28583,7 +28553,7 @@ var AppStore = class {
       });
       return;
     }
-    const { data: txData, error: txErr } = await indexedDBRepository.getTransactions();
+    const { data: txData, error: txErr } = await getTransactions();
     if (txErr) {
       runInAction(() => {
         this.error = txErr;
@@ -28611,7 +28581,7 @@ var AppStore = class {
     }
   }
   async saveTransaction(transaction2) {
-    const { error } = await indexedDBRepository.saveTransaction(transaction2);
+    const { error } = await saveTransaction(transaction2);
     if (error) {
       runInAction(() => {
         this.error = error;
@@ -28635,7 +28605,7 @@ var AppStore = class {
     }
   }
   async saveAccount(account) {
-    const { error } = await indexedDBRepository.saveAccount(account);
+    const { error } = await saveAccount(account);
     if (error) {
       runInAction(() => {
         this.error = error;
@@ -28756,7 +28726,7 @@ var AccountsView = observer(() => {
 
 // db_explorer_view.tsx
 var import_react8 = __toESM(require_react());
-var import_globals6 = __toESM(require_globals());
+var import_globals5 = __toESM(require_globals());
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
 var DatabaseExplorer = observer(() => {
   const [dbData, setDbData] = (0, import_react8.useState)({});
@@ -29053,13 +29023,13 @@ var TransactionsView = observer(() => {
 });
 
 // tinkoff_auth_service.ts
-var import_globals10 = __toESM(require_globals());
-
-// infrastructure/tinkoff.ts
 var import_globals8 = __toESM(require_globals());
 
-// infrastructure/proxy.ts
+// infrastructure/tinkoff.ts
 var import_globals7 = __toESM(require_globals());
+
+// infrastructure/proxy.ts
+var import_globals6 = __toESM(require_globals());
 async function proxy(method, url, body, headers) {
   const request = {
     method,
@@ -29204,40 +29174,6 @@ async function getSession({
   return response;
 }
 
-// infrastructure/json_store.ts
-var import_globals9 = __toESM(require_globals());
-var JsonStore = class {
-  /**
-   * Saves a value to IndexedDB.
-   * * @param key - The identifier for the data.
-   * @param value - Any JSON-serializable object.
-   * @param replacer - Optional function to transform nested values (Dart's toEncodable).
-   */
-  static async setJson(key, value, replacer) {
-    const jsonValue = JSON.stringify(value, replacer);
-    await set4(key, jsonValue);
-  }
-  /**
-   * Reads a value from IndexedDB and parses it.
-   * Throws an Error if the stored value is not valid JSON.
-   */
-  static async getJson(key) {
-    const jsonValueRes = await withResult(get3)(key);
-    if (jsonValueRes.error !== null) {
-      return err(new AggregateError([jsonValueRes.error], `Failed to retrieve key "${key}" from IDB`));
-    }
-    const jsonValue = jsonValueRes.data;
-    if (jsonValue === void 0 || jsonValue === null) {
-      return ok(null);
-    }
-    const parseRes = withResult(JSON.parse)(jsonValue);
-    if (parseRes.error !== null) {
-      return err(new AggregateError([parseRes.error], `FormatException: Invalid JSON text for key "${key}"`));
-    }
-    return ok(parseRes.data);
-  }
-};
-
 // tinkoff_auth_service.ts
 var _TinkoffAuthService = class _TinkoffAuthService {
   constructor() {
@@ -29246,32 +29182,32 @@ var _TinkoffAuthService = class _TinkoffAuthService {
   }
   // --- Persistent Getters/Setters (mimicking SharedPreferences) ---
   async getWuid() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.WUID_KEY);
+    const r = await withResult(get3)(_TinkoffAuthService.WUID_KEY);
     return r.error ? "" : r.data || "";
   }
   async setWuid(val) {
-    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, val);
+    await set4(_TinkoffAuthService.WUID_KEY, val);
   }
   async getSession() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.SESSION_KEY);
+    const r = await withResult(get3)(_TinkoffAuthService.SESSION_KEY);
     return r.error ? "" : r.data || "";
   }
   async setSession(val) {
-    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, val);
+    await set4(_TinkoffAuthService.SESSION_KEY, val);
   }
   async getPhone() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.PHONE_KEY);
+    const r = await withResult(get3)(_TinkoffAuthService.PHONE_KEY);
     return r.error ? "" : r.data || "";
   }
   async setPhone(val) {
-    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, val);
+    await set4(_TinkoffAuthService.PHONE_KEY, val);
   }
   async getPassword() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.PWD_KEY);
+    const r = await withResult(get3)(_TinkoffAuthService.PWD_KEY);
     return r.error ? "" : r.data || "";
   }
   async setPassword(val) {
-    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, val);
+    await set4(_TinkoffAuthService.PWD_KEY, val);
   }
   // --- Auth Logic ---
   /**
@@ -29292,9 +29228,9 @@ var _TinkoffAuthService = class _TinkoffAuthService {
     if (session) {
       const status = await sessionStatus(session, this.origin);
       if (status.error !== null) {
-        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
+        await set4(_TinkoffAuthService.START_KEY, 0);
       } else if (status.data.resultCode !== "OK") {
-        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
+        await set4(_TinkoffAuthService.START_KEY, 0);
       }
     }
     if (!session) {
@@ -29345,7 +29281,7 @@ var _TinkoffAuthService = class _TinkoffAuthService {
       return err(new AggregateError([res.error], "Failed to confirm OTP"));
     }
     if (res.data.resultCode === "OK") {
-      await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, true);
+      await set4(_TinkoffAuthService.LOGGED_PHONE_KEY, true);
       return ok(true);
     }
     return ok(false);
@@ -29391,11 +29327,11 @@ var _TinkoffAuthService = class _TinkoffAuthService {
     return ok(res.data.payload || []);
   }
   async signOut() {
-    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, false);
+    await set4(_TinkoffAuthService.PWD_KEY, "");
+    await set4(_TinkoffAuthService.WUID_KEY, "");
+    await set4(_TinkoffAuthService.PHONE_KEY, "");
+    await set4(_TinkoffAuthService.SESSION_KEY, "");
+    await set4(_TinkoffAuthService.LOGGED_PHONE_KEY, false);
   }
 };
 __publicField(_TinkoffAuthService, "PWD_KEY", "tinkoff_password");
@@ -29657,7 +29593,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-07-13 02:12:23 +0300" : "dev"
+          true ? "2026-07-13 08:38:19 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -29729,7 +29665,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.ts.js").then((reg) => console.log("SW registered:", reg)).catch((err3) => console.error("SW registration failed:", err3));
+    navigator.serviceWorker.register("/sw.ts.js").then((reg) => console.log("SW registered:", reg)).catch((err2) => console.error("SW registration failed:", err2));
   });
 }
 /*! Bundled license information:
@@ -29808,4 +29744,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-AYCXHKNT.js.map
+//# sourceMappingURL=app-E3ZB6UCS.js.map
