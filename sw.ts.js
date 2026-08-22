@@ -2,7 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = `mmm-pwa-${"2026-08-22 19:19:39 +0300" ? "2026-08-22 19:19:39 +0300".replace(/\s+/g, "-") : "v1"}`;
+  var CACHE_NAME = `mmm-pwa-${"2026-08-22 19:25:36 +0300" ? "2026-08-22 19:25:36 +0300".replace(/\s+/g, "-") : "v1"}`;
   var PRECACHE_ASSETS = [
     "./",
     "./index.html",
@@ -102,72 +102,26 @@
       );
       return;
     }
-    if (url.origin === self.location.origin) {
-      event.respondWith(
-        (async () => {
-          const cachedResponse = await caches.match(request, { ignoreSearch: true });
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          try {
-            const networkResponse = await fetch(request);
-            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
-              const cache = await caches.open(CACHE_NAME);
-              cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          } catch (err) {
-            const fallback = await caches.match(request);
-            if (fallback) {
-              return fallback;
-            }
-            throw err;
-          }
-        })()
-      );
-      return;
-    }
-    if (url.hostname.includes("fonts.googleapis.com") || url.hostname.includes("fonts.gstatic.com")) {
-      event.respondWith(
-        (async () => {
-          const cachedResponse = await caches.match(request) || await caches.match(request.url);
-          if (cachedResponse) {
-            fetch(request).then(async (networkResponse) => {
-              if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
-                const cache = await caches.open(CACHE_NAME);
-                await cache.put(request, networkResponse);
-              }
-            }).catch(() => {
-            });
-            return cachedResponse;
-          }
-          try {
-            const networkResponse = await fetch(request);
-            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
-              const cache = await caches.open(CACHE_NAME);
-              cache.put(request, networkResponse.clone());
-            }
-            return networkResponse;
-          } catch {
-            if (cachedResponse) return cachedResponse;
-            return new Response("", { status: 408, statusText: "Offline" });
-          }
-        })()
-      );
-      return;
-    }
     event.respondWith(
       (async () => {
-        const cachedResponse = await caches.match(request);
+        const cachedResponse = await caches.match(request, { ignoreSearch: true }) || await caches.match(request.url);
         if (cachedResponse) {
           return cachedResponse;
         }
-        const networkResponse = await fetch(request);
-        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
-          const cache = await caches.open(CACHE_NAME);
-          cache.put(request, networkResponse.clone());
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
+            const cache = await caches.open(CACHE_NAME);
+            cache.put(request, networkResponse.clone());
+          }
+          return networkResponse;
+        } catch (err) {
+          const fallback = await caches.match(request);
+          if (fallback) {
+            return fallback;
+          }
+          throw err;
         }
-        return networkResponse;
       })()
     );
   });
