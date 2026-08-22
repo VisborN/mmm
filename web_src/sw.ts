@@ -7,6 +7,8 @@ declare const __WORKER_URL__: string;
 
 const CACHE_NAME = `mmm-pwa-${typeof __COMMIT_TIME__ !== 'undefined' && __COMMIT_TIME__ ? __COMMIT_TIME__.replace(/\s+/g, '-') : 'v1'}`;
 
+const GOOGLE_FONTS_URL = 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap';
+
 const PRECACHE_ASSETS = [
   './',
   './index.html',
@@ -31,6 +33,38 @@ self.addEventListener('install', (event: ExtendableEvent) => {
       await cache.addAll(toCache).catch((err: unknown) => {
         console.warn('Service Worker: Error pre-caching static assets', err);
       });
+
+      // Pre-cache Google Fonts CSS and font binaries (.woff2)
+      try {
+        const fontCssResponse = await fetch(GOOGLE_FONTS_URL);
+        if (fontCssResponse.ok) {
+          await cache.put(GOOGLE_FONTS_URL, fontCssResponse.clone());
+          const cssText = await fontCssResponse.text();
+          const fontUrlMatches = cssText.matchAll(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g);
+          const fontFileUrls: string[] = [];
+          for (const match of fontUrlMatches) {
+            if (match[1]) {
+              fontFileUrls.push(match[1]);
+            }
+          }
+          if (fontFileUrls.length > 0) {
+            await Promise.all(
+              fontFileUrls.map(async (fontUrl) => {
+                try {
+                  const fontRes = await fetch(fontUrl);
+                  if (fontRes.ok || fontRes.type === 'opaque') {
+                    await cache.put(fontUrl, fontRes);
+                  }
+                } catch (err: unknown) {
+                  console.warn('Service Worker: Failed to pre-cache font file:', fontUrl, err);
+                }
+              })
+            );
+          }
+        }
+      } catch (err: unknown) {
+        console.warn('Service Worker: Failed to pre-cache Google Fonts:', err);
+      }
 
       // Parse index.html to discover and pre-cache dynamically hashed scripts and stylesheets
       try {
@@ -99,7 +133,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
 
   // Skip caching external API requests
   if (
-    url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('googleapis.com') && !url.hostname.includes('fonts.googleapis.com') ||
     url.hostname.includes('accounts.google.com') ||
     url.hostname.includes('tinkoff.ru') ||
     url.pathname.startsWith('/proxy')
@@ -165,12 +199,23 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // 3. Third-party static assets (e.g. Google Fonts) - Cache-first with network fallback
+  // 3. Third-party static assets (e.g. Google Fonts) - Cache-first with network fallback & background update
   if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
     event.respondWith(
       (async (): Promise<Response> => {
-        const cachedResponse = await caches.match(request);
+        const cachedResponse = (await caches.match(request)) || (await caches.match(request.url));
         if (cachedResponse) {
+          // If online, update cache in background (Stale-While-Revalidate)
+          fetch(request)
+            .then(async (networkResponse) => {
+              if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+                const cache = await caches.open(CACHE_NAME);
+                await cache.put(request, networkResponse);
+              }
+            })
+            .catch(() => {
+              // Ignore background fetch failure when offline
+            });
           return cachedResponse;
         }
 
