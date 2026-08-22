@@ -137,84 +137,31 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // 2. Same-origin assets (JS, CSS, images, worker, manifest) - Cache-first with network fallback
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      (async (): Promise<Response> => {
-        const cachedResponse = await caches.match(request, { ignoreSearch: true });
-        if (cachedResponse) {
-          return cachedResponse;
-        }
-
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch (err: unknown) {
-          const fallback = await caches.match(request);
-          if (fallback) {
-            return fallback;
-          }
-          throw err;
-        }
-      })()
-    );
-    return;
-  }
-
-  // 3. Third-party static assets (Google Fonts, CDN stylesheets, fonts) - Cache-first with network fallback & background update
-  if (url.hostname.includes('fonts.googleapis.com') || url.hostname.includes('fonts.gstatic.com')) {
-    event.respondWith(
-      (async (): Promise<Response> => {
-        const cachedResponse = (await caches.match(request)) || (await caches.match(request.url));
-        if (cachedResponse) {
-          // If online, update cache in background (Stale-While-Revalidate)
-          fetch(request)
-            .then(async (networkResponse) => {
-              if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-                const cache = await caches.open(CACHE_NAME);
-                await cache.put(request, networkResponse);
-              }
-            })
-            .catch(() => {
-              // Ignore background fetch failure when offline
-            });
-          return cachedResponse;
-        }
-
-        try {
-          const networkResponse = await fetch(request);
-          if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-            const cache = await caches.open(CACHE_NAME);
-            cache.put(request, networkResponse.clone());
-          }
-          return networkResponse;
-        } catch {
-          if (cachedResponse) return cachedResponse;
-          return new Response('', { status: 408, statusText: 'Offline' });
-        }
-      })()
-    );
-    return;
-  }
-
-  // 4. Default: Cache-first
+  // 2. Static assets (same-origin files, Google Fonts, CDN fonts & stylesheets) - Permanent Cache-first
   event.respondWith(
     (async (): Promise<Response> => {
-      const cachedResponse = await caches.match(request);
+      const cachedResponse =
+        (await caches.match(request, { ignoreSearch: true })) ||
+        (await caches.match(request.url));
+
       if (cachedResponse) {
         return cachedResponse;
       }
 
-      const networkResponse = await fetch(request);
-      if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
-        const cache = await caches.open(CACHE_NAME);
-        cache.put(request, networkResponse.clone());
+      try {
+        const networkResponse = await fetch(request);
+        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === 'opaque')) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      } catch (err: unknown) {
+        const fallback = await caches.match(request);
+        if (fallback) {
+          return fallback;
+        }
+        throw err;
       }
-      return networkResponse;
     })()
   );
 });
