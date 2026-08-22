@@ -80,6 +80,10 @@ async function buildWorkerAndConfigure() {
       entryPoints: ['sw.ts'],
       outdir: '../public',
       absWorkingDir: path.join(import.meta.dirname, 'web_src'),
+      define: {
+        '__WORKER_URL__': JSON.stringify(workerPath),
+        '__COMMIT_TIME__': JSON.stringify(commitTime)
+      }
     }
   ]);
 }
