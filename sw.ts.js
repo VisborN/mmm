@@ -2,8 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = `mmm-pwa-${"2026-08-22 19:03:03 +0300" ? "2026-08-22 19:03:03 +0300".replace(/\s+/g, "-") : "v1"}`;
-  var GOOGLE_FONTS_URL = "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap";
+  var CACHE_NAME = `mmm-pwa-${"2026-08-22 19:19:39 +0300" ? "2026-08-22 19:19:39 +0300".replace(/\s+/g, "-") : "v1"}`;
   var PRECACHE_ASSETS = [
     "./",
     "./index.html",
@@ -25,36 +24,6 @@
         await cache.addAll(toCache).catch((err) => {
           console.warn("Service Worker: Error pre-caching static assets", err);
         });
-        try {
-          const fontCssResponse = await fetch(GOOGLE_FONTS_URL);
-          if (fontCssResponse.ok) {
-            await cache.put(GOOGLE_FONTS_URL, fontCssResponse.clone());
-            const cssText = await fontCssResponse.text();
-            const fontUrlMatches = cssText.matchAll(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g);
-            const fontFileUrls = [];
-            for (const match of fontUrlMatches) {
-              if (match[1]) {
-                fontFileUrls.push(match[1]);
-              }
-            }
-            if (fontFileUrls.length > 0) {
-              await Promise.all(
-                fontFileUrls.map(async (fontUrl) => {
-                  try {
-                    const fontRes = await fetch(fontUrl);
-                    if (fontRes.ok || fontRes.type === "opaque") {
-                      await cache.put(fontUrl, fontRes);
-                    }
-                  } catch (err) {
-                    console.warn("Service Worker: Failed to pre-cache font file:", fontUrl, err);
-                  }
-                })
-              );
-            }
-          }
-        } catch (err) {
-          console.warn("Service Worker: Failed to pre-cache Google Fonts:", err);
-        }
         try {
           const response = await fetch("./index.html");
           if (response.ok) {
@@ -108,7 +77,7 @@
       return;
     }
     const url = new URL(request.url);
-    if (url.hostname.includes("googleapis.com") && !url.hostname.includes("fonts.googleapis.com") || url.hostname.includes("accounts.google.com") || url.hostname.includes("tinkoff.ru") || url.pathname.startsWith("/proxy")) {
+    if (url.hostname === "www.googleapis.com" || url.hostname === "accounts.google.com" || url.hostname.includes("tinkoff.ru") || url.pathname.startsWith("/proxy")) {
       return;
     }
     if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
