@@ -2,20 +2,64 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = "pwa-cache-v3";
+  var CACHE_NAME = `mmm-pwa-${"2026-08-22 18:39:09 +0300" ? "2026-08-22 18:39:09 +0300".replace(/\s+/g, "-") : "v1"}`;
+  var PRECACHE_ASSETS = [
+    "./",
+    "./index.html",
+    "./app.webmanifest",
+    "./assets/icons/icon-192x192.png",
+    "./assets/icons/icon-512x512.png",
+    "./assets/icons/icon-maskable-512x512.png",
+    "./assets/icons/shortcut-minus.png",
+    "./assets/icons/shortcut-plus.png"
+  ];
   self.addEventListener("install", (event) => {
     event.waitUntil(
-      caches.open(CACHE_NAME).then((cache) => {
-        console.log("Service Worker: Caching root index");
-        return cache.addAll(["./"]);
-      })
+      (async () => {
+        const cache = await caches.open(CACHE_NAME);
+        const toCache = [...PRECACHE_ASSETS];
+        if ("/domain/recalculate_worker-KNJTZRHR.js") {
+          toCache.push("/domain/recalculate_worker-KNJTZRHR.js");
+        }
+        await cache.addAll(toCache).catch((err) => {
+          console.warn("Service Worker: Error pre-caching static assets", err);
+        });
+        try {
+          const response = await fetch("./index.html");
+          if (response.ok) {
+            const html = await response.text();
+            const dynamicAssets = [];
+            const scriptMatches = html.matchAll(/<script[^>]+src=["']([^"']+)["']/g);
+            for (const match of scriptMatches) {
+              const src = match[1];
+              if (src && !src.startsWith("http://") && !src.startsWith("https://")) {
+                dynamicAssets.push(src);
+              }
+            }
+            const linkMatches = html.matchAll(/<link[^>]+href=["']([^"']+)["']/g);
+            for (const match of linkMatches) {
+              const href = match[1];
+              if (href && !href.startsWith("http://") && !href.startsWith("https://")) {
+                dynamicAssets.push(href);
+              }
+            }
+            const uniqueAssets = Array.from(new Set(dynamicAssets));
+            if (uniqueAssets.length > 0) {
+              await cache.addAll(uniqueAssets);
+            }
+          }
+        } catch (err) {
+          console.warn("Service Worker: Failed to discover dynamic assets from index.html", err);
+        }
+      })()
     );
     self.skipWaiting();
   });
   self.addEventListener("activate", (event) => {
     event.waitUntil(
-      caches.keys().then((cacheNames) => {
-        return Promise.all(
+      (async () => {
+        const cacheNames = await caches.keys();
+        await Promise.all(
           cacheNames.map((cache) => {
             if (cache !== CACHE_NAME) {
               console.log("Service Worker: Clearing Old Cache", cache);
@@ -23,46 +67,101 @@
             }
           })
         );
-      }).then(() => self.clients.claim())
-      // Claim all clients immediately
+        await self.clients.claim();
+      })()
     );
   });
   self.addEventListener("fetch", (event) => {
-    if (event.request.method !== "GET") {
+    const request = event.request;
+    if (request.method !== "GET") {
+      return;
+    }
+    const url = new URL(request.url);
+    if (url.hostname.includes("googleapis.com") || url.hostname.includes("accounts.google.com") || url.hostname.includes("tinkoff.ru") || url.pathname.startsWith("/proxy")) {
+      return;
+    }
+    if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
+      event.respondWith(
+        (async () => {
+          try {
+            const networkResponse = await fetch(request);
+            if (networkResponse && networkResponse.status === 200) {
+              const cache = await caches.open(CACHE_NAME);
+              cache.put(request, networkResponse.clone());
+              cache.put("./index.html", networkResponse.clone());
+            }
+            return networkResponse;
+          } catch {
+            const cachedResponse = await caches.match(request) || await caches.match("./index.html") || await caches.match("/index.html") || await caches.match("./") || await caches.match("/");
+            if (cachedResponse) {
+              return cachedResponse;
+            }
+            return new Response("Offline", { status: 503, statusText: "Service Unavailable" });
+          }
+        })()
+      );
+      return;
+    }
+    if (url.origin === self.location.origin) {
+      event.respondWith(
+        (async () => {
+          const cachedResponse = await caches.match(request, { ignoreSearch: true });
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          try {
+            const networkResponse = await fetch(request);
+            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
+              const cache = await caches.open(CACHE_NAME);
+              cache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+          } catch (err) {
+            const fallback = await caches.match(request);
+            if (fallback) {
+              return fallback;
+            }
+            throw err;
+          }
+        })()
+      );
+      return;
+    }
+    if (url.hostname.includes("fonts.googleapis.com") || url.hostname.includes("fonts.gstatic.com")) {
+      event.respondWith(
+        (async () => {
+          const cachedResponse = await caches.match(request);
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          try {
+            const networkResponse = await fetch(request);
+            if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
+              const cache = await caches.open(CACHE_NAME);
+              cache.put(request, networkResponse.clone());
+            }
+            return networkResponse;
+          } catch {
+            if (cachedResponse) return cachedResponse;
+            return new Response("", { status: 408, statusText: "Offline" });
+          }
+        })()
+      );
       return;
     }
     event.respondWith(
-      new Promise((resolve, reject) => {
-        let networkHandled = false;
-        const timeoutId = setTimeout(() => {
-          caches.match(event.request).then((cachedResponse) => {
-            if (!networkHandled && cachedResponse) {
-              resolve(cachedResponse);
-            }
-          });
-        }, 200);
-        fetch(event.request).then((networkResponse) => {
-          networkHandled = true;
-          clearTimeout(timeoutId);
-          if (networkResponse && networkResponse.status === 200) {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          resolve(networkResponse);
-        }).catch((error) => {
-          if (!networkHandled) {
-            caches.match(event.request).then((cachedResponse) => {
-              if (cachedResponse) {
-                resolve(cachedResponse);
-              } else {
-                reject(error);
-              }
-            });
-          }
-        });
-      })
+      (async () => {
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        const networkResponse = await fetch(request);
+        if (networkResponse && (networkResponse.status === 200 || networkResponse.type === "opaque")) {
+          const cache = await caches.open(CACHE_NAME);
+          cache.put(request, networkResponse.clone());
+        }
+        return networkResponse;
+      })()
     );
   });
 })();
