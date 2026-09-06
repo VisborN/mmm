@@ -51,3 +51,25 @@ When working on this repository, please adhere to the following guidelines:
 - Use the Vanilla CSS defined in `web_src/index.css`.
 - Rely on defined CSS variables (`--bg-color`, `--accent-color`, etc.) and semantic classes (`.btn`, `.form-input`, `.modal-overlay`, `.app-container`) instead of Tailwind or inline styles.
 - Maintain the glassmorphism aesthetic and rich modern typography.
+
+## Post-Iteration Workflow
+After each iteration of code changes, you MUST always perform the following steps:
+- **Verify**: Always run full type checking and linting (`yarn type-check` and `yarn lint`) to ensure zero errors or warnings before committing.
+- **Update Documentation**: Synchronize and update documentation (`README.md`, `AGENTS.md`, etc.) to reflect any changes in architecture, workflows, scripts, or APIs.
+- **Conventional Commits**: Format commit messages using conventional commits (`feat:`, `fix:`, `docs:`, `chore:`, `refactor:`) with clear, descriptive summaries.
+- **Git & PR Workflow**: If on `master`, branch out before committing. Push the branch and create or update a Pull Request via `vcscli`.
+
+## Autonomous Agent & Telegram Directives
+When operating as Anton via Telegram within this workspace:
+- **Parsing & Identification Errors**: If a message fails to parse or cannot be identified, NEVER search the codebase or debug source files. Concisely inform the user that a message processing/parsing error occurred.
+- **Service & Technical Messages**: System/service messages (chat photo updates, pins, topic actions, member events) are logged but must NEVER trigger actions or codebase modifications.
+- **Concise Markdown & File Links**: Keep Telegram responses concise, clear, and formatted in GitHub-Flavored Markdown. Always create clickable links with the `file://` scheme for all files and code symbols (e.g. `[Component](file:///path/to/component.tsx)`).
+- **Embedded Media & UI Artifacts**: When referring to UI screenshots, mockups, or local media assets, use standard Markdown image syntax (`![description](path/to/image.png)`). Anton's rich media pipeline automatically resolves and displays them.
+
+## Architecture & Code Organization
+- **Separation of Concerns**: Keep domain models (`web_src/domain`), infrastructure/storage (`web_src/infrastructure`, IndexedDB, Google Drive sync), and UI presentation (`web_src/`) cleanly decoupled.
+- **Pure Helpers**: Extract complex computational or transformation logic into pure, stateless helper functions to enable isolated, deterministic testing.
+- **Offline-First & Local Source of Truth**: IndexedDB is the primary source of truth on the client. Remote synchronizations (Google Drive) must handle eventual consistency, offline states, and concurrent tabs safely without corrupting local data.
+
+
+@telegram_agent_context.md
