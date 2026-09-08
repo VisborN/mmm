@@ -77,11 +77,11 @@ export async function getOperations({
 }): Promise<Result<TinkoffOperationsResponse>> {
   const url = `${BASE_URL}/operations?end=${end.getTime()}&start=${start.getTime()}&sessionid=${session}`;
 
-  const response = await proxy200JSON('GET', url);
+  const response = await proxy200JSON<TinkoffOperationsResponse>('GET', url);
   if (response.error !== null) {
     return err(new AggregateError([response.error], "failed to call operations"));
   }
-  const resJson: TinkoffOperationsResponse = await response.data; // TODO validate may be
+  const resJson: TinkoffOperationsResponse = response.data; // TODO validate may be
   return ok(resJson);
 }
 

@@ -18,6 +18,7 @@ export const AppMain = observer(() => {
                 store.recalculateBalances();
             }
         });
+        authStore.init();
     }, []);
 
     if (store.isLoading) {

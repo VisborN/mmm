@@ -3,70 +3,154 @@ import { observer } from 'mobx-react-lite';
 import { authStore, LoginStep } from './auth_store';
 
 export const TinkoffLoginDialog = observer(() => {
-  const { step, inputValue, isLoading, error } = authStore;
+  const { step, inputValue, isLoading, error, maskedPhone, otpLength, userName } = authStore;
 
   if (step === LoginStep.SUCCESS) {
     return (
       <div className="modal-overlay">
-          <div className="modal-content" style={{ textAlign: 'center', padding: '40px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '16px', color: 'var(--success-color)' }}>Success!</h2>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>You are now logged in.</p>
-            <button onClick={() => authStore.reset()} className="btn btn-primary" style={{ width: '100%' }}>
-              Done
-            </button>
-          </div>
+        <div className="modal-content" style={{ textAlign: 'center', padding: '36px 24px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '12px', color: 'var(--success-color)' }}>
+            ✓ Успешно!
+          </h2>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '14px' }}>
+            Вы успешно вошли в аккаунт Т-Банка.
+          </p>
+          <button
+            onClick={() => authStore.reset()}
+            className="btn btn-primary"
+            style={{ width: '100%', background: '#ffdd2d', color: '#333', fontWeight: 600 }}
+          >
+            Готово
+          </button>
+        </div>
       </div>
     );
   }
 
-  const config = {
-    [LoginStep.IDLE]: { title: "Login", label: "Input", type: "text" },
-    [LoginStep.PHONE]: { title: "Login", label: "Phone Number", type: "text" },
-    [LoginStep.OTP]: { title: "Verification", label: "Enter SMS Code", type: "number" },
-    [LoginStep.PASSWORD]: { title: "Identity", label: "Enter Password", type: "password" },
-    [LoginStep.LOADING]: { title: "Wait", label: "Processing...", type: "text" },
-    [LoginStep.SUCCESS]: { title: "success", label: "success", type: "text" },
-  }[step];
+  const getConfig = () => {
+    switch (step) {
+      case LoginStep.PHONE:
+        return {
+          title: 'Вход в Т-Банк',
+          label: 'Номер телефона',
+          placeholder: '+7 999 123-45-67',
+          type: 'tel',
+          inputMode: 'tel' as const,
+        };
+      case LoginStep.TOTP:
+        return {
+          title: 'Код подтверждения',
+          label: '6-значный код из приложения Т-Банка или Authenticator',
+          placeholder: '6 цифр',
+          type: 'text',
+          inputMode: 'numeric' as const,
+        };
+      case LoginStep.OTP:
+        return {
+          title: 'Подтверждение СМС',
+          label: maskedPhone ? `Код из СМС (отправлен на ${maskedPhone})` : 'Код из СМС',
+          placeholder: `${otpLength || 6} цифр`,
+          type: 'text',
+          inputMode: 'numeric' as const,
+        };
+      case LoginStep.PASSWORD:
+        return {
+          title: 'Пароль Т-Банка',
+          label: userName ? `Здравствуйте, ${userName}! Введите пароль` : 'Пароль от личного кабинета',
+          placeholder: 'Введите пароль',
+          type: 'password',
+          inputMode: 'text' as const,
+        };
+      default:
+        return {
+          title: 'Вход в Т-Банк',
+          label: 'Значение',
+          placeholder: '',
+          type: 'text',
+          inputMode: 'text' as const,
+        };
+    }
+  };
+
+  const config = getConfig();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!inputValue.trim()) return;
     authStore.submit();
   };
 
   return (
     <div className="modal-overlay">
-        <div className="modal-content">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h3 style={{ margin: 0 }}>{config.title}</h3>
-            <button onClick={() => authStore.reset()} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', fontSize: '24px', cursor: 'pointer' }}>×</button>
+      <div className="modal-content">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3 style={{ margin: 0 }}>{config.title}</h3>
+          <button
+            onClick={() => authStore.reset()}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-secondary)',
+              fontSize: '24px',
+              cursor: 'pointer',
+              lineHeight: 1,
+            }}
+          >
+            ×
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label className="form-label">{config.label}</label>
+            <input
+              className="form-input"
+              type={config.type}
+              inputMode={config.inputMode}
+              placeholder={config.placeholder}
+              value={inputValue}
+              disabled={isLoading}
+              onChange={(e) => authStore.setInputValue(e.target.value)}
+              required
+              autoFocus
+            />
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">{config.label}</label>
-              <input
-                className="form-input"
-                type={config.type}
-                value={inputValue}
-                disabled={isLoading}
-                onChange={(e) => authStore.setInputValue(e.target.value)}
-                required
-                autoFocus
-              />
+          {error && (
+            <div className="error-banner" style={{ margin: '14px 0', padding: '10px 12px', fontSize: '13px' }}>
+              {error}
             </div>
+          )}
 
-            {error && <div className="error-banner" style={{ margin: '16px 0', padding: '12px' }}>{error}</div>}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: '12px', background: '#ffdd2d', color: '#333', fontWeight: 600 }}
+          >
+            {isLoading ? 'Проверка...' : 'Продолжить'}
+          </button>
 
+          {step === LoginStep.TOTP && (
             <button
-              type="submit"
+              type="button"
               disabled={isLoading}
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '8px', background: '#f59e0b', color: '#fff' }}
+              onClick={() => authStore.fallbackToSms()}
+              className="btn"
+              style={{
+                width: '100%',
+                marginTop: '8px',
+                background: 'transparent',
+                color: 'var(--text-secondary)',
+                border: '1px solid var(--border-color)',
+                fontSize: '13px',
+              }}
             >
-              {isLoading ? "Loading..." : "Submit"}
+              Войти по СМС
             </button>
-          </form>
-        </div>
+          )}
+        </form>
+      </div>
     </div>
   );
 });
