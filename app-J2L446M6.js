@@ -25463,12 +25463,12 @@ function createObservableArray(initialValues, enhancer, name, owned) {
   return initObservable(function() {
     var adm = new ObservableArrayAdministration(name, enhancer, owned, false);
     addHiddenFinalProp(adm.values_, $mobx, adm);
-    var proxy3 = new Proxy(adm.values_, arrayTraps);
-    adm.proxy_ = proxy3;
+    var proxy2 = new Proxy(adm.values_, arrayTraps);
+    adm.proxy_ = proxy2;
     if (initialValues && initialValues.length) {
       adm.spliceWithArray_(0, 0, initialValues);
     }
-    return proxy3;
+    return proxy2;
   });
 }
 var arrayExtensions = {
@@ -29060,53 +29060,224 @@ var import_globals8 = __toESM(require_globals());
 
 // infrastructure/proxy.ts
 var import_globals7 = __toESM(require_globals());
-async function proxy(method, url, body, headers) {
-  const request = {
-    method,
-    url,
-    body: body !== void 0 ? JSON.stringify(body) : null,
-    multiValueHeaders: headers
+var DEFAULT_PROXY_ENDPOINT = "/proxy";
+var configuredProxyEndpoint = DEFAULT_PROXY_ENDPOINT;
+function getProxyEndpoint() {
+  if (typeof window !== "undefined" && window.localStorage) {
+    const saved = window.localStorage.getItem("mmm_proxy_endpoint");
+    if (saved) return saved;
+  }
+  return configuredProxyEndpoint;
+}
+var STATUS_TEXTS = {
+  200: "OK",
+  201: "Created",
+  202: "Accepted",
+  204: "No Content",
+  301: "Moved Permanently",
+  302: "Found",
+  304: "Not Modified",
+  400: "Bad Request",
+  401: "Unauthorized",
+  403: "Forbidden",
+  404: "Not Found",
+  405: "Method Not Allowed",
+  408: "Request Timeout",
+  409: "Conflict",
+  422: "Unprocessable Entity",
+  429: "Too Many Requests",
+  500: "Internal Server Error",
+  502: "Bad Gateway",
+  503: "Service Unavailable",
+  504: "Gateway Timeout"
+};
+function createProxyResponse(statusCode, body, multiValueHeaders) {
+  const headers = new Headers();
+  if (multiValueHeaders) {
+    for (const [key, values] of Object.entries(multiValueHeaders)) {
+      if (Array.isArray(values)) {
+        for (const val of values) {
+          headers.append(key, val);
+        }
+      }
+    }
+  }
+  const okStatus = statusCode >= 200 && statusCode < 300;
+  const statusText = STATUS_TEXTS[statusCode] || (okStatus ? "OK" : "");
+  return {
+    status: statusCode,
+    statusCode,
+    statusText,
+    ok: okStatus,
+    headers,
+    multiValueHeaders: multiValueHeaders || {},
+    body,
+    async text() {
+      return ok(body);
+    },
+    async json() {
+      const parsed = await withResult(JSON.parse)(body);
+      if (parsed.error !== null) {
+        return err(new AggregateError([parsed.error], "failed to parse response body as JSON"));
+      }
+      return ok(parsed.data);
+    }
   };
-  const response = await withResult(fetch)("/proxy", {
+}
+function normalizeHeaders(headersInit) {
+  const result = {};
+  if (!headersInit) {
+    return result;
+  }
+  if (headersInit instanceof Headers) {
+    headersInit.forEach((value, key) => {
+      if (!result[key]) {
+        result[key] = [];
+      }
+      result[key].push(value);
+    });
+    return result;
+  }
+  if (Array.isArray(headersInit)) {
+    for (const [key, value] of headersInit) {
+      if (!result[key]) {
+        result[key] = [];
+      }
+      result[key].push(value);
+    }
+    return result;
+  }
+  if (typeof headersInit === "object") {
+    for (const [key, value] of Object.entries(headersInit)) {
+      if (value === void 0 || value === null) {
+        continue;
+      }
+      if (Array.isArray(value)) {
+        result[key] = value.map(String);
+      } else {
+        result[key] = [String(value)];
+      }
+    }
+  }
+  return result;
+}
+function processBody(bodyInit, headers = {}) {
+  if (bodyInit === void 0 || bodyInit === null) {
+    return { bodyStr: null };
+  }
+  if (typeof bodyInit === "string") {
+    return { bodyStr: bodyInit };
+  }
+  if (bodyInit instanceof URLSearchParams) {
+    const hasContentType = Object.keys(headers).some(
+      (k) => k.toLowerCase() === "content-type"
+    );
+    if (!hasContentType) {
+      headers["Content-Type"] = ["application/x-www-form-urlencoded;charset=UTF-8"];
+    }
+    return { bodyStr: bodyInit.toString() };
+  }
+  if (bodyInit instanceof Uint8Array || bodyInit instanceof ArrayBuffer) {
+    const bytes = bodyInit instanceof ArrayBuffer ? new Uint8Array(bodyInit) : bodyInit;
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return {
+      bodyStr: btoa(binary),
+      isBase64Encoded: true
+    };
+  }
+  if (typeof bodyInit === "object") {
+    const hasContentType = Object.keys(headers).some(
+      (k) => k.toLowerCase() === "content-type"
+    );
+    if (!hasContentType) {
+      headers["Content-Type"] = ["application/json"];
+    }
+    return { bodyStr: JSON.stringify(bodyInit) };
+  }
+  return { bodyStr: String(bodyInit) };
+}
+function isProxyEnvelope(obj) {
+  if (obj === null || typeof obj !== "object") {
+    return false;
+  }
+  const candidate = obj;
+  const hasStatus = typeof candidate.statusCode === "number" || typeof candidate.status === "number";
+  return hasStatus;
+}
+async function proxyFetch(input, init) {
+  var _a3, _b2;
+  const targetUrl = typeof input === "string" ? input : input.toString();
+  const method = ((init == null ? void 0 : init.method) || "GET").toUpperCase();
+  const headers = normalizeHeaders(init == null ? void 0 : init.headers);
+  const { bodyStr, isBase64Encoded } = processBody(init == null ? void 0 : init.body, headers);
+  const endpoint = (init == null ? void 0 : init.proxyEndpoint) || getProxyEndpoint();
+  const payload = {
+    method,
+    url: targetUrl,
+    body: bodyStr,
+    isBase64Encoded,
+    multiValueHeaders: Object.keys(headers).length > 0 ? headers : void 0
+  };
+  const response = await withResult(fetch)(endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify(request)
+    body: JSON.stringify(payload)
   });
   if (response.error !== null) {
-    return err(new AggregateError([response.error], `failed to make request to proxy`));
+    return err(
+      new AggregateError(
+        [response.error],
+        `failed to make request to proxy endpoint (${endpoint})`
+      )
+    );
   }
   if (!response.data.ok) {
-    return err(new Error(`proxy HTTP error! status: ${response.data.status}`));
+    return err(
+      new Error(
+        `proxy endpoint HTTP error! status: ${response.data.status} ${response.data.statusText}`
+      )
+    );
   }
-  const data = await withResult(response.data.json)();
-  if (data.error !== null) {
-    return err(new AggregateError([data.error], `proxy response isnt json`));
+  const jsonResult = await withResult(response.data.json)();
+  if (jsonResult.error !== null) {
+    return err(
+      new AggregateError([jsonResult.error], "proxy response is not valid JSON")
+    );
   }
-  if (!isResponse(data.data)) {
-    return err(new Error(`proxy response isnt of valid format: ${data.data}`));
+  const data = jsonResult.data;
+  if (!isProxyEnvelope(data)) {
+    return err(
+      new Error(
+        `proxy response is not of valid envelope format: ${JSON.stringify(data)}`
+      )
+    );
   }
-  return ok(data.data);
+  const statusCode = (_b2 = (_a3 = data.statusCode) != null ? _a3 : data.status) != null ? _b2 : 200;
+  const bodyText = typeof data.body === "string" ? data.body : data.body !== void 0 ? JSON.stringify(data.body) : "";
+  return ok(createProxyResponse(statusCode, bodyText, data.multiValueHeaders));
 }
 async function proxy200JSON(method, url, body, headers) {
-  const response = await proxy(method, url, body, headers);
-  if (response.error !== null) {
-    return response;
+  const fetchRes = await proxyFetch(url, {
+    method,
+    body,
+    headers
+  });
+  if (fetchRes.error !== null) {
+    return err(fetchRes.error);
   }
-  if (response.data.statusCode !== 200) {
-    return err(new Error(`fetch HTTP error! status: ${response.data.statusCode}`));
+  if (fetchRes.data.status !== 200) {
+    return err(new Error(`fetch HTTP error! status: ${fetchRes.data.status}`));
   }
-  const parsedBody = await withResult(JSON.parse)(response.data.body);
-  if (parsedBody.error !== null) {
-    return err(new AggregateError([parsedBody.error], "failed to parse response"));
+  const jsonRes = await fetchRes.data.json();
+  if (jsonRes.error !== null) {
+    return err(new AggregateError([jsonRes.error], "failed to parse response"));
   }
-  return ok(parsedBody.data);
-}
-function isResponse(obj) {
-  return typeof obj.statusCode === "string" && typeof obj.body === "string" && (obj.multiValueHeaders === void 0 || typeof obj.multiValueHeaders === "object" && Object.values(obj).every(
-    (value) => Array.isArray(value) && value.every((item) => typeof item === "string")
-  ));
+  return ok(jsonRes.data);
 }
 
 // infrastructure/tinkoff.ts
@@ -29151,7 +29322,7 @@ async function getOperations({
   if (response.error !== null) {
     return err(new AggregateError([response.error], "failed to call operations"));
   }
-  const resJson = await response.data;
+  const resJson = response.data;
   return ok(resJson);
 }
 async function confirmPost({
@@ -29657,7 +29828,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-07 23:36:06 +0300" : "dev"
+          true ? "2026-09-08 11:40:35 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -29808,4 +29979,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-ZBJAZKJS.js.map
+//# sourceMappingURL=app-J2L446M6.js.map

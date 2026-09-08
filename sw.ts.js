@@ -2,7 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = `mmm-pwa-${"2026-09-07 23:36:06 +0300" ? "2026-09-07 23:36:06 +0300".replace(/\s+/g, "-") : "v1"}`;
+  var CACHE_NAME = `mmm-pwa-${"2026-09-08 11:40:35 +0300" ? "2026-09-08 11:40:35 +0300".replace(/\s+/g, "-") : "v1"}`;
   var PRECACHE_ASSETS = [
     "./",
     "./index.html",
@@ -77,7 +77,7 @@
       return;
     }
     const url = new URL(request.url);
-    if (url.hostname === "www.googleapis.com" || url.hostname === "accounts.google.com" || url.hostname.includes("tinkoff.ru") || url.pathname.startsWith("/proxy")) {
+    if (url.hostname === "www.googleapis.com" || url.hostname === "accounts.google.com" || url.hostname.includes("tinkoff.ru") || url.hostname.includes("yandexcloud.net") || url.pathname.startsWith("/proxy")) {
       return;
     }
     if (request.mode === "navigate" || request.headers.get("accept")?.includes("text/html")) {
