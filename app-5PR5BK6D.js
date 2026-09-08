@@ -29223,22 +29223,6 @@ function isProxyEnvelope(obj) {
   const hasStatus = typeof candidate.statusCode === "number" || typeof candidate.status === "number";
   return hasStatus;
 }
-function decodeBase64ToUtf8(base64Str) {
-  const binaryResult = withResult(atob)(base64Str);
-  if (binaryResult.error !== null) {
-    return err(new AggregateError([binaryResult.error], "invalid base64 payload"));
-  }
-  const binary = binaryResult.data;
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  const decodeResult = withResult((b) => new TextDecoder().decode(b))(bytes);
-  if (decodeResult.error !== null) {
-    return err(new AggregateError([decodeResult.error], "failed to decode UTF-8 string"));
-  }
-  return ok(decodeResult.data);
-}
 async function proxyFetch(input, init) {
   var _a3, _b2;
   const targetUrl = typeof input === "string" ? input : input.toString();
@@ -29275,24 +29259,7 @@ async function proxyFetch(input, init) {
       )
     );
   }
-  const textResult = await withResult(response.data.text)();
-  if (textResult.error !== null) {
-    return err(
-      new AggregateError([textResult.error], "failed to read proxy response body")
-    );
-  }
-  let rawText = textResult.data.trim();
-  if (rawText.startsWith("data:") && rawText.includes(";base64,")) {
-    const base64Content = rawText.split(";base64,")[1];
-    const decoded = decodeBase64ToUtf8(base64Content);
-    if (decoded.error !== null) {
-      return err(
-        new AggregateError([decoded.error], "failed to decode base64 data URL from proxy")
-      );
-    }
-    rawText = decoded.data;
-  }
-  const jsonResult = await withResult(JSON.parse)(rawText);
+  const jsonResult = await withResult(() => response.data.json())();
   if (jsonResult.error !== null) {
     return err(
       new AggregateError([jsonResult.error], "proxy response is not valid JSON")
@@ -29985,7 +29952,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-08 12:19:03 +0300" : "dev"
+          true ? "2026-09-08 12:27:10 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -30136,4 +30103,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-P3G7VURD.js.map
+//# sourceMappingURL=app-5PR5BK6D.js.map
