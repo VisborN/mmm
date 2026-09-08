@@ -10,6 +10,7 @@ A strict TypeScript Progressive Web App (PWA) for personal finance management wi
 - **Sync**: Seamlessly synchronizes data to a selected folder in Google Drive.
 - **Premium Design System**: Glassmorphism aesthetic, modern typography (Inter), and carefully chosen color palettes for an immersive user experience.
 - **Database Explorer**: Integrated view to inspect and debug local IndexedDB tables.
+- **T-Bank Integration**: Seamless integration with T-Bank (formerly Tinkoff) mobile API using OAuth 2.0 PKCE and SHA-512 anti-DDoS fingerprint proof via Yandex Serverless Proxy for authentication and account balance tracking.
 
 ## Tech Stack
 

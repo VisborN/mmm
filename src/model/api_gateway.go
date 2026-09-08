@@ -3,6 +3,7 @@ package model
 // APIGatewayRequest API Gateway v1 request body
 type APIGatewayRequest struct {
 	Version        string   `json:"version"`
+	HttpMethod     string   `json:"httpMethod,omitempty"`
 	OperationID    string   `json:"operationId"`
 	RawPath        string   `json:"rawPath"`        // path without query string
 	RawQueryString string   `json:"rawQueryString"` // query string in "parameter1=value1&parameter2=value2" format
@@ -21,6 +22,16 @@ type APIGatewayRequest struct {
 	IsBase64Encoded bool   `json:"isBase64Encoded,omitempty"`
 
 	RequestContext RequestContext `json:"requestContext"`
+}
+
+func (r *APIGatewayRequest) Method() string {
+	if r == nil {
+		return ""
+	}
+	if r.RequestContext.Http.Method != "" {
+		return r.RequestContext.Http.Method
+	}
+	return r.HttpMethod
 }
 
 type RequestContext struct {

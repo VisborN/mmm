@@ -1,0 +1,44 @@
+openapi: 3.0.0
+info:
+  title: MMM Proxy API
+  version: 1.0.0
+servers:
+  - url: https://d5dli0ro6bbf30tqr35v.lievo6ut.apigw.yandexcloud.net
+paths:
+  /proxy:
+    options:
+      summary: CORS preflight
+      x-yc-apigateway-cors:
+        origin: true
+        methods:
+          - POST
+          - OPTIONS
+        allowedHeaders:
+          - '*'
+        maxAge: 86400
+      responses:
+        '200':
+          description: Preflight OK
+    post:
+      summary: Forward request to target upstream
+      x-yc-apigateway-integration:
+        type: cloud_functions
+        payload_format_version: '2.0'
+        function_id: d4eslh5jt69bp6fb8l9u
+        tag: $latest
+        service_account_id: aje9phq347gnhnqjetlu
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
