@@ -25463,12 +25463,12 @@ function createObservableArray(initialValues, enhancer, name, owned) {
   return initObservable(function() {
     var adm = new ObservableArrayAdministration(name, enhancer, owned, false);
     addHiddenFinalProp(adm.values_, $mobx, adm);
-    var proxy2 = new Proxy(adm.values_, arrayTraps);
-    adm.proxy_ = proxy2;
+    var proxy = new Proxy(adm.values_, arrayTraps);
+    adm.proxy_ = proxy;
     if (initialValues && initialValues.length) {
       adm.spliceWithArray_(0, 0, initialValues);
     }
-    return proxy2;
+    return proxy;
   });
 }
 var arrayExtensions = {
@@ -29055,11 +29055,8 @@ var TransactionsView = observer(() => {
 // settings_view.tsx
 var import_react11 = __toESM(require_react());
 
-// tinkoff_auth_service.ts
-var import_globals10 = __toESM(require_globals());
-
-// infrastructure/tinkoff.ts
-var import_globals8 = __toESM(require_globals());
+// infrastructure/tbank.ts
+var import_globals9 = __toESM(require_globals());
 
 // infrastructure/proxy.ts
 var import_globals7 = __toESM(require_globals());
@@ -29277,122 +29274,9 @@ async function proxyFetch(input, init) {
   const bodyText = typeof data.body === "string" ? data.body : data.body !== void 0 ? JSON.stringify(data.body) : "";
   return ok(createProxyResponse(statusCode, bodyText, data.multiValueHeaders));
 }
-async function proxy200JSON(method, url, body, headers) {
-  const fetchRes = await proxyFetch(url, {
-    method,
-    body,
-    headers
-  });
-  if (fetchRes.error !== null) {
-    return err(fetchRes.error);
-  }
-  if (fetchRes.data.status !== 200) {
-    return err(new Error(`fetch HTTP error! status: ${fetchRes.data.status}`));
-  }
-  const jsonRes = await fetchRes.data.json();
-  if (jsonRes.error !== null) {
-    return err(new AggregateError([jsonRes.error], "failed to parse response"));
-  }
-  return ok(jsonRes.data);
-}
-
-// infrastructure/tinkoff.ts
-var BASE_URL = "https://www.tinkoff.ru/api/common/v1";
-async function signupPost({
-  wuid,
-  password,
-  phone,
-  session,
-  origin
-}) {
-  const signUpBody = {
-    wuid,
-    entrypoint_type: "context",
-    device_type: "desktop",
-    form_view_mode: "desktop"
-  };
-  if (password) signUpBody["password"] = password;
-  if (phone) signUpBody["phone"] = phone;
-  const url = `${BASE_URL}/sign_up?origin=${origin}&sessionid=${session}&wuid=${wuid}`;
-  const response = await proxy200JSON("POST", url, new URLSearchParams(signUpBody).toString());
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call sign_up"));
-  }
-  return response;
-}
-async function levelUp(origin, session) {
-  const url = `${BASE_URL}/level_up?origin=${origin}&sessionid=${session}`;
-  const response = await proxy200JSON("GET", url);
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call level_up"));
-  }
-  return response;
-}
-async function getOperations({
-  session,
-  start,
-  end
-}) {
-  const url = `${BASE_URL}/operations?end=${end.getTime()}&start=${start.getTime()}&sessionid=${session}`;
-  const response = await proxy200JSON("GET", url);
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call operations"));
-  }
-  const resJson = response.data;
-  return ok(resJson);
-}
-async function confirmPost({
-  wuid,
-  session,
-  origin,
-  operationTicket,
-  code
-}) {
-  const body = {
-    initialOperationTicket: operationTicket,
-    initialOperation: "sign_up",
-    confirmationData: JSON.stringify({ SMSBYID: code })
-  };
-  const url = `${BASE_URL}/confirm?origin=${origin}&sessionid=${session}&wuid=${wuid}`;
-  const response = await proxy200JSON("POST", url, new URLSearchParams(body).toString());
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call confirm"));
-  }
-  return response;
-}
-async function getWebUser() {
-  const response = await proxy200JSON("GET", `${BASE_URL}/webuser`);
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call webuser"));
-  }
-  return response;
-}
-async function sessionStatus(session, origin) {
-  const url = `${BASE_URL}/session_status?origin=${origin}&sessionid=${session}`;
-  const response = await proxy200JSON("GET", url);
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call session_status"));
-  }
-  return response;
-}
-async function getSession({
-  origin,
-  wuid,
-  oldSession
-}) {
-  let url = `${BASE_URL}/session?origin=${origin}&wuid=${wuid}`;
-  if (oldSession) {
-    url += `&${oldSession}`;
-  }
-  const response = await proxy200JSON("GET", url);
-  if (response.error !== null) {
-    return err(new AggregateError([response.error], "failed to call session_status"));
-  }
-  return response;
-}
 
 // infrastructure/json_store.ts
-var import_globals9 = __toESM(require_globals());
+var import_globals8 = __toESM(require_globals());
 var JsonStore = class {
   /**
    * Saves a value to IndexedDB.
@@ -29425,174 +29309,642 @@ var JsonStore = class {
   }
 };
 
-// tinkoff_auth_service.ts
-var _TinkoffAuthService = class _TinkoffAuthService {
+// infrastructure/tbank.ts
+var SSO_BASE_URL = "https://id.tbank.ru/";
+var API_BASE_URL = "https://api.tbank.ru/";
+var CLIENT_ID2 = "tinkoff-mb-app";
+var BASIC_AUTH = "Basic dGlua29mZi1tYi1hcHA6";
+var REDIRECT_URI = "mobile://";
+var VENDOR = "tinkoff_android";
+var CLIENT_VERSION = "18.1.3-hotfix";
+var CLAIMS = '{"id_token":{"given_name":null, "phone_number": null, "picture": null}}';
+var APP_VERSION_NAME = "7.32.1";
+var APP_VERSION_CODE = "12278";
+var BUNDLE_ID = "com.idamob.tinkoff.android";
+var DEFAULT_DEVICE_MODEL = "Pixel 7";
+var DEFAULT_BUILD_FINGERPRINT = "google/panther/panther:14/UP1A.231105.003/11010452:user/release-keys";
+var TOKENS_STORAGE_KEY = "tbank_tokens";
+var IDENTITY_STORAGE_KEY = "tbank_identity";
+function createFreshIdentity() {
+  const devId = crypto.randomUUID();
+  return {
+    deviceId: devId,
+    tinkoffDeviceId: crypto.randomUUID(),
+    stableId: crypto.randomUUID(),
+    oldDeviceId: devId,
+    deviceModel: DEFAULT_DEVICE_MODEL,
+    buildFingerprint: DEFAULT_BUILD_FINGERPRINT
+  };
+}
+async function getOrCreateIdentity() {
+  const res = await JsonStore.getJson(IDENTITY_STORAGE_KEY);
+  if (res.error === null && res.data && res.data.tinkoffDeviceId) {
+    return res.data;
+  }
+  const identity = createFreshIdentity();
+  await JsonStore.setJson(IDENTITY_STORAGE_KEY, identity);
+  return identity;
+}
+async function getStoredTokens() {
+  const res = await JsonStore.getJson(TOKENS_STORAGE_KEY);
+  if (res.error !== null || !res.data || !res.data.accessToken) {
+    return null;
+  }
+  return res.data;
+}
+async function setStoredTokens(tokens) {
+  if (tokens === null) {
+    await JsonStore.setJson(TOKENS_STORAGE_KEY, null);
+  } else {
+    await JsonStore.setJson(TOKENS_STORAGE_KEY, tokens);
+  }
+}
+function buildUserAgent(identity) {
+  return `${identity.deviceModel}/android: ${APP_VERSION_NAME}/TCSMB/${identity.buildFingerprint}`;
+}
+function buildBaseHeaders(identity) {
+  return {
+    Accept: "application/json",
+    "Accept-Language": "ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7",
+    "User-Agent": buildUserAgent(identity),
+    "X-Client-Info": `/android/${APP_VERSION_NAME}-${APP_VERSION_CODE}`
+  };
+}
+function normalizePhone(raw) {
+  let cleaned = raw.trim().replace(/[\s\-()]/g, "");
+  if (cleaned.startsWith("8") && cleaned.length === 11) {
+    cleaned = "+7" + cleaned.slice(1);
+  } else if (cleaned.startsWith("7") && cleaned.length === 11) {
+    cleaned = "+" + cleaned;
+  } else if (cleaned.length === 10 && !cleaned.startsWith("+")) {
+    cleaned = "+7" + cleaned;
+  } else if (!cleaned.startsWith("+")) {
+    cleaned = "+" + cleaned;
+  }
+  return cleaned;
+}
+function parseSetCookieHeaders(multiValueHeaders) {
+  const cookies = {};
+  if (!multiValueHeaders) return cookies;
+  for (const [k, values] of Object.entries(multiValueHeaders)) {
+    if (k.toLowerCase() === "set-cookie") {
+      for (const raw of values) {
+        const first = raw.split(";")[0].trim();
+        const eqIdx = first.indexOf("=");
+        if (eqIdx !== -1) {
+          const name = first.slice(0, eqIdx).trim();
+          const val = first.slice(eqIdx + 1).trim();
+          if (name) {
+            cookies[name] = val;
+          }
+        }
+      }
+    }
+  }
+  return cookies;
+}
+function formatCookieHeader(cookies) {
+  const entries = Object.entries(cookies);
+  if (entries.length === 0) return void 0;
+  return entries.map(([k, v]) => `${k}=${v}`).join("; ");
+}
+function bufferToBase64Url(buffer) {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+async function generatePkcePair() {
+  const randomBytes = new Uint8Array(32);
+  crypto.getRandomValues(randomBytes);
+  const verifier = bufferToBase64Url(randomBytes);
+  const hashBuf = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier)
+  );
+  const challenge = bufferToBase64Url(hashBuf);
+  return {
+    verifier,
+    challenge,
+    method: "S256"
+  };
+}
+async function sha512B64Url(str) {
+  const hashBuf = await crypto.subtle.digest(
+    "SHA-512",
+    new TextEncoder().encode(str)
+  );
+  return bufferToBase64Url(hashBuf);
+}
+function take(s, n) {
+  if (n <= 0) return "";
+  return s.slice(0, n);
+}
+function takeLast(s, n) {
+  if (n <= 0) return "";
+  if (n >= s.length) return s;
+  return s.slice(s.length - n);
+}
+async function computeSsoData(cid, clientId, tinkoffDeviceId) {
+  const n = cid.length;
+  const m = tinkoffDeviceId.length;
+  const tDevHash = await sha512B64Url(tinkoffDeviceId);
+  const inner = take(cid, Math.floor(n / 2)) + take(tinkoffDeviceId, Math.floor(m / 4)) + clientId + takeLast(cid, Math.floor(n / 2)) + takeLast(tinkoffDeviceId, Math.floor(m * 3 / 4)) + tDevHash;
+  return await sha512B64Url(inner);
+}
+function buildFingerprintPayload(identity, ssoData, userAgent) {
+  return {
+    // 0–8 — app + locale + device basics
+    appVersion: APP_VERSION_NAME,
+    clientLanguage: "ru",
+    clientTimezone: -180,
+    timeZoneName: "Europe/Moscow",
+    latitude: null,
+    longitude: null,
+    mobileDeviceModel: identity.deviceModel,
+    mobileDeviceOs: "Android",
+    mobileDeviceOsVersion: "14",
+    // 9–11 — telephony
+    mobilePhoneNumber: "",
+    imei: "",
+    subscriptionId: "",
+    // 12–15 — screen
+    screenDpi: 411,
+    screenHeight: 2400,
+    screenWidth: 1080,
+    screenResolution: "1080x2400",
+    // 16–18 — client metadata
+    userAgent,
+    authType: "",
+    authTypeSetDate: "",
+    // 19–22 — identifiers
+    mobileDeviceId: identity.deviceId,
+    tDeviceId: identity.tinkoffDeviceId,
+    connectionType: "wifi",
+    MarketingID: "",
+    // 23–27 — flags
+    root_flag: false,
+    emulator: 0,
+    debug: 0,
+    lockedDevice: 1,
+    biometricsSupport: 1,
+    // 28–31 — booleans
+    autologinOn: false,
+    autologinUsed: false,
+    frontCameraAvailable: true,
+    backCameraAvailable: true,
+    // 32–33 — bundle + anti-DDoS proof
+    bundleId: BUNDLE_ID,
+    ssoData,
+    // 34–42 — SIM / locale / system
+    ICCID: "",
+    IMSI: "",
+    serialNumber: "",
+    mobileDeviceName: identity.deviceModel,
+    locale: "ru_RU",
+    familyNames: "sans-serif,sans-serif-condensed,sans-serif-light,sans-serif-medium,sans-serif-black,sans-serif-thin,sans-serif-smallcaps,serif,monospace,serif-monospace,casual,cursive",
+    identifierForVendor: identity.stableId,
+    systemFont: "sans-serif",
+    systemFontSize: "1.0",
+    // 43–52 — Build.*
+    buildBoard: "panther",
+    buildBootloader: "panther-1.4-10951672",
+    buildBrand: "google",
+    buildDevice: "panther",
+    buildDisplay: "UP1A.231105.003",
+    buildFingerprint: identity.buildFingerprint,
+    buildHardware: "panther",
+    buildID: "UP1A.231105.003",
+    buildManufacturer: "Google",
+    buildProduct: "panther",
+    // 53–63 — tail
+    buildRadio: "g5300q-231016-240218-B-11266013",
+    displayMetricsDensity: "2.625",
+    displayMetricsScaledDensity: "2.625",
+    packageManagerGetSystemAvailableFeatures: "android.hardware.bluetooth,android.hardware.camera,android.hardware.camera.autofocus,android.hardware.camera.flash,android.hardware.camera.front,android.hardware.location,android.hardware.location.gps,android.hardware.location.network,android.hardware.microphone,android.hardware.nfc,android.hardware.screen.landscape,android.hardware.screen.portrait,android.hardware.sensor.accelerometer,android.hardware.sensor.gyroscope,android.hardware.sensor.proximity,android.hardware.telephony,android.hardware.touchscreen,android.hardware.touchscreen.multitouch,android.hardware.wifi,android.software.app_widgets,android.software.backup,android.software.connectionservice,android.software.device_admin,android.software.home_screen,android.software.input_methods,android.software.print,android.software.webview",
+    packageManagerGetSystemSharedLibraryNames: "android.test.runner,android.test.mock,javax.obex,android.test.base,com.android.location.provider,android.ext.shared,com.android.nfc_extras,com.android.media.remotedisplay,com.android.future.usb.accessory",
+    statFsGetTotalBytes: "120000000000",
+    telephonyManagerGroupIdentifierLevel1: "",
+    isVpnConnected: false,
+    deviceOs: "Android",
+    advertisingID: identity.stableId,
+    contacts: 0
+  };
+}
+var TBankAuthSession = class {
   constructor() {
-    __publicField(this, "origin", "web%2Cib5%2Cplatform");
-    __publicField(this, "operationTicket", "");
+    __publicField(this, "identity", null);
+    __publicField(this, "pkce", null);
+    __publicField(this, "cookies", {});
+    __publicField(this, "cid", "");
+    __publicField(this, "action", "step");
+    __publicField(this, "token", null);
+    __publicField(this, "otpLength", 6);
+    __publicField(this, "phoneMasked", null);
+    __publicField(this, "userName", null);
   }
-  // --- Persistent Getters/Setters (mimicking SharedPreferences) ---
-  async getWuid() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.WUID_KEY);
-    return r.error ? "" : r.data || "";
+  async init() {
+    this.identity = await getOrCreateIdentity();
+    this.pkce = await generatePkcePair();
+    this.cookies = {};
+    this.cid = "";
+    this.action = "step";
+    this.token = null;
   }
-  async setWuid(val) {
-    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, val);
+  updateCookies(headers) {
+    const newCookies = parseSetCookieHeaders(headers);
+    this.cookies = __spreadValues(__spreadValues({}, this.cookies), newCookies);
   }
-  async getSession() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.SESSION_KEY);
-    return r.error ? "" : r.data || "";
+  parseStepResponse(data) {
+    if (data.code) {
+      return {
+        step: "complete",
+        cid: this.cid,
+        action: this.action,
+        code: String(data.code),
+        raw: data
+      };
+    }
+    const stepName = String(data.step || "");
+    const action2 = String(data.action || "step");
+    const cid = String(data.cid || this.cid);
+    this.cid = cid;
+    this.action = action2;
+    if (data.token) {
+      this.token = String(data.token);
+    }
+    if (stepName === "otp") {
+      const lengthRaw = data.length;
+      const length = typeof lengthRaw === "number" ? lengthRaw : 6;
+      this.otpLength = length;
+      this.phoneMasked = typeof data.phone === "string" ? data.phone : null;
+      return {
+        step: "otp",
+        cid,
+        action: action2,
+        token: this.token || void 0,
+        otpLength: length,
+        phoneMasked: this.phoneMasked || void 0,
+        raw: data
+      };
+    }
+    if (stepName === "password") {
+      this.userName = typeof data.name === "string" ? data.name : null;
+      return {
+        step: "password",
+        cid,
+        action: action2,
+        userName: this.userName || void 0,
+        raw: data
+      };
+    }
+    return {
+      step: "unknown",
+      cid,
+      action: action2,
+      raw: data
+    };
   }
-  async setSession(val) {
-    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, val);
-  }
-  async getPhone() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.PHONE_KEY);
-    return r.error ? "" : r.data || "";
-  }
-  async setPhone(val) {
-    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, val);
-  }
-  async getPassword() {
-    const r = await JsonStore.getJson(_TinkoffAuthService.PWD_KEY);
-    return r.error ? "" : r.data || "";
-  }
-  async setPassword(val) {
-    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, val);
-  }
-  // --- Auth Logic ---
   /**
-   * Manages session lifecycle. Mimics getSession in Dart.
+   * Starts authorization flow: POST /auth/authorize
    */
-  async refreshSession() {
-    let wuid = await this.getWuid();
-    const session = await this.getSession();
-    if (!wuid) {
-      const res = await getWebUser();
-      if (res.error !== null) {
-        return err(new AggregateError([res.error], "Failed to get web user"));
-      }
-      if (res.data.resultCode !== "OK") return ok("");
-      wuid = res.data.payload.wuid;
-      await this.setWuid(wuid);
+  async beginAuthorize() {
+    if (!this.identity || !this.pkce) {
+      await this.init();
     }
-    if (session) {
-      const status = await sessionStatus(session, this.origin);
-      if (status.error !== null) {
-        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
-      } else if (status.data.resultCode !== "OK") {
-        await JsonStore.setJson(_TinkoffAuthService.START_KEY, 0);
-      }
-    }
-    if (!session) {
-      const res = await getSession({ origin: this.origin, wuid, oldSession: session });
-      if (res.error !== null) {
-        return err(new AggregateError([res.error], "Failed to get session"));
-      }
-      if (res.data.resultCode === "OK") {
-        const newSession = typeof res.data.payload === "string" ? res.data.payload : res.data.payload.sessionId;
-        await this.setSession(newSession);
-        return ok("updated_session");
-      }
-    }
-    return ok("");
-  }
-  async loginPhone(phone) {
-    await this.setPhone(phone);
-    const refreshRes = await this.refreshSession();
-    if (refreshRes.error !== null) return err(refreshRes.error);
-    const session = await this.getSession();
-    const wuid = await this.getWuid();
-    const res = await signupPost({
-      origin: this.origin,
-      wuid,
-      session,
-      phone
+    const identity = this.identity;
+    const pkce = this.pkce;
+    const form = {
+      client_id: CLIENT_ID2,
+      redirect_uri: REDIRECT_URI,
+      response_type: "code",
+      response_mode: "json",
+      display: "json",
+      device_id: identity.tinkoffDeviceId,
+      client_version: CLIENT_VERSION,
+      vendor: VENDOR,
+      claims: CLAIMS,
+      code_challenge: pkce.challenge,
+      code_challenge_method: pkce.method
+    };
+    const headers = __spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    });
+    const res = await proxyFetch(SSO_BASE_URL + "auth/authorize", {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
     });
     if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to login with phone"));
+      return err(new AggregateError([res.error], "Failed to start authorize"));
     }
-    if (res.data.resultCode === "WAITING_CONFIRMATION") {
-      this.operationTicket = res.data.operationTicket;
-      return ok(true);
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse authorize response"));
     }
-    return ok(false);
+    const data = jsonRes.data;
+    this.parseStepResponse(data);
+    return ok(void 0);
   }
-  async confirmOTP(code) {
-    const session = await this.getSession();
-    const wuid = await this.getWuid();
-    const res = await confirmPost({
+  /**
+   * Submits phone number: POST /auth/<action>?cid=<cid> with fingerprint
+   */
+  async submitPhone(phone) {
+    if (!this.cid) {
+      const authRes = await this.beginAuthorize();
+      if (authRes.error !== null) return err(authRes.error);
+    }
+    const identity = this.identity;
+    const normalized = normalizePhone(phone);
+    const userAgent = buildUserAgent(identity);
+    const ssoData = await computeSsoData(this.cid, CLIENT_ID2, identity.tinkoffDeviceId);
+    const payload = buildFingerprintPayload(identity, ssoData, userAgent);
+    const fingerprintJson = JSON.stringify(payload);
+    const form = {
+      step: "phone",
+      phone: normalized,
+      fingerprint: fingerprintJson
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to submit phone"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse phone response"));
+    }
+    const data = jsonRes.data;
+    if (data.errorMessage || data.error_description || data.error) {
+      const msg = String(data.errorMessage || data.error_description || data.error);
+      return err(new Error(msg));
+    }
+    return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Submits OTP code: POST /auth/<action>?cid=<cid>
+   * Automatically handles and skips selfie step if server returns it.
+   */
+  async submitOtp(code) {
+    const identity = this.identity;
+    const form = {
+      step: "otp",
+      otp: code.trim()
+    };
+    if (this.token) {
+      form.token = this.token;
+    }
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to submit OTP"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse OTP response"));
+    }
+    let data = jsonRes.data;
+    if (data.errorMessage || data.error_description || data.error) {
+      const msg = String(data.errorMessage || data.error_description || data.error);
+      return err(new Error(msg));
+    }
+    if (data.step === "selfie") {
+      const skipRes = await this.skipSelfie();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
+    }
+    return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Skips selfie step with camera_unavailable
+   */
+  async skipSelfie() {
+    const identity = this.identity;
+    const form = {
+      step: "selfie",
+      skipped: "camera_unavailable"
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to skip selfie"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse selfie response"));
+    }
+    return ok(jsonRes.data);
+  }
+  /**
+   * Submits password: POST /auth/<action>?cid=<cid>
+   */
+  async submitPassword(password) {
+    const identity = this.identity;
+    const form = {
+      step: "password",
+      password
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to submit password"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse password response"));
+    }
+    const data = jsonRes.data;
+    if (data.errorMessage || data.error_description || data.error) {
+      const msg = String(data.errorMessage || data.error_description || data.error);
+      return err(new Error(msg));
+    }
+    return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Exchanges OAuth authorization code for tokens: POST /auth/token
+   */
+  async exchangeCode(code) {
+    if (!this.pkce || !this.identity) {
+      return err(new Error("Missing PKCE or identity for code exchange"));
+    }
+    const identity = this.identity;
+    const pkce = this.pkce;
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-SSO-No-Adapter": "true",
+      Authorization: BASIC_AUTH
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const form = {
+      grant_type: "authorization_code",
       code,
-      operationTicket: this.operationTicket,
-      origin: this.origin,
-      session,
-      wuid
+      redirect_uri: REDIRECT_URI,
+      client_version: CLIENT_VERSION,
+      vendor: VENDOR,
+      code_verifier: pkce.verifier
+    };
+    const res = await proxyFetch(SSO_BASE_URL + "auth/token", {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
     });
     if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to confirm OTP"));
+      return err(new AggregateError([res.error], "Failed to exchange authorization code"));
     }
-    if (res.data.resultCode === "OK") {
-      await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, true);
-      return ok(true);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse token exchange response"));
     }
-    return ok(false);
-  }
-  async loginPassword(password) {
-    await this.setPassword(password);
-    const refreshRes = await this.refreshSession();
-    if (refreshRes.error !== null) return err(refreshRes.error);
-    const session = await this.getSession();
-    const wuid = await this.getWuid();
-    const res = await signupPost({
-      origin: this.origin,
-      wuid,
-      password,
-      session
-    });
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to login with password"));
+    const data = jsonRes.data;
+    if (!data.access_token) {
+      const msg = String(data.errorMessage || data.error_description || "Missing access_token in token exchange");
+      return err(new Error(msg));
     }
-    if (res.data.resultCode === "OK") {
-      const levelRes = await levelUp(this.origin, session);
-      if (levelRes.error !== null) return err(new AggregateError([levelRes.error], "Failed to level up"));
-      return ok(true);
-    }
-    return ok(false);
-  }
-  async getOperations() {
-    const statusRes = await this.refreshSession();
-    if (statusRes.error !== null) return err(statusRes.error);
-    if (statusRes.data === "updated_session") {
-      const pwd = await this.getPassword();
-      const pwdRes = await this.loginPassword(pwd);
-      if (pwdRes.error !== null) return err(pwdRes.error);
-    }
-    const session = await this.getSession();
-    const end = /* @__PURE__ */ new Date();
-    const start = /* @__PURE__ */ new Date();
-    start.setDate(start.getDate() - 31);
-    const res = await getOperations({ session, start, end });
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to get operations"));
-    }
-    return ok(res.data.payload || []);
-  }
-  async signOut() {
-    await JsonStore.setJson(_TinkoffAuthService.PWD_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.WUID_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.PHONE_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.SESSION_KEY, "");
-    await JsonStore.setJson(_TinkoffAuthService.LOGGED_PHONE_KEY, false);
+    const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 7200;
+    const tokens = {
+      accessToken: String(data.access_token),
+      refreshToken: String(data.refresh_token || ""),
+      tokenType: String(data.token_type || "Bearer"),
+      expiresAt: Date.now() + expiresIn * 1e3,
+      idToken: typeof data.id_token === "string" ? data.id_token : void 0,
+      scope: typeof data.scope === "string" ? data.scope : void 0
+    };
+    await setStoredTokens(tokens);
+    return ok(tokens);
   }
 };
-__publicField(_TinkoffAuthService, "PWD_KEY", "tinkoff_password");
-__publicField(_TinkoffAuthService, "WUID_KEY", "tinkoff_wuid");
-__publicField(_TinkoffAuthService, "PHONE_KEY", "tinkoff_phone");
-__publicField(_TinkoffAuthService, "SESSION_KEY", "tinkoff_session");
-__publicField(_TinkoffAuthService, "TIMEOUT_KEY", "tinkoff_session_timeout");
-__publicField(_TinkoffAuthService, "START_KEY", "tinkoff_session_start");
-__publicField(_TinkoffAuthService, "LOGGED_PHONE_KEY", "tinkoff_logged_with_phone");
-var TinkoffAuthService = _TinkoffAuthService;
+async function refreshTBankTokens(identity, refreshToken) {
+  const headers = __spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "X-SSO-No-Adapter": "true",
+    Authorization: BASIC_AUTH,
+    "x-content-id": identity.stableId
+  });
+  const form = {
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+    device_id: identity.tinkoffDeviceId,
+    old_device_id: identity.oldDeviceId || identity.deviceId,
+    fingerprint: identity.stableId,
+    client_version: CLIENT_VERSION,
+    vendor: VENDOR
+  };
+  const res = await proxyFetch(SSO_BASE_URL + "auth/token", {
+    method: "POST",
+    headers,
+    body: new URLSearchParams(form).toString()
+  });
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "Failed to refresh token"));
+  }
+  const jsonRes = await res.data.json();
+  if (jsonRes.error !== null) {
+    return err(new AggregateError([jsonRes.error], "Failed to parse refresh token response"));
+  }
+  const data = jsonRes.data;
+  if (!data.access_token) {
+    const msg = String(data.errorMessage || data.error_description || "Refresh failed: missing access_token");
+    return err(new Error(msg));
+  }
+  const expiresIn = typeof data.expires_in === "number" ? data.expires_in : 7200;
+  const tokens = {
+    accessToken: String(data.access_token),
+    refreshToken: String(data.refresh_token || refreshToken),
+    tokenType: String(data.token_type || "Bearer"),
+    expiresAt: Date.now() + expiresIn * 1e3,
+    idToken: typeof data.id_token === "string" ? data.id_token : void 0,
+    scope: typeof data.scope === "string" ? data.scope : void 0
+  };
+  await setStoredTokens(tokens);
+  return ok(tokens);
+}
+async function getTBankAccounts() {
+  const identity = await getOrCreateIdentity();
+  let tokens = await getStoredTokens();
+  if (!tokens) {
+    return err(new Error("Not authenticated in T-Bank"));
+  }
+  if (tokens.expiresAt - Date.now() < 6e4) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error === null) {
+      tokens = refRes.data;
+    }
+  }
+  const doFetch = async (toks) => {
+    const headers = __spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "X-MB-Authorized": "true",
+      Authorization: `${toks.tokenType} ${toks.accessToken}`
+    });
+    return await proxyFetch(API_BASE_URL + "v1/accounts_light?withDigitalRub=false", {
+      method: "GET",
+      headers
+    });
+  };
+  let res = await doFetch(tokens);
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "Failed to fetch accounts"));
+  }
+  if (res.data.status === 401) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error !== null) {
+      return err(new AggregateError([refRes.error], "Unauthorized and failed to refresh token"));
+    }
+    tokens = refRes.data;
+    res = await doFetch(tokens);
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to fetch accounts after token refresh"));
+    }
+  }
+  const jsonRes = await res.data.json();
+  if (jsonRes.error !== null) {
+    return err(new AggregateError([jsonRes.error], "Failed to parse accounts response"));
+  }
+  const data = jsonRes.data;
+  if (data.resultCode !== "OK") {
+    return err(new Error(`T-Bank API error: ${data.resultCode} - ${data.errorMessage || ""}`));
+  }
+  const payload = Array.isArray(data.payload) ? data.payload : [];
+  return ok(payload);
+}
 
 // auth_store.ts
 var AuthStore = class {
@@ -29602,8 +29954,19 @@ var AuthStore = class {
     __publicField(this, "inputValue", "");
     __publicField(this, "isLoading", false);
     __publicField(this, "error", null);
+    // Account & Balance State
+    __publicField(this, "isAuthenticated", false);
+    __publicField(this, "accounts", []);
+    __publicField(this, "totalBalance", null);
+    __publicField(this, "isLoadingBalance", false);
+    __publicField(this, "balanceError", null);
+    // Auth flow metadata
+    __publicField(this, "maskedPhone", null);
+    __publicField(this, "otpLength", 6);
+    __publicField(this, "userName", null);
+    // Legacy operations support
     __publicField(this, "operations", []);
-    __publicField(this, "authService", new TinkoffAuthService());
+    __publicField(this, "session", new TBankAuthSession());
     makeAutoObservable(this);
   }
   // --- Actions ---
@@ -29611,81 +29974,197 @@ var AuthStore = class {
     this.inputValue = val;
   }
   /**
-   * Resets the store and closes the dialog
+   * Resets the auth modal state and closes the dialog
    */
   reset() {
     this.step = "IDLE" /* IDLE */;
     this.inputValue = "";
     this.error = null;
     this.isLoading = false;
+    this.maskedPhone = null;
+    this.userName = null;
   }
   /**
    * Starts the login flow
    */
   startLogin() {
+    this.session = new TBankAuthSession();
     this.step = "PHONE" /* PHONE */;
     this.inputValue = "";
     this.error = null;
     this.isLoading = false;
+    this.maskedPhone = null;
+    this.userName = null;
   }
   /**
-   * The main submission logic loop
+   * Checks stored tokens and initializes authentication / balance state
+   */
+  async init() {
+    const tokens = await getStoredTokens();
+    if (tokens && tokens.accessToken) {
+      runInAction(() => {
+        this.isAuthenticated = true;
+      });
+      await this.loadBalance();
+    } else {
+      runInAction(() => {
+        this.isAuthenticated = false;
+        this.accounts = [];
+        this.totalBalance = null;
+      });
+    }
+  }
+  /**
+   * Submits the current step of the login flow
    */
   async submit() {
     this.isLoading = true;
     this.error = null;
     if (this.step === "PHONE" /* PHONE */) {
-      const needsOtpRes = await this.authService.loginPhone(this.inputValue);
-      runInAction(() => {
-        if (needsOtpRes.error) {
-          this.error = needsOtpRes.error.message || "An unexpected error occurred";
-        } else {
-          this.step = needsOtpRes.data ? "OTP" /* OTP */ : "PASSWORD" /* PASSWORD */;
+      const res = await this.session.submitPhone(this.inputValue);
+      if (res.error !== null) {
+        runInAction(() => {
+          this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0432\u0432\u043E\u0434\u0435 \u043D\u043E\u043C\u0435\u0440\u0430 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430";
+          this.isLoading = false;
+        });
+        return;
+      }
+      if (res.data.step === "otp") {
+        runInAction(() => {
+          this.step = "OTP" /* OTP */;
           this.inputValue = "";
-        }
-        this.isLoading = false;
-      });
-    } else if (this.step === "OTP" /* OTP */) {
-      const okRes = await this.authService.confirmOTP(this.inputValue);
-      runInAction(() => {
-        if (okRes.error) {
-          this.error = okRes.error.message || "An unexpected error occurred";
-        } else if (okRes.data) {
+          this.otpLength = res.data.otpLength || 6;
+          this.maskedPhone = res.data.phoneMasked || null;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "password") {
+        runInAction(() => {
           this.step = "PASSWORD" /* PASSWORD */;
           this.inputValue = "";
-        } else {
-          this.error = "Invalid OTP code";
-        }
-        this.isLoading = false;
-      });
+          this.userName = res.data.userName || null;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "complete" && res.data.code) {
+        await this.handleCodeExchange(res.data.code);
+      } else {
+        runInAction(() => {
+          this.error = "\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430";
+          this.isLoading = false;
+        });
+      }
+    } else if (this.step === "OTP" /* OTP */) {
+      const res = await this.session.submitOtp(this.inputValue);
+      if (res.error !== null) {
+        runInAction(() => {
+          this.error = res.error.message || "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0421\u041C\u0421-\u043A\u043E\u0434";
+          this.isLoading = false;
+        });
+        return;
+      }
+      if (res.data.step === "password") {
+        runInAction(() => {
+          this.step = "PASSWORD" /* PASSWORD */;
+          this.inputValue = "";
+          this.userName = res.data.userName || null;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "complete" && res.data.code) {
+        await this.handleCodeExchange(res.data.code);
+      } else {
+        runInAction(() => {
+          this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0421\u041C\u0421-\u043A\u043E\u0434";
+          this.isLoading = false;
+        });
+      }
     } else if (this.step === "PASSWORD" /* PASSWORD */) {
-      const okRes = await this.authService.loginPassword(this.inputValue);
-      runInAction(() => {
-        if (okRes.error) {
-          this.error = okRes.error.message || "An unexpected error occurred";
-        } else if (okRes.data) {
-          this.step = "SUCCESS" /* SUCCESS */;
-        } else {
-          this.error = "Incorrect password";
-        }
-        this.isLoading = false;
-      });
+      const res = await this.session.submitPassword(this.inputValue);
+      if (res.error !== null) {
+        runInAction(() => {
+          this.error = res.error.message || "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043F\u0430\u0440\u043E\u043B\u044C";
+          this.isLoading = false;
+        });
+        return;
+      }
+      if (res.data.step === "complete" && res.data.code) {
+        await this.handleCodeExchange(res.data.code);
+      } else {
+        runInAction(() => {
+          this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u0442\u044C \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044E";
+          this.isLoading = false;
+        });
+      }
     }
   }
-  /**
-   * Fetches operations and updates the local observable list
-   */
-  async loadOperations() {
-    this.isLoading = true;
-    const res = await this.authService.getOperations();
+  async handleCodeExchange(code) {
+    const exchangeRes = await this.session.exchangeCode(code);
+    if (exchangeRes.error !== null) {
+      runInAction(() => {
+        this.error = exchangeRes.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0431\u043C\u0435\u043D\u0430 \u043A\u043E\u0434\u0430 \u043D\u0430 \u0442\u043E\u043A\u0435\u043D\u044B";
+        this.isLoading = false;
+      });
+      return;
+    }
     runInAction(() => {
-      if (res.error) {
-        this.error = res.error.message;
-      } else {
-        this.operations = res.data;
-      }
+      this.isAuthenticated = true;
+      this.step = "SUCCESS" /* SUCCESS */;
+      this.inputValue = "";
       this.isLoading = false;
     });
+    await this.loadBalance();
+  }
+  /**
+   * Fetches accounts and calculates current total balance
+   */
+  async loadBalance() {
+    runInAction(() => {
+      this.isLoadingBalance = true;
+      this.balanceError = null;
+    });
+    const res = await getTBankAccounts();
+    runInAction(() => {
+      var _a3, _b2;
+      this.isLoadingBalance = false;
+      if (res.error !== null) {
+        this.balanceError = res.error.message;
+        if (res.error.message.includes("Not authenticated") || res.error.message.includes("Unauthorized")) {
+          this.isAuthenticated = false;
+        }
+        return;
+      }
+      this.accounts = res.data;
+      let total = 0;
+      let count = 0;
+      for (const acc of res.data) {
+        if (acc.accountType !== "ExternalAccount" && acc.moneyAmount && typeof acc.moneyAmount.value === "number") {
+          const curr = ((_a3 = acc.moneyAmount.currency) == null ? void 0 : _a3.name) || "";
+          if (!curr || curr === "RUB" || ((_b2 = acc.moneyAmount.currency) == null ? void 0 : _b2.code) === 643) {
+            total += acc.moneyAmount.value;
+            count++;
+          }
+        }
+      }
+      this.totalBalance = count > 0 ? Math.round(total * 100) / 100 : null;
+      this.isAuthenticated = true;
+    });
+  }
+  /**
+   * Signs out of T-Bank, clearing tokens and cached balance
+   */
+  async signOut() {
+    await setStoredTokens(null);
+    runInAction(() => {
+      this.isAuthenticated = false;
+      this.accounts = [];
+      this.totalBalance = null;
+      this.balanceError = null;
+      this.reset();
+    });
+  }
+  /**
+   * Stub for legacy operations
+   */
+  async loadOperations() {
+    return;
   }
 };
 var authStore = new AuthStore();
@@ -29855,18 +30334,81 @@ var SettingsView = observer(() => {
       )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
-      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "action-row", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("button", { id: "open-auth", onClick: () => authStore.startLogin(), className: "btn btn-primary", style: { background: "#f59e0b", color: "#fff" }, children: "\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F Tinkoff" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0422-\u0411\u0430\u043D\u043A (T-Bank)" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-text", style: { marginBottom: "12px" }, children: [
+        "\u0421\u0442\u0430\u0442\u0443\u0441: ",
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { style: { color: authStore.isAuthenticated ? "var(--success-color)" : "var(--text-secondary)" }, children: authStore.isAuthenticated ? "\u2713 \u0410\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D" : "\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "action-row", style: { marginBottom: authStore.isAuthenticated ? "16px" : "0" }, children: !authStore.isAuthenticated ? /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+        "button",
+        {
+          id: "open-auth",
+          onClick: () => authStore.startLogin(),
+          className: "btn btn-primary",
+          style: { background: "#ffdd2d", color: "#333", fontWeight: 600 },
+          children: "\u0412\u043E\u0439\u0442\u0438 \u0432 \u0422-\u0411\u0430\u043D\u043A"
+        }
+      ) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(import_jsx_runtime6.Fragment, { children: [
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
           "button",
           {
-            onClick: () => store.setView("db_explorer"),
+            onClick: () => authStore.loadBalance(),
+            className: "btn btn-primary",
+            disabled: authStore.isLoadingBalance,
+            style: { background: "#ffdd2d", color: "#333", fontWeight: 600 },
+            children: authStore.isLoadingBalance ? "\u041E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u0438\u0435..." : "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0431\u0430\u043B\u0430\u043D\u0441"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            onClick: () => authStore.signOut(),
             className: "btn btn-secondary",
-            children: "Database Explorer"
+            children: "\u0412\u044B\u0439\u0442\u0438"
           }
         )
+      ] }) }),
+      authStore.isAuthenticated && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "tbank-balance-section", style: { marginTop: "16px", borderTop: "1px solid var(--border-color)", paddingTop: "14px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "13px", color: "var(--text-secondary)", marginBottom: "4px" }, children: "\u0422\u0435\u043A\u0443\u0449\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "26px", fontWeight: "bold", color: "var(--text-primary)", marginBottom: "12px" }, children: authStore.totalBalance !== null ? `${authStore.totalBalance.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20BD` : authStore.isLoadingBalance ? "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." : "\u2014" }),
+        authStore.balanceError && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "error-banner", style: { margin: "8px 0", fontSize: "13px" }, children: authStore.balanceError }),
+        authStore.accounts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }, children: authStore.accounts.map((acc) => {
+          var _a3, _b2;
+          return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+            "div",
+            {
+              style: {
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                padding: "10px 14px",
+                background: "rgba(255, 255, 255, 0.04)",
+                borderRadius: "var(--radius-sm)",
+                fontSize: "13px"
+              },
+              children: [
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600 }, children: acc.name || acc.accountType }),
+                  acc.accountType && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }, children: acc.accountType })
+                ] }),
+                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 700, fontSize: "14px" }, children: acc.moneyAmount && typeof acc.moneyAmount.value === "number" ? `${acc.moneyAmount.value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${((_a3 = acc.moneyAmount.currency) == null ? void 0 : _a3.name) === "RUB" ? "\u20BD" : ((_b2 = acc.moneyAmount.currency) == null ? void 0 : _b2.name) || ""}` : "\u2014" })
+              ]
+            },
+            acc.id
+          );
+        }) })
       ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "action-row", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+        "button",
+        {
+          onClick: () => store.setView("db_explorer"),
+          className: "btn btn-secondary",
+          children: "Database Explorer"
+        }
+      ) })
     ] })
   ] });
 });
@@ -29874,30 +30416,82 @@ var SettingsView = observer(() => {
 // tinkoff_login.tsx
 var import_jsx_runtime7 = __toESM(require_jsx_runtime());
 var TinkoffLoginDialog = observer(() => {
-  const { step, inputValue, isLoading, error } = authStore;
+  const { step, inputValue, isLoading, error, maskedPhone, otpLength, userName } = authStore;
   if (step === "SUCCESS" /* SUCCESS */) {
-    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "modal-content", style: { textAlign: "center", padding: "40px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { style: { fontSize: "24px", fontWeight: "bold", marginBottom: "16px", color: "var(--success-color)" }, children: "Success!" }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { style: { color: "var(--text-secondary)", marginBottom: "24px" }, children: "You are now logged in." }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: () => authStore.reset(), className: "btn btn-primary", style: { width: "100%" }, children: "Done" })
+    return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "modal-content", style: { textAlign: "center", padding: "36px 24px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h2", { style: { fontSize: "22px", fontWeight: "bold", marginBottom: "12px", color: "var(--success-color)" }, children: "\u2713 \u0423\u0441\u043F\u0435\u0448\u043D\u043E!" }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("p", { style: { color: "var(--text-secondary)", marginBottom: "24px", fontSize: "14px" }, children: "\u0412\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0432\u043E\u0448\u043B\u0438 \u0432 \u0430\u043A\u043A\u0430\u0443\u043D\u0442 \u0422-\u0411\u0430\u043D\u043A\u0430." }),
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          onClick: () => authStore.reset(),
+          className: "btn btn-primary",
+          style: { width: "100%", background: "#ffdd2d", color: "#333", fontWeight: 600 },
+          children: "\u0413\u043E\u0442\u043E\u0432\u043E"
+        }
+      )
     ] }) });
   }
-  const config = {
-    ["IDLE" /* IDLE */]: { title: "Login", label: "Input", type: "text" },
-    ["PHONE" /* PHONE */]: { title: "Login", label: "Phone Number", type: "text" },
-    ["OTP" /* OTP */]: { title: "Verification", label: "Enter SMS Code", type: "number" },
-    ["PASSWORD" /* PASSWORD */]: { title: "Identity", label: "Enter Password", type: "password" },
-    ["LOADING" /* LOADING */]: { title: "Wait", label: "Processing...", type: "text" },
-    ["SUCCESS" /* SUCCESS */]: { title: "success", label: "success", type: "text" }
-  }[step];
+  const getConfig = () => {
+    switch (step) {
+      case "PHONE" /* PHONE */:
+        return {
+          title: "\u0412\u0445\u043E\u0434 \u0432 \u0422-\u0411\u0430\u043D\u043A",
+          label: "\u041D\u043E\u043C\u0435\u0440 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430",
+          placeholder: "+7 999 123-45-67",
+          type: "tel",
+          inputMode: "tel"
+        };
+      case "OTP" /* OTP */:
+        return {
+          title: "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u0435 \u0421\u041C\u0421",
+          label: maskedPhone ? `\u041A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421 (\u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D \u043D\u0430 ${maskedPhone})` : "\u041A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421",
+          placeholder: `${otpLength || 6} \u0446\u0438\u0444\u0440`,
+          type: "text",
+          inputMode: "numeric"
+        };
+      case "PASSWORD" /* PASSWORD */:
+        return {
+          title: "\u041F\u0430\u0440\u043E\u043B\u044C \u0422-\u0411\u0430\u043D\u043A\u0430",
+          label: userName ? `\u0417\u0434\u0440\u0430\u0432\u0441\u0442\u0432\u0443\u0439\u0442\u0435, ${userName}! \u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043F\u0430\u0440\u043E\u043B\u044C` : "\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0442 \u043B\u0438\u0447\u043D\u043E\u0433\u043E \u043A\u0430\u0431\u0438\u043D\u0435\u0442\u0430",
+          placeholder: "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043F\u0430\u0440\u043E\u043B\u044C",
+          type: "password",
+          inputMode: "text"
+        };
+      default:
+        return {
+          title: "\u0412\u0445\u043E\u0434 \u0432 \u0422-\u0411\u0430\u043D\u043A",
+          label: "\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435",
+          placeholder: "",
+          type: "text",
+          inputMode: "text"
+        };
+    }
+  };
+  const config = getConfig();
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!inputValue.trim()) return;
     authStore.submit();
   };
   return /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("h3", { style: { margin: 0 }, children: config.title }),
-      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("button", { onClick: () => authStore.reset(), style: { background: "none", border: "none", color: "var(--text-secondary)", fontSize: "24px", cursor: "pointer" }, children: "\xD7" })
+      /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          onClick: () => authStore.reset(),
+          style: {
+            background: "none",
+            border: "none",
+            color: "var(--text-secondary)",
+            fontSize: "24px",
+            cursor: "pointer",
+            lineHeight: 1
+          },
+          children: "\xD7"
+        }
+      )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("form", { onSubmit: handleSubmit, children: [
       /* @__PURE__ */ (0, import_jsx_runtime7.jsxs)("div", { className: "form-group", children: [
@@ -29907,6 +30501,8 @@ var TinkoffLoginDialog = observer(() => {
           {
             className: "form-input",
             type: config.type,
+            inputMode: config.inputMode,
+            placeholder: config.placeholder,
             value: inputValue,
             disabled: isLoading,
             onChange: (e) => authStore.setInputValue(e.target.value),
@@ -29915,15 +30511,15 @@ var TinkoffLoginDialog = observer(() => {
           }
         )
       ] }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "error-banner", style: { margin: "16px 0", padding: "12px" }, children: error }),
+      error && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
       /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
         "button",
         {
           type: "submit",
           disabled: isLoading,
           className: "btn btn-primary",
-          style: { width: "100%", marginTop: "8px", background: "#f59e0b", color: "#fff" },
-          children: isLoading ? "Loading..." : "Submit"
+          style: { width: "100%", marginTop: "12px", background: "#ffdd2d", color: "#333", fontWeight: 600 },
+          children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430..." : "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C"
         }
       )
     ] })
@@ -29939,6 +30535,7 @@ var AppMain = observer(() => {
         store.recalculateBalances();
       }
     });
+    authStore.init();
   }, []);
   if (store.isLoading) {
     return /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "loading-container", children: [
@@ -29952,7 +30549,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-08 12:27:10 +0300" : "dev"
+          true ? "2026-09-08 18:19:43 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -30103,4 +30700,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-5PR5BK6D.js.map
+//# sourceMappingURL=app-XPWN3AQJ.js.map
