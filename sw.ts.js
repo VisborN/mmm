@@ -2,7 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = `mmm-pwa-${"2026-09-08 11:40:35 +0300" ? "2026-09-08 11:40:35 +0300".replace(/\s+/g, "-") : "v1"}`;
+  var CACHE_NAME = `mmm-pwa-${"2026-09-08 11:59:03 +0300" ? "2026-09-08 11:59:03 +0300".replace(/\s+/g, "-") : "v1"}`;
   var PRECACHE_ASSETS = [
     "./",
     "./index.html",

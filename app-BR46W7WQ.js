@@ -1362,7 +1362,7 @@ var require_react_dom_development = __commonJS({
         return dispatcher;
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React7 = require_react(), Internals = {
+      var React8 = require_react(), Internals = {
         d: {
           f: noop3,
           r: function() {
@@ -1380,7 +1380,7 @@ var require_react_dom_development = __commonJS({
         },
         p: 0,
         findDOMNode: null
-      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+      }, REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), ReactSharedInternals = React8.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
       "function" === typeof Map && null != Map.prototype && "function" === typeof Map.prototype.forEach && "function" === typeof Set && null != Set.prototype && "function" === typeof Set.prototype.clear && "function" === typeof Set.prototype.forEach || console.error(
         "React depends on Map and Set built-in types. Make sure that you load a polyfill in older browsers. https://reactjs.org/link/react-polyfills"
       );
@@ -2915,7 +2915,7 @@ var require_react_dom_client_development = __commonJS({
         "number" === type && getActiveElement(node.ownerDocument) === node || node.defaultValue === "" + value || (node.defaultValue = "" + value);
       }
       function validateOptionProps(element, props) {
-        null == props.value && ("object" === typeof props.children && null !== props.children ? React7.Children.forEach(props.children, function(child) {
+        null == props.value && ("object" === typeof props.children && null !== props.children ? React8.Children.forEach(props.children, function(child) {
           null == child || "string" === typeof child || "number" === typeof child || "bigint" === typeof child || didWarnInvalidChild || (didWarnInvalidChild = true, console.error(
             "Cannot infer the option value of complex children. Pass a `value` prop or use a plain string as children to <option>."
           ));
@@ -18547,14 +18547,14 @@ var require_react_dom_client_development = __commonJS({
         ));
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var Scheduler = require_scheduler(), React7 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
+      var Scheduler = require_scheduler(), React8 = require_react(), ReactDOM = require_react_dom(), assign2 = Object.assign, REACT_LEGACY_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.element"), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy");
       /* @__PURE__ */ Symbol.for("react.scope");
       var REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity");
       /* @__PURE__ */ Symbol.for("react.legacy_hidden");
       /* @__PURE__ */ Symbol.for("react.tracing_marker");
       var REACT_MEMO_CACHE_SENTINEL = /* @__PURE__ */ Symbol.for("react.memo_cache_sentinel");
       /* @__PURE__ */ Symbol.for("react.view_transition");
-      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
+      var MAYBE_ITERATOR_SYMBOL = Symbol.iterator, REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), isArrayImpl = Array.isArray, ReactSharedInternals = React8.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, ReactDOMSharedInternals = ReactDOM.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, NotPending = Object.freeze({
         pending: false,
         data: null,
         method: null,
@@ -21342,7 +21342,7 @@ var require_react_dom_client_development = __commonJS({
         }
       };
       (function() {
-        var isomorphicReactPackageVersion = React7.version;
+        var isomorphicReactPackageVersion = React8.version;
         if ("19.2.6" !== isomorphicReactPackageVersion)
           throw Error(
             'Incompatible React versions: The "react" and "react-dom" packages must have the exact same version. Instead got:\n  - react:      ' + (isomorphicReactPackageVersion + "\n  - react-dom:  19.2.6\nLearn more: https://react.dev/warnings/version-mismatch")
@@ -21491,7 +21491,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return x === y && (0 !== x || 1 / x === 1 / y) || x !== x && y !== y;
       }
       function useSyncExternalStore$2(subscribe, getSnapshot) {
-        didWarnOld18Alpha || void 0 === React7.startTransition || (didWarnOld18Alpha = true, console.error(
+        didWarnOld18Alpha || void 0 === React8.startTransition || (didWarnOld18Alpha = true, console.error(
           "You are using an outdated, pre-release alpha of React 18 that does not support useSyncExternalStore. The use-sync-external-store shim will not work correctly. Upgrade to a newer pre-release."
         ));
         var value = getSnapshot();
@@ -21501,7 +21501,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
             "The result of getSnapshot should be cached to avoid an infinite loop"
           ), didWarnUncachedGetSnapshot = true);
         }
-        cachedValue = useState9({
+        cachedValue = useState10({
           inst: { value, getSnapshot }
         });
         var inst = cachedValue[0].inst, forceUpdate = cachedValue[1];
@@ -21539,8 +21539,8 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return getSnapshot();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React7 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState9 = React7.useState, useEffect4 = React7.useEffect, useLayoutEffect = React7.useLayoutEffect, useDebugValue = React7.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
-      exports.useSyncExternalStore = void 0 !== React7.useSyncExternalStore ? React7.useSyncExternalStore : shim;
+      var React8 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState10 = React8.useState, useEffect4 = React8.useEffect, useLayoutEffect = React8.useLayoutEffect, useDebugValue = React8.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      exports.useSyncExternalStore = void 0 !== React8.useSyncExternalStore ? React8.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
   }
@@ -22363,18 +22363,18 @@ var require_react_jsx_runtime_development = __commonJS({
       function isValidElement(object2) {
         return "object" === typeof object2 && null !== object2 && object2.$$typeof === REACT_ELEMENT_TYPE;
       }
-      var React7 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React7.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
+      var React8 = require_react(), REACT_ELEMENT_TYPE = /* @__PURE__ */ Symbol.for("react.transitional.element"), REACT_PORTAL_TYPE = /* @__PURE__ */ Symbol.for("react.portal"), REACT_FRAGMENT_TYPE = /* @__PURE__ */ Symbol.for("react.fragment"), REACT_STRICT_MODE_TYPE = /* @__PURE__ */ Symbol.for("react.strict_mode"), REACT_PROFILER_TYPE = /* @__PURE__ */ Symbol.for("react.profiler"), REACT_CONSUMER_TYPE = /* @__PURE__ */ Symbol.for("react.consumer"), REACT_CONTEXT_TYPE = /* @__PURE__ */ Symbol.for("react.context"), REACT_FORWARD_REF_TYPE = /* @__PURE__ */ Symbol.for("react.forward_ref"), REACT_SUSPENSE_TYPE = /* @__PURE__ */ Symbol.for("react.suspense"), REACT_SUSPENSE_LIST_TYPE = /* @__PURE__ */ Symbol.for("react.suspense_list"), REACT_MEMO_TYPE = /* @__PURE__ */ Symbol.for("react.memo"), REACT_LAZY_TYPE = /* @__PURE__ */ Symbol.for("react.lazy"), REACT_ACTIVITY_TYPE = /* @__PURE__ */ Symbol.for("react.activity"), REACT_CLIENT_REFERENCE = /* @__PURE__ */ Symbol.for("react.client.reference"), ReactSharedInternals = React8.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE, hasOwnProperty = Object.prototype.hasOwnProperty, isArrayImpl = Array.isArray, createTask = console.createTask ? console.createTask : function() {
         return null;
       };
-      React7 = {
+      React8 = {
         react_stack_bottom_frame: function(callStackForError) {
           return callStackForError();
         }
       };
       var specialPropKeyWarningShown;
       var didWarnAboutElementRef = {};
-      var unknownOwnerDebugStack = React7.react_stack_bottom_frame.bind(
-        React7,
+      var unknownOwnerDebugStack = React8.react_stack_bottom_frame.bind(
+        React8,
         UnknownOwner
       )();
       var unknownOwnerDebugTask = createTask(getTaskName(UnknownOwner));
@@ -22422,7 +22422,7 @@ var require_jsx_runtime = __commonJS({
 var import_client = __toESM(require_client());
 
 // app_component.tsx
-var import_react11 = __toESM(require_react());
+var import_react12 = __toESM(require_react());
 
 // ../node_modules/mobx/dist/mobx.esm.js
 var niceErrors = {
@@ -29052,6 +29052,9 @@ var TransactionsView = observer(() => {
   ] });
 });
 
+// settings_view.tsx
+var import_react11 = __toESM(require_react());
+
 // tinkoff_auth_service.ts
 var import_globals10 = __toESM(require_globals());
 
@@ -29060,14 +29063,27 @@ var import_globals8 = __toESM(require_globals());
 
 // infrastructure/proxy.ts
 var import_globals7 = __toESM(require_globals());
-var DEFAULT_PROXY_ENDPOINT = "/proxy";
+var DEFAULT_PROXY_ENDPOINT = "https://d5dli0ro6bbf30tqr35v.lievo6ut.apigw.yandexcloud.net/proxy";
 var configuredProxyEndpoint = DEFAULT_PROXY_ENDPOINT;
 function getProxyEndpoint() {
   if (typeof window !== "undefined" && window.localStorage) {
     const saved = window.localStorage.getItem("mmm_proxy_endpoint");
-    if (saved) return saved;
+    if (saved && saved !== "/proxy") return saved;
   }
   return configuredProxyEndpoint;
+}
+function setProxyEndpoint(endpoint) {
+  configuredProxyEndpoint = endpoint;
+  if (typeof window !== "undefined" && window.localStorage) {
+    window.localStorage.setItem("mmm_proxy_endpoint", endpoint);
+  }
+}
+function resetProxyEndpoint() {
+  configuredProxyEndpoint = DEFAULT_PROXY_ENDPOINT;
+  if (typeof window !== "undefined" && window.localStorage) {
+    window.localStorage.removeItem("mmm_proxy_endpoint");
+  }
+  return DEFAULT_PROXY_ENDPOINT;
 }
 var STATUS_TEXTS = {
   200: "OK",
@@ -29677,6 +29693,42 @@ var authStore = new AuthStore();
 // settings_view.tsx
 var import_jsx_runtime6 = __toESM(require_jsx_runtime());
 var SettingsView = observer(() => {
+  const [proxyEndpoint, setProxyEndpointState] = (0, import_react11.useState)(getProxyEndpoint());
+  const [isTestingProxy, setIsTestingProxy] = (0, import_react11.useState)(false);
+  const [testResult, setTestResult] = (0, import_react11.useState)(null);
+  const handleEndpointChange = (val) => {
+    setProxyEndpointState(val);
+    setProxyEndpoint(val);
+  };
+  const handleResetEndpoint = () => {
+    const def = resetProxyEndpoint();
+    setProxyEndpointState(def);
+    setTestResult(null);
+  };
+  const handleTestProxy = async () => {
+    setIsTestingProxy(true);
+    setTestResult(null);
+    const res = await proxyFetch("https://example.com", {
+      proxyEndpoint
+    });
+    if (res.error !== null) {
+      setTestResult({
+        success: false,
+        error: res.error.message || String(res.error)
+      });
+      setIsTestingProxy(false);
+      return;
+    }
+    const textRes = await res.data.text();
+    const snippet = textRes.error === null ? textRes.data.slice(0, 300) + (textRes.data.length > 300 ? "..." : "") : "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0440\u043E\u0447\u0438\u0442\u0430\u0442\u044C \u0442\u0435\u043B\u043E \u043E\u0442\u0432\u0435\u0442\u0430";
+    setTestResult({
+      success: res.data.ok,
+      status: res.data.status,
+      statusText: res.data.statusText,
+      bodySnippet: snippet
+    });
+    setIsTestingProxy(false);
+  };
   return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-section", children: [
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F Google Drive" }),
@@ -29729,6 +29781,78 @@ var SettingsView = observer(() => {
         )
       ] }),
       store.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "progress-badge", style: { marginTop: "16px", display: "inline-block" }, children: store.syncProgress })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "Yandex Serverless Proxy" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "settings-text", children: "\u042D\u043D\u0434\u043F\u043E\u0438\u043D\u0442 API Gateway \u0434\u043B\u044F \u043E\u0431\u0445\u043E\u0434\u0430 CORS:" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", gap: "8px", marginBottom: "12px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "input",
+          {
+            type: "text",
+            className: "form-input",
+            value: proxyEndpoint,
+            onChange: (e) => handleEndpointChange(e.target.value),
+            placeholder: "https://...apigw.yandexcloud.net/proxy",
+            style: { flex: 1, fontSize: "13px" }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            className: "btn btn-secondary",
+            onClick: handleResetEndpoint,
+            title: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u043D\u0430 URL \u043F\u043E \u0443\u043C\u043E\u043B\u0447\u0430\u043D\u0438\u044E",
+            style: { whiteSpace: "nowrap" },
+            children: "\u0421\u0431\u0440\u043E\u0441"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "action-row", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+        "button",
+        {
+          id: "test-proxy-btn",
+          onClick: handleTestProxy,
+          className: "btn btn-primary",
+          disabled: isTestingProxy,
+          children: isTestingProxy ? "\u041E\u0442\u043F\u0440\u0430\u0432\u043A\u0430 \u0437\u0430\u043F\u0440\u043E\u0441\u0430..." : "\u041F\u0440\u043E\u0432\u0435\u0440\u0438\u0442\u044C \u043F\u0440\u043E\u043A\u0441\u0438 (\u0437\u0430\u043F\u0440\u043E\u0441 \u043D\u0430 example.com)"
+        }
+      ) }),
+      testResult && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+        "div",
+        {
+          style: {
+            marginTop: "16px",
+            padding: "12px 14px",
+            borderRadius: "var(--radius-sm)",
+            background: testResult.success ? "rgba(16, 185, 129, 0.1)" : "rgba(239, 68, 68, 0.1)",
+            border: `1px solid ${testResult.success ? "var(--success-color)" : "var(--danger-color)"}`
+          },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600, marginBottom: "6px", color: testResult.success ? "var(--success-color)" : "var(--danger-color)" }, children: testResult.success ? `\u2713 \u0423\u0441\u043F\u0435\u0448\u043D\u043E: ${testResult.status} ${testResult.statusText}` : `\u2717 \u041E\u0448\u0438\u0431\u043A\u0430: ${testResult.status ? testResult.status + " " + testResult.statusText : "\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0435\u0434\u0438\u043D\u0435\u043D\u0438\u044F"}` }),
+            testResult.error && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "13px", color: "var(--text-secondary)", wordBreak: "break-word" }, children: testResult.error }),
+            testResult.bodySnippet && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              "pre",
+              {
+                style: {
+                  margin: "8px 0 0 0",
+                  padding: "8px",
+                  background: "rgba(0, 0, 0, 0.3)",
+                  borderRadius: "4px",
+                  fontSize: "11px",
+                  fontFamily: "monospace",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  maxHeight: "150px",
+                  overflowY: "auto",
+                  color: "var(--text-secondary)"
+                },
+                children: testResult.bodySnippet
+              }
+            )
+          ]
+        }
+      )
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
@@ -29809,7 +29933,7 @@ var TinkoffLoginDialog = observer(() => {
 // app_component.tsx
 var import_jsx_runtime8 = __toESM(require_jsx_runtime());
 var AppMain = observer(() => {
-  (0, import_react11.useEffect)(() => {
+  (0, import_react12.useEffect)(() => {
     store.loadData().then(() => {
       if (store.currentView === "accounts") {
         store.recalculateBalances();
@@ -29828,7 +29952,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-08 11:40:35 +0300" : "dev"
+          true ? "2026-09-08 11:59:03 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -29979,4 +30103,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-J2L446M6.js.map
+//# sourceMappingURL=app-BR46W7WQ.js.map
