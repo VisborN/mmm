@@ -29575,6 +29575,14 @@ var TBankAuthSession = class {
     if (data.token) {
       this.token = String(data.token);
     }
+    if (stepName === "totp") {
+      return {
+        step: "totp",
+        cid,
+        action: action2,
+        raw: data
+      };
+    }
     if (stepName === "otp") {
       const lengthRaw = data.length;
       const length = typeof lengthRaw === "number" ? lengthRaw : 6;
@@ -29691,10 +29699,86 @@ var TBankAuthSession = class {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
     }
-    if (data.step === "totp") {
-      const skipRes = await this.skipTotp();
+    if (data.step === "selfie") {
+      const skipRes = await this.skipSelfie();
       if (skipRes.error !== null) return err(skipRes.error);
       data = skipRes.data;
+    }
+    return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Submits 6-digit TOTP code: POST /auth/<action>?cid=<cid>
+   */
+  async submitTotp(code) {
+    const identity = this.identity;
+    const form = {
+      step: "totp",
+      totpCode: code.trim()
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to submit TOTP code"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse TOTP response"));
+    }
+    let data = jsonRes.data;
+    if (data.errorMessage || data.error_message || data.error_description) {
+      const msg = String(data.errorMessage || data.error_message || data.error_description);
+      return err(new Error(msg));
+    }
+    if (data.error && !data.code && !data.step) {
+      return err(new Error(String(data.error)));
+    }
+    if (data.step === "selfie") {
+      const skipRes = await this.skipSelfie();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
+    }
+    return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Skips TOTP step with skipped=true to fall back to SMS OTP
+   */
+  async skipTotp() {
+    const identity = this.identity;
+    const form = {
+      step: "totp",
+      skipped: "true"
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to skip totp"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse totp response"));
+    }
+    let data = jsonRes.data;
+    if (data.errorMessage || data.error_message || data.error_description) {
+      const msg = String(data.errorMessage || data.error_message || data.error_description);
+      return err(new Error(msg));
     }
     if (data.step === "selfie") {
       const skipRes = await this.skipSelfie();
@@ -29739,51 +29823,12 @@ var TBankAuthSession = class {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
     }
-    if (data.step === "totp") {
-      const skipRes = await this.skipTotp();
-      if (skipRes.error !== null) return err(skipRes.error);
-      data = skipRes.data;
-    }
     if (data.step === "selfie") {
       const skipRes = await this.skipSelfie();
       if (skipRes.error !== null) return err(skipRes.error);
       data = skipRes.data;
     }
     return ok(this.parseStepResponse(data));
-  }
-  /**
-   * Skips TOTP step with skipped=true to fall back to SMS OTP
-   */
-  async skipTotp() {
-    const identity = this.identity;
-    const form = {
-      step: "totp",
-      skipped: "true"
-    };
-    const cookieHeader = formatCookieHeader(this.cookies);
-    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
-      "Content-Type": "application/x-www-form-urlencoded"
-    }), cookieHeader ? { Cookie: cookieHeader } : {});
-    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
-    const res = await proxyFetch(url, {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(form).toString()
-    });
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to skip totp"));
-    }
-    this.updateCookies(res.data.multiValueHeaders);
-    const jsonRes = await res.data.json();
-    if (jsonRes.error !== null) {
-      return err(new AggregateError([jsonRes.error], "Failed to parse totp response"));
-    }
-    const data = jsonRes.data;
-    if (data.errorMessage || data.error_description || data.error) {
-      const msg = String(data.errorMessage || data.error_description || data.error);
-      return err(new Error(msg));
-    }
-    return ok(data);
   }
   /**
    * Skips selfie step with camera_unavailable
@@ -29845,11 +29890,6 @@ var TBankAuthSession = class {
     if (data.errorMessage || data.error_description || data.error) {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
-    }
-    if (data.step === "totp") {
-      const skipRes = await this.skipTotp();
-      if (skipRes.error !== null) return err(skipRes.error);
-      data = skipRes.data;
     }
     if (data.step === "selfie") {
       const skipRes = await this.skipSelfie();
@@ -30088,7 +30128,14 @@ var AuthStore = class {
         });
         return;
       }
-      if (res.data.step === "otp") {
+      if (res.data.step === "totp") {
+        runInAction(() => {
+          this.step = "TOTP" /* TOTP */;
+          this.inputValue = "";
+          this.otpLength = 6;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "otp") {
         runInAction(() => {
           this.step = "OTP" /* OTP */;
           this.inputValue = "";
@@ -30108,6 +30155,38 @@ var AuthStore = class {
       } else {
         runInAction(() => {
           this.error = "\u041D\u0435\u0438\u0437\u0432\u0435\u0441\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430";
+          this.isLoading = false;
+        });
+      }
+    } else if (this.step === "TOTP" /* TOTP */) {
+      const res = await this.session.submitTotp(this.inputValue);
+      if (res.error !== null) {
+        runInAction(() => {
+          this.error = res.error.message || "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043A\u043E\u0434 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F";
+          this.isLoading = false;
+        });
+        return;
+      }
+      if (res.data.step === "password") {
+        runInAction(() => {
+          this.step = "PASSWORD" /* PASSWORD */;
+          this.inputValue = "";
+          this.userName = res.data.userName || null;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "otp") {
+        runInAction(() => {
+          this.step = "OTP" /* OTP */;
+          this.inputValue = "";
+          this.otpLength = res.data.otpLength || 6;
+          this.maskedPhone = res.data.phoneMasked || null;
+          this.isLoading = false;
+        });
+      } else if (res.data.step === "complete" && res.data.code) {
+        await this.handleCodeExchange(res.data.code);
+      } else {
+        runInAction(() => {
+          this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u043A\u043E\u0434";
           this.isLoading = false;
         });
       }
@@ -30152,6 +30231,44 @@ var AuthStore = class {
           this.isLoading = false;
         });
       }
+    }
+  }
+  /**
+   * Skips TOTP and requests an SMS code instead
+   */
+  async fallbackToSms() {
+    this.isLoading = true;
+    this.error = null;
+    const res = await this.session.skipTotp();
+    if (res.error !== null) {
+      runInAction(() => {
+        this.error = res.error.message || "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u0442\u044C \u0421\u041C\u0421-\u043A\u043E\u0434";
+        this.isLoading = false;
+      });
+      return;
+    }
+    if (res.data.step === "otp") {
+      runInAction(() => {
+        this.step = "OTP" /* OTP */;
+        this.inputValue = "";
+        this.otpLength = res.data.otpLength || 6;
+        this.maskedPhone = res.data.phoneMasked || null;
+        this.isLoading = false;
+      });
+    } else if (res.data.step === "password") {
+      runInAction(() => {
+        this.step = "PASSWORD" /* PASSWORD */;
+        this.inputValue = "";
+        this.userName = res.data.userName || null;
+        this.isLoading = false;
+      });
+    } else if (res.data.step === "complete" && res.data.code) {
+      await this.handleCodeExchange(res.data.code);
+    } else {
+      runInAction(() => {
+        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u0435\u0440\u0435\u043A\u043B\u044E\u0447\u0438\u0442\u044C\u0441\u044F \u043D\u0430 \u0421\u041C\u0421";
+        this.isLoading = false;
+      });
     }
   }
   async handleCodeExchange(code) {
@@ -30501,6 +30618,14 @@ var TinkoffLoginDialog = observer(() => {
           type: "tel",
           inputMode: "tel"
         };
+      case "TOTP" /* TOTP */:
+        return {
+          title: "\u041A\u043E\u0434 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F",
+          label: "6-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043A\u043E\u0434 \u0438\u0437 \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u044F \u0422-\u0411\u0430\u043D\u043A\u0430 \u0438\u043B\u0438 Authenticator",
+          placeholder: "6 \u0446\u0438\u0444\u0440",
+          type: "text",
+          inputMode: "numeric"
+        };
       case "OTP" /* OTP */:
         return {
           title: "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u0435 \u0421\u041C\u0421",
@@ -30580,6 +30705,24 @@ var TinkoffLoginDialog = observer(() => {
           style: { width: "100%", marginTop: "12px", background: "#ffdd2d", color: "#333", fontWeight: 600 },
           children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430..." : "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C"
         }
+      ),
+      step === "TOTP" /* TOTP */ && /* @__PURE__ */ (0, import_jsx_runtime7.jsx)(
+        "button",
+        {
+          type: "button",
+          disabled: isLoading,
+          onClick: () => authStore.fallbackToSms(),
+          className: "btn",
+          style: {
+            width: "100%",
+            marginTop: "8px",
+            background: "transparent",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border-color)",
+            fontSize: "13px"
+          },
+          children: "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E \u0421\u041C\u0421"
+        }
       )
     ] })
   ] }) });
@@ -30608,7 +30751,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-08 19:46:33 +0300" : "dev"
+          true ? "2026-09-08 19:53:41 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -30759,4 +30902,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-HSIQJGSI.js.map
+//# sourceMappingURL=app-ZF4HFRFJ.js.map
