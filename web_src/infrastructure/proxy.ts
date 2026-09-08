@@ -1,10 +1,6 @@
 import "ts-error-as-value/lib/globals";
 
-export interface Response {
-  statusCode: number;
-  body: string;
-  multiValueHeaders?: Record<string, string[]>;
-}
+
 
 export interface ProxyEnvelope {
   statusCode?: number;
@@ -313,30 +309,7 @@ export async function proxyFetch(
  */
 export { proxyFetch as fetch };
 
-/**
- * Legacy proxy call for backwards compatibility.
- */
-export async function proxy(
-  method: string,
-  url: string,
-  body?: unknown,
-  headers?: { [key: string]: string[] }
-): Promise<Result<Response, Error>> {
-  const fetchRes = await proxyFetch(url, {
-    method,
-    body: body as BodyInit | Record<string, unknown> | null,
-    headers,
-  });
-  if (fetchRes.error !== null) {
-    return err(fetchRes.error);
-  }
 
-  return ok({
-    statusCode: fetchRes.data.status,
-    body: fetchRes.data.body,
-    multiValueHeaders: fetchRes.data.multiValueHeaders,
-  });
-}
 
 /**
  * Legacy proxy call expecting HTTP 200 with JSON body.
