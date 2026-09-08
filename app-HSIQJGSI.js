@@ -29686,10 +29686,20 @@ var TBankAuthSession = class {
     if (jsonRes.error !== null) {
       return err(new AggregateError([jsonRes.error], "Failed to parse phone response"));
     }
-    const data = jsonRes.data;
+    let data = jsonRes.data;
     if (data.errorMessage || data.error_description || data.error) {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
+    }
+    if (data.step === "totp") {
+      const skipRes = await this.skipTotp();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
+    }
+    if (data.step === "selfie") {
+      const skipRes = await this.skipSelfie();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
     }
     return ok(this.parseStepResponse(data));
   }
@@ -29729,12 +29739,51 @@ var TBankAuthSession = class {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
     }
+    if (data.step === "totp") {
+      const skipRes = await this.skipTotp();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
+    }
     if (data.step === "selfie") {
       const skipRes = await this.skipSelfie();
       if (skipRes.error !== null) return err(skipRes.error);
       data = skipRes.data;
     }
     return ok(this.parseStepResponse(data));
+  }
+  /**
+   * Skips TOTP step with skipped=true to fall back to SMS OTP
+   */
+  async skipTotp() {
+    const identity = this.identity;
+    const form = {
+      step: "totp",
+      skipped: "true"
+    };
+    const cookieHeader = formatCookieHeader(this.cookies);
+    const headers = __spreadValues(__spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "Content-Type": "application/x-www-form-urlencoded"
+    }), cookieHeader ? { Cookie: cookieHeader } : {});
+    const url = `${SSO_BASE_URL}auth/${encodeURIComponent(this.action)}?cid=${encodeURIComponent(this.cid)}`;
+    const res = await proxyFetch(url, {
+      method: "POST",
+      headers,
+      body: new URLSearchParams(form).toString()
+    });
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to skip totp"));
+    }
+    this.updateCookies(res.data.multiValueHeaders);
+    const jsonRes = await res.data.json();
+    if (jsonRes.error !== null) {
+      return err(new AggregateError([jsonRes.error], "Failed to parse totp response"));
+    }
+    const data = jsonRes.data;
+    if (data.errorMessage || data.error_description || data.error) {
+      const msg = String(data.errorMessage || data.error_description || data.error);
+      return err(new Error(msg));
+    }
+    return ok(data);
   }
   /**
    * Skips selfie step with camera_unavailable
@@ -29792,10 +29841,20 @@ var TBankAuthSession = class {
     if (jsonRes.error !== null) {
       return err(new AggregateError([jsonRes.error], "Failed to parse password response"));
     }
-    const data = jsonRes.data;
+    let data = jsonRes.data;
     if (data.errorMessage || data.error_description || data.error) {
       const msg = String(data.errorMessage || data.error_description || data.error);
       return err(new Error(msg));
+    }
+    if (data.step === "totp") {
+      const skipRes = await this.skipTotp();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
+    }
+    if (data.step === "selfie") {
+      const skipRes = await this.skipSelfie();
+      if (skipRes.error !== null) return err(skipRes.error);
+      data = skipRes.data;
     }
     return ok(this.parseStepResponse(data));
   }
@@ -30549,7 +30608,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-08 18:19:43 +0300" : "dev"
+          true ? "2026-09-08 19:46:33 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -30700,4 +30759,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-XPWN3AQJ.js.map
+//# sourceMappingURL=app-HSIQJGSI.js.map
