@@ -8,6 +8,8 @@ import { TransactionsView } from './transactions_view';
 import { SettingsView } from './settings_view';
 import { TinkoffLoginDialog } from './tinkoff_login';
 import { authStore, LoginStep } from './auth_store';
+import { SberLoginDialog } from './sber_login';
+import { sberAuthStore, SberLoginStep } from './sber_auth_store';
 
 declare const __COMMIT_TIME__: string;
 
@@ -19,6 +21,7 @@ export const AppMain = observer(() => {
             }
         });
         authStore.init();
+        sberAuthStore.init();
     }, []);
 
     if (store.isLoading) {
@@ -94,6 +97,7 @@ export const AppMain = observer(() => {
             
             {store.isFolderModalOpen && <FolderSelectionModal onClose={() => store.closeFolderModal()} />}
             {authStore.step !== LoginStep.IDLE && <TinkoffLoginDialog />}
+            {sberAuthStore.step !== SberLoginStep.IDLE && <SberLoginDialog />}
         </div>
     );
 });

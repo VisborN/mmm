@@ -18,3 +18,14 @@
 - **Interactive Auth Flow**: Phone (`POST /auth/step?cid=...`) -> If `step: "totp"`, user enters 6-digit TOTP code (`step=totp&totpCode=...`), with optional fallback to SMS OTP via `step=totp&skipped=true` -> SMS OTP (`POST /auth/step?cid=...`) -> Auto-skip selfie (`camera_unavailable`) -> Password -> Authorization code exchange (`POST /auth/token`) -> Tokens (`access_token`, `refresh_token`).
 - **Account Balances**: Loaded via `GET /v1/accounts_light?withDigitalRub=false` with automatic token refresh (proactive when expiry < 60s, or reactive on 401 Unauthorized). Displayed in Settings view ([`web_src/settings_view.tsx`](file:///home/vdudko/documents/mmm/web_src/settings_view.tsx)).
 
+## Sberbank Mobile API Integration
+- **Architecture**: Based on reverse engineering from `sber-api` Android client (`ru.mekosichkin.sberbank.api`). Located in [`web_src/infrastructure/sberbank.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/sberbank.ts), [`web_src/sber_auth_store.ts`](file:///home/vdudko/documents/mmm/web_src/sber_auth_store.ts), and [`web_src/sber_login.tsx`](file:///home/vdudko/documents/mmm/web_src/sber_login.tsx).
+- **Transport**: Requests to `https://online.sberbank.ru:4477/` (`CSAMAPI/registerApp.do`, `CSAMAPI/login.do`, `mobile9/postCSALogin.do`, `mobile9/private/products/list.do`) are proxied through Yandex Cloud Serverless Proxy ([`web_src/infrastructure/proxy.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/proxy.ts)). Dynamic session cookies (`JSESSIONID`, `ESAMAPIJSESSIONID`, `TS01*`) are tracked and maintained across calls.
+- **Device Identity & Storage**: Persistent 40-hex device ID (`devId`) and device metadata stored in `sber_identity`. Persistent `mGuid`, `pin`, and active session cookies stored in `sber_session` in IndexedDB via `JsonStore`.
+- **Registration Flow**:
+  1. Phone/Card input -> `POST /CSAMAPI/registerApp.do` (`operation=register`) -> receives `mGUID` and triggers SMS password delivery.
+  2. SMS code input -> `POST /CSAMAPI/registerApp.do` (`operation=confirm`) -> on success, calls `operation=createPIN` to set device PIN (`42424`).
+  3. Seamlessly calls `login.do` and `postCSALogin.do` to obtain authenticated `JSESSIONID`.
+- **Account Balances & Deduplication**: Fetched via `POST /mobile9/private/products/list.do` (`showProductType=cards,accounts,imaccounts,loans`). Parsed using native `DOMParser`. Automatically prevents double-counting by detecting card-backing accounts (`cardAccount`). Displayed in Settings view ([`web_src/settings_view.tsx`](file:///home/vdudko/documents/mmm/web_src/settings_view.tsx)).
+
+

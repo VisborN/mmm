@@ -32,14 +32,16 @@ When working on this repository, please adhere to the following guidelines:
 - Use MobX for state management.
 - **MobX Async Actions**: When updating MobX observables after an `await` in an asynchronous function, you MUST wrap the state updates in `runInAction(() => { ... })`. Failure to do so will cause MobX strict mode errors.
 - **Component Architecture**: The UI is modularized (e.g., `transactions_view.tsx`, `settings_view.tsx`, etc.). When creating new features, extract them into separate files. For modal dialogues, conditionally render them in their parent components (e.g., `{store.isModalOpen && <Modal />}`) to ensure they unmount when closed, preventing stale local state issues without needing `useEffect`.
-- **Authentication & Banking State**: T-Bank (formerly Tinkoff) authorization and balance retrieval logic is managed by `authStore` (`web_src/auth_store.ts`) and `web_src/infrastructure/tbank.ts`, reverse-engineered from the Android mobile app with OAuth 2.0 PKCE and SHA-512 anti-DDoS fingerprint proof over Yandex Cloud Serverless Proxy. Use `authStore.startLogin()` to initiate the flow, which conditionally renders `TinkoffLoginDialog`.
+- **Authentication & Banking State**:
+  - T-Bank (formerly Tinkoff) authorization and balance retrieval logic is managed by `authStore` (`web_src/auth_store.ts`) and `web_src/infrastructure/tbank.ts`, reverse-engineered from the Android mobile app with OAuth 2.0 PKCE and SHA-512 anti-DDoS fingerprint proof over Yandex Cloud Serverless Proxy. Use `authStore.startLogin()` to initiate the flow, which conditionally renders `TinkoffLoginDialog`.
+  - Sberbank authorization and balance retrieval logic is managed by `sberAuthStore` (`web_src/sber_auth_store.ts`) and `web_src/infrastructure/sberbank.ts`, reverse-engineered from the Android mobile client with device registration (`mGUID`), SMS verification, PIN creation, and session cookie management over Yandex Cloud Serverless Proxy (`online.sberbank.ru:4477`). Use `sberAuthStore.startLogin()` to initiate the flow, which conditionally renders `SberLoginDialog`.
 
 ## PWA & Offline Support
 - **Service Worker (`web_src/sw.ts`)**:
   - **Pre-caching**: On `install`, pre-caches core static assets (manifest, icons, `./index.html`) and the background worker (`__WORKER_URL__`), then parses `index.html` to discover and pre-cache hashed JS and CSS bundles.
   - **Navigation Fallback**: Navigation requests (HTML documents, shortcut URLs, deep routes) use a Network-First strategy with fallback to cached `./index.html` so the app always opens offline.
   - **Permanent Cache-First**: All static assets (same-origin JS/CSS/icons/workers and external fonts from `fonts.googleapis.com` / `fonts.gstatic.com`) use a permanent Cache-First strategy to avoid redundant network requests once cached.
-  - **API Passthrough**: Network APIs (`www.googleapis.com`, `accounts.google.com`, `tinkoff.ru`, `tbank.ru`, `yandexcloud.net`, `/proxy`) must be excluded from Service Worker caching.
+  - **API Passthrough**: Network APIs (`www.googleapis.com`, `accounts.google.com`, `tinkoff.ru`, `tbank.ru`, `sberbank.ru`, `yandexcloud.net`, `/proxy`) must be excluded from Service Worker caching.
   - **Theme & Splash Screen**: PWA `background_color` and `theme_color` in `app.webmanifest`, HTML meta tags (`theme-color`, `color-scheme`), and critical inline `<style>` in `index.html` must remain in sync with `--bg-color` (`#0f172a`) to prevent white flashes during app launch.
 
 ## Go/Serverless & HTTP Proxy
