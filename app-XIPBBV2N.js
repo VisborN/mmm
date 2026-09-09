@@ -30347,43 +30347,18 @@ var authStore = new AuthStore();
 
 // infrastructure/sberbank.ts
 var import_globals10 = __toESM(require_globals());
-var SBER_BASE_URL = "https://online.sberbank.ru:4477/";
-var SBER_DEFAULT_PIN = "42424";
-var SBER_IDENTITY_STORAGE_KEY = "sber_identity";
+var SBER_APP_ORIGIN = "https://online.sberbank.ru";
+var SBER_AUTH_PAGE = "https://online.sberbank.ru/CSAFront/index.do";
+var SBER_PRIMARY_AUTH_URL = "https://online.sberbank.ru/CSAFront/authMainJson.do";
+var SBER_PIN_CREATE_URL = "https://online.sberbank.ru/CSAFront/api/v1/pin/create";
+var SBER_AUTH_FINISH_URL = "https://online.sberbank.ru/CSAFront/api/v1/auth";
+var SBER_DEFAULT_API_BASE = "https://web-standin2.online.sberbank.ru";
+var SBER_PRODUCTS_PATH = "/main-screen/rest/v2/m1/web/section/meta";
 var SBER_SESSION_STORAGE_KEY = "sber_session";
-var SBER_DEFAULT_COOKIES = {
-  JSESSIONID: "0000uHrFvcD0Xv3qIYW5bXDS_Jy:1akk7tu3m|rsDPJSESSIONID=PBC5YS:-152294547",
-  SWJSESSIONID: "8f0961c07d8ff7ca1a881002df39ec2f"
-};
-var SBER_MOBILE_SDK_DATA = '{"TIMESTAMP":"2019-09-13T07:23:14Z","HardwareID":"-1","SIM_ID":"-1","PhoneNumber":"-1","GeoLocationInfo":[{"Timestamp":"0","Status":"1"}],"DeviceModel":"ANE-LX1","MultitaskingSupported":true,"DeviceName":"marky","DeviceSystemName":"Android","DeviceSystemVersion":"28","Languages":"ru","WiFiMacAddress":"02:00:00:00:00:00","WiFiNetworksData":{"BBSID":"02:00:00:00:00:00","SignalStrength":"-47","Channel":"null"},"CellTowerId":"-1","LocationAreaCode":"-1","ScreenSize":"1080x2060","RSA_ApplicationKey":"2C501591EA5BF79F1C0ABA8B628C2571","MCC":"286","MNC":"02","OS_ID":"1f32651b72df5515","SDK_VERSION":"3.10.0","Compromised":0,"Emulator":0}';
-var SBER_MOBILE_SDK_KAV = '{"osVersion":0,"KavSdkId":"","KavSdkVersion":"","KavSdkVirusDBVersion":"SdkVirusDbInfo(year=0, month=0, day=0, hour=0, minute=0, second=0, knownThreatsCount=0, records=0, size=0)","KavSdkVirusDBStatus":"","KavSdkVirusDBStatusDate":"","KavSdkRoot":false,"LowPasswordQuality":false,"NonMarketAppsAllowed":false,"UsbDebugOn":false,"ScanStatus":"NONE"}';
-function generateRandomHex(length = 40) {
-  const bytes = new Uint8Array(Math.ceil(length / 2));
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("").slice(0, length);
-}
-function createFreshSberIdentity() {
-  const devId = generateRandomHex(40);
-  return {
-    devId,
-    devIdOld: devId,
-    deviceName: "HUAWEI_ANE-LX1",
-    appVersion: "10.2.0",
-    version: "9.20"
-  };
-}
-async function getOrCreateSberIdentity() {
-  const res = await JsonStore.getJson(SBER_IDENTITY_STORAGE_KEY);
-  if (res.error === null && res.data && res.data.devId) {
-    return res.data;
-  }
-  const identity = createFreshSberIdentity();
-  await JsonStore.setJson(SBER_IDENTITY_STORAGE_KEY, identity);
-  return identity;
-}
+var SBER_DEFAULT_PIN = "42424";
 async function getStoredSberSession() {
   const res = await JsonStore.getJson(SBER_SESSION_STORAGE_KEY);
-  if (res.error !== null || !res.data || !res.data.mGuid) {
+  if (res.error !== null || !res.data || !res.data.ufsSession || !res.data.ufsToken) {
     return null;
   }
   return res.data;
@@ -30395,22 +30370,28 @@ async function setStoredSberSession(session) {
     await JsonStore.setJson(SBER_SESSION_STORAGE_KEY, session);
   }
 }
-function normalizeSberLogin(raw) {
+function parseSberCookies(raw) {
   const trimmed = raw.trim();
-  const digitsOnly = trimmed.replace(/\D/g, "");
-  if (digitsOnly.length >= 16 && digitsOnly.length <= 19) {
-    return digitsOnly;
+  if (!trimmed) return {};
+  try {
+    const obj = JSON.parse(trimmed);
+    if (typeof obj === "object" && obj !== null) {
+      const ufsSession2 = obj.ufs_session || obj["UFS-SESSION"] || obj.ufsSession || obj["ufs-session"];
+      const ufsToken2 = obj.ufs_token || obj["UFS-TOKEN"] || obj.ufsToken || obj["ufs-token"];
+      if (ufsSession2 && ufsToken2) {
+        return {
+          ufsSession: String(ufsSession2).trim(),
+          ufsToken: String(ufsToken2).trim()
+        };
+      }
+    }
+  } catch (e) {
   }
-  if (digitsOnly.length === 10) {
-    return "7" + digitsOnly;
-  }
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("8")) {
-    return "7" + digitsOnly.slice(1);
-  }
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("7")) {
-    return digitsOnly;
-  }
-  return trimmed;
+  const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
+  const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
+  const ufsSession = sessionMatch ? sessionMatch[1].trim() : void 0;
+  const ufsToken = tokenMatch ? tokenMatch[1].trim() : void 0;
+  return { ufsSession, ufsToken };
 }
 function parseSetCookieHeaders2(multiValueHeaders) {
   const cookies = {};
@@ -30432,511 +30413,712 @@ function parseSetCookieHeaders2(multiValueHeaders) {
   }
   return cookies;
 }
-function formatCookieHeader2(cookies) {
-  const entries = Object.entries(cookies);
-  if (entries.length === 0) return void 0;
-  return entries.map(([k, v]) => `${k}=${v}`).join("; ");
+function hexToBigInt(hex) {
+  return BigInt("0x" + hex);
 }
-function parseXml(xml) {
-  const parser = new DOMParser();
-  return parser.parseFromString(xml, "text/xml");
+function bigIntToBytes(val) {
+  let hex = val.toString(16);
+  if (hex.length % 2 !== 0) hex = "0" + hex;
+  const len = hex.length / 2;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    u8[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return u8;
 }
-function getFirstTagText(el, tagName) {
-  var _a3;
-  const elements = el.getElementsByTagName(tagName);
-  if (elements.length === 0) return null;
-  return ((_a3 = elements[0].textContent) == null ? void 0 : _a3.trim()) || null;
+function padBytes(val, width) {
+  const bytes = bigIntToBytes(val);
+  if (bytes.length >= width) return bytes;
+  const res = new Uint8Array(width);
+  res.set(bytes, width - bytes.length);
+  return res;
 }
-function extractErrorMessage(doc) {
-  var _a3;
-  const errors2 = doc.getElementsByTagName("error");
-  if (errors2.length > 0) {
-    const textEl = errors2[0].getElementsByTagName("text")[0] || errors2[0];
-    const text = (_a3 = textEl.textContent) == null ? void 0 : _a3.trim();
-    if (text && !text.includes("\uFFFD") && text.length > 0) {
-      return text;
+function modPow(base, exp, mod) {
+  let res = BigInt(1);
+  let b = (base % mod + mod) % mod;
+  let e = exp;
+  while (e > BigInt(0)) {
+    if (e % BigInt(2) === BigInt(1)) res = res * b % mod;
+    e = e / BigInt(2);
+    b = b * b % mod;
+  }
+  return res;
+}
+async function subtleSha512(...parts) {
+  let totalLen = 0;
+  for (const p of parts) totalLen += p.length;
+  const combined = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const p of parts) {
+    combined.set(p, offset);
+    offset += p.length;
+  }
+  const hashBuf = await crypto.subtle.digest("SHA-512", combined.buffer);
+  return new Uint8Array(hashBuf);
+}
+async function subtleSha512BigInt(...parts) {
+  const buf = await subtleSha512(...parts);
+  let hex = "";
+  for (let i = 0; i < buf.length; i++) {
+    hex += buf[i].toString(16).padStart(2, "0");
+  }
+  return BigInt("0x" + hex);
+}
+async function subtleSha1(data) {
+  const hashBuf = await crypto.subtle.digest("SHA-1", data.buffer);
+  return new Uint8Array(hashBuf);
+}
+async function subtleMgf1(seed, length) {
+  const result = new Uint8Array(length);
+  let offset = 0;
+  let counter = 0;
+  while (offset < length) {
+    const counterBytes = new Uint8Array(4);
+    counterBytes[0] = counter >>> 24 & 255;
+    counterBytes[1] = counter >>> 16 & 255;
+    counterBytes[2] = counter >>> 8 & 255;
+    counterBytes[3] = counter & 255;
+    const input = new Uint8Array(seed.length + 4);
+    input.set(seed, 0);
+    input.set(counterBytes, seed.length);
+    const digest = await subtleSha1(input);
+    const toCopy = Math.min(digest.length, length - offset);
+    result.set(digest.subarray(0, toCopy), offset);
+    offset += toCopy;
+    counter++;
+  }
+  return result;
+}
+function parseDerInteger(data, offset) {
+  if (data[offset] !== 2) throw new Error("expected INTEGER tag in DER");
+  offset++;
+  let length = data[offset];
+  offset++;
+  if (length & 128) {
+    const nBytes = length & 127;
+    length = 0;
+    for (let i = 0; i < nBytes; i++) {
+      length = length << 8 | data[offset++];
     }
   }
-  const desc = getFirstTagText(doc, "description");
-  if (desc && !desc.includes("\uFFFD") && desc.length > 0) {
-    return desc;
+  const intBytes = data.subarray(offset, offset + length);
+  let hex = "";
+  for (let i = 0; i < intBytes.length; i++) {
+    hex += intBytes[i].toString(16).padStart(2, "0");
   }
-  const code = getFirstTagText(doc, "code");
-  const attempts = getFirstTagText(doc, "attemptsRemain");
-  if (code === "1") {
-    return attempts ? `\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043A\u043E\u0434 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F. \u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043F\u044B\u0442\u043E\u043A: ${attempts}.` : "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043A\u043E\u0434 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u0438\u0437 \u0421\u041C\u0421.";
-  }
-  if (code === "2") {
-    return "\u041E\u0448\u0438\u0431\u043A\u0430 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u043D\u0430 \u0441\u0442\u043E\u0440\u043E\u043D\u0435 \u0431\u0430\u043D\u043A\u0430.";
-  }
-  if (code === "7") {
-    return "\u0420\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u044F \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430 \u043D\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0430.";
-  }
-  return code ? `\u041E\u0448\u0438\u0431\u043A\u0430 \u0431\u0430\u043D\u043A\u0430 (\u043A\u043E\u0434 ${code})` : "\u041F\u0440\u043E\u0438\u0437\u043E\u0448\u043B\u0430 \u043E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u043E\u0431\u0440\u0430\u0449\u0435\u043D\u0438\u0438 \u043A \u0431\u0430\u043D\u043A\u0443";
+  return { val: BigInt("0x" + hex), nextOffset: offset + length };
 }
-function parseSberProductsXml(xml) {
-  const doc = parseXml(xml);
+function parseRsaPublicKeyDer(b64Der) {
+  const cleanB64 = b64Der.replace(/\s+/g, "");
+  const binaryString = atob(cleanB64);
+  const der = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    der[i] = binaryString.charCodeAt(i);
+  }
+  let modulus = BigInt(0);
+  let exponent = BigInt(0);
+  for (let i = 0; i < der.length - 10; i++) {
+    if (der[i] === 2) {
+      try {
+        const r1 = parseDerInteger(der, i);
+        if (r1.val > BigInt(2) ** BigInt(1024) && der[r1.nextOffset] === 2) {
+          const r2 = parseDerInteger(der, r1.nextOffset);
+          modulus = r1.val;
+          exponent = r2.val;
+          break;
+        }
+      } catch (e) {
+      }
+    }
+  }
+  if (modulus === BigInt(0) || exponent === BigInt(0)) throw new Error("Could not parse RSA public key from DER");
+  return { modulus, exponent };
+}
+async function rsaOaepEncrypt(publicKeyB64, text) {
+  const { modulus, exponent } = parseRsaPublicKeyDer(publicKeyB64);
+  const width = Math.floor((modulus.toString(2).length + 7) / 8);
+  const message = new TextEncoder().encode(text);
+  const digestSize = 20;
+  if (message.length > width - 2 * digestSize - 2) {
+    throw new Error("Message too long for RSA-OAEP key");
+  }
+  const seed = new Uint8Array(digestSize);
+  crypto.getRandomValues(seed);
+  const emptyHash = await subtleSha1(new Uint8Array(0));
+  const padLen = width - message.length - 2 * digestSize - 2;
+  const dataBlock = new Uint8Array(emptyHash.length + padLen + 1 + message.length);
+  dataBlock.set(emptyHash, 0);
+  dataBlock.fill(0, emptyHash.length, emptyHash.length + padLen);
+  dataBlock[emptyHash.length + padLen] = 1;
+  dataBlock.set(message, emptyHash.length + padLen + 1);
+  const dbMask = await subtleMgf1(seed, width - digestSize - 1);
+  const maskedData = new Uint8Array(dataBlock.length);
+  for (let i = 0; i < dataBlock.length; i++) maskedData[i] = dataBlock[i] ^ dbMask[i];
+  const seedMask = await subtleMgf1(maskedData, digestSize);
+  const maskedSeed = new Uint8Array(seed.length);
+  for (let i = 0; i < seed.length; i++) maskedSeed[i] = seed[i] ^ seedMask[i];
+  const encoded = new Uint8Array(width);
+  encoded[0] = 0;
+  encoded.set(maskedSeed, 1);
+  encoded.set(maskedData, 1 + maskedSeed.length);
+  let hex = "";
+  for (let i = 0; i < encoded.length; i++) hex += encoded[i].toString(16).padStart(2, "0");
+  const encodedInt = BigInt("0x" + hex);
+  const encryptedInt = modPow(encodedInt, exponent, modulus);
+  const encryptedBytes = padBytes(encryptedInt, width);
+  let binary = "";
+  for (let i = 0; i < encryptedBytes.length; i++) {
+    binary += String.fromCharCode(encryptedBytes[i]);
+  }
+  return btoa(binary);
+}
+function generateDeviceprint() {
+  const randomHex = (len) => {
+    const bytes = new Uint8Array(len);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+  const uuid = `${randomHex(4)}-${randomHex(2)}-4${randomHex(1).slice(1)}-${randomHex(2)}-${randomHex(6)}`;
+  const fields = {
+    version: "5.3.0",
+    os: "Windows",
+    osVersion: "10.0",
+    browser: "Chrome",
+    browserVersion: "146.0.0.0",
+    platform: "Win32",
+    screen: "1920x1080",
+    colorDepth: "24",
+    timezone: "-180",
+    language: "ru-RU",
+    cpuCores: "8",
+    canvas: randomHex(16),
+    webgl: randomHex(16),
+    fonts: randomHex(8),
+    audio: randomHex(8),
+    uuid
+  };
+  return Object.entries(fields).map(([k, v]) => `${k}=${v}`).join("&");
+}
+function parseModernSberProducts(payload) {
+  var _a3, _b2, _c, _d, _e, _f;
+  if (!payload || typeof payload !== "object") return [];
+  const root = payload;
+  let data = root;
+  for (const key of ["body", "sections", "technicalSection", "sectionProductData"]) {
+    if (data && typeof data === "object" && data[key]) {
+      data = data[key];
+    }
+  }
+  if (!data || typeof data !== "object") return [];
+  const accountsList = [
+    // eslint-disable-line @typescript-eslint/no-explicit-any
+    ...Array.isArray((_a3 = data.ctaccounts) == null ? void 0 : _a3.data) ? data.ctaccounts.data : [],
+    ...Array.isArray((_b2 = data.sharingCtAccounts) == null ? void 0 : _b2.data) ? data.sharingCtAccounts.data : [],
+    ...Array.isArray((_c = data.accounts) == null ? void 0 : _c.data) ? data.accounts.data : []
+  ];
+  const cardsList = Array.isArray((_d = data.cardsInWallet) == null ? void 0 : _d.data) ? data.cardsInWallet.data : [];
   const products = [];
-  const cardsContainer = doc.getElementsByTagName("cards")[0];
-  if (cardsContainer) {
-    const cardElements = cardsContainer.getElementsByTagName("card");
-    for (let i = 0; i < cardElements.length; i++) {
-      const el = cardElements[i];
-      const id = getFirstTagText(el, "id") || `card-${i}`;
-      const name = getFirstTagText(el, "name") || "\u041A\u0430\u0440\u0442\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430";
-      const number = getFirstTagText(el, "number") || void 0;
-      const cardAccount = getFirstTagText(el, "cardAccount") || void 0;
-      const state = getFirstTagText(el, "state") || "active";
-      const isBlocked = state.toLowerCase() === "blocked";
-      const limitAmountStr = getFirstTagText(el, "availableLimit") || getFirstTagText(el, "amount") || "0";
-      const cleanNum = limitAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-      const currencyEl = el.getElementsByTagName("currency")[0];
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "\u20BD" : "\u20BD";
-      products.push({
-        id,
-        name,
-        type: "card",
-        number,
-        cardAccount,
-        balance,
-        currencyCode,
-        currencyName,
-        state,
-        isBlocked
-      });
+  const accountNumbers = /* @__PURE__ */ new Map();
+  for (const item of accountsList) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id || "");
+    const name = String(item.name || "\u0421\u0447\u0451\u0442");
+    const number = String(item.number || "");
+    const balanceObj = item.balance;
+    const rawAmt = balanceObj && balanceObj.amount !== void 0 ? Number(balanceObj.amount) : 0;
+    const balance = isNaN(rawAmt) ? 0 : rawAmt;
+    const currencyCode = String((balanceObj == null ? void 0 : balanceObj.currencyCode) || ((_e = balanceObj == null ? void 0 : balanceObj.currency) == null ? void 0 : _e.code) || "RUB");
+    const isBlocked = item.arrested === true || item.state === "BLOCKED";
+    if (number) {
+      accountNumbers.set(number, { id, balance });
     }
+    products.push({
+      id,
+      name,
+      type: "account",
+      number,
+      balance,
+      currencyCode,
+      currencyName: currencyCode === "RUB" || currencyCode === "643" ? "\u0440\u0443\u0431." : currencyCode,
+      state: item.state ? String(item.state) : void 0,
+      isBlocked
+    });
   }
-  const accountsContainer = doc.getElementsByTagName("accounts")[0];
-  if (accountsContainer) {
-    const accountElements = accountsContainer.getElementsByTagName("account");
-    for (let i = 0; i < accountElements.length; i++) {
-      const el = accountElements[i];
-      const id = getFirstTagText(el, "id") || `acc-${i}`;
-      const name = getFirstTagText(el, "name") || "\u0421\u0447\u0435\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430";
-      const number = getFirstTagText(el, "number") || void 0;
-      const state = getFirstTagText(el, "state") || "active";
-      const isBlocked = state.toLowerCase() === "blocked" || state.toLowerCase() === "closed";
-      const balanceContainer = el.getElementsByTagName("balance")[0];
-      const availcashContainer = el.getElementsByTagName("availcash")[0];
-      const targetContainer = balanceContainer || availcashContainer;
-      const balanceAmountStr = targetContainer ? getFirstTagText(targetContainer, "amount") || "0" : getFirstTagText(el, "amount") || "0";
-      const cleanNum = balanceAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-      const currencyEl = targetContainer ? targetContainer.getElementsByTagName("currency")[0] : null;
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "\u20BD" : "\u20BD";
-      products.push({
-        id,
-        name,
-        type: "account",
-        number,
-        balance,
-        currencyCode,
-        currencyName,
-        state,
-        isBlocked
-      });
-    }
-  }
-  const loansContainer = doc.getElementsByTagName("loans")[0];
-  if (loansContainer) {
-    const loanElements = loansContainer.getElementsByTagName("loan");
-    for (let i = 0; i < loanElements.length; i++) {
-      const el = loanElements[i];
-      const id = getFirstTagText(el, "id") || `loan-${i}`;
-      const name = getFirstTagText(el, "name") || "\u041A\u0440\u0435\u0434\u0438\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430";
-      const number = getFirstTagText(el, "number") || void 0;
-      const balanceContainer = el.getElementsByTagName("balance")[0];
-      const loanAmountStr = balanceContainer ? getFirstTagText(balanceContainer, "amount") || "0" : getFirstTagText(el, "amount") || "0";
-      const cleanNum = loanAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-      const currencyEl = el.getElementsByTagName("currency")[0];
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "\u20BD" : "\u20BD";
-      products.push({
-        id,
-        name,
-        type: "loan",
-        number,
-        balance,
-        currencyCode,
-        currencyName,
-        state: "active",
-        isBlocked: false
-      });
-    }
+  for (const item of cardsList) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id || "");
+    const name = String(item.name || "\u041A\u0430\u0440\u0442\u0430");
+    const number = String(item.number || "");
+    const cardAccount = String(item.cardAccount || "");
+    const isCTA = item.isCTA === true;
+    const parent = isCTA && cardAccount ? accountNumbers.get(cardAccount) : void 0;
+    const balanceKey = parent ? "availableTotalLimit" : "availableLimit";
+    const balanceObj = item[balanceKey] || item.availableLimit || item.balance;
+    const rawAmt = balanceObj && balanceObj.amount !== void 0 ? Number(balanceObj.amount) : 0;
+    const balance = isNaN(rawAmt) ? 0 : rawAmt;
+    const currencyCode = String((balanceObj == null ? void 0 : balanceObj.currencyCode) || ((_f = balanceObj == null ? void 0 : balanceObj.currency) == null ? void 0 : _f.code) || "RUB");
+    const isBlocked = item.arrested === true || item.state === "BLOCKED";
+    products.push({
+      id,
+      name,
+      type: "card",
+      number,
+      cardAccount: cardAccount || void 0,
+      balance,
+      currencyCode,
+      currencyName: currencyCode === "RUB" || currencyCode === "643" ? "\u0440\u0443\u0431." : currencyCode,
+      state: item.state ? String(item.state) : void 0,
+      isBlocked
+    });
   }
   return products;
 }
-var SberbankAuthSession = class {
-  constructor() {
-    __publicField(this, "identity", null);
-    __publicField(this, "cookies", __spreadValues({}, SBER_DEFAULT_COOKIES));
-    __publicField(this, "mGuid", null);
-    __publicField(this, "loginInput", null);
-    __publicField(this, "pin", SBER_DEFAULT_PIN);
-    __publicField(this, "attemptsRemain", null);
+async function fetchSberProducts(session) {
+  if (!session.ufsSession || !session.ufsToken) {
+    return err(new Error("\u041E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u044E\u0442 cookies \u0441\u0435\u0441\u0441\u0438\u0438 (UFS-SESSION / UFS-TOKEN)"));
   }
-  async init() {
-    this.identity = await getOrCreateSberIdentity();
-    this.cookies = __spreadValues({}, SBER_DEFAULT_COOKIES);
-    this.mGuid = null;
-    this.loginInput = null;
-    this.attemptsRemain = null;
+  const apiBase = session.apiBase || SBER_DEFAULT_API_BASE;
+  const targetUrl = `${apiBase.replace(/\/+$/, "")}${SBER_PRODUCTS_PATH}`;
+  const headers = {
+    "Content-Type": "application/json",
+    Accept: "application/json, text/plain, */*",
+    Origin: SBER_APP_ORIGIN,
+    Referer: `${SBER_APP_ORIGIN}/`,
+    Cookie: `UFS-SESSION=${session.ufsSession}; UFS-TOKEN=${session.ufsToken}`
+  };
+  const res = await proxyFetch(targetUrl, {
+    method: "POST",
+    headers,
+    body: { withData: true, forceUpdate: false }
+  });
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0441\u0434\u0435\u043B\u0430\u0442\u044C \u0437\u0430\u043F\u0440\u043E\u0441 \u043A API \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
   }
-  updateCookies(headers) {
-    const newCookies = parseSetCookieHeaders2(headers);
-    this.cookies = __spreadValues(__spreadValues({}, this.cookies), newCookies);
+  if (res.data.status === 401 || res.data.status === 403) {
+    return err(new Error("\u0421\u0435\u0441\u0441\u0438\u044F \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430 \u0438\u0441\u0442\u0435\u043A\u043B\u0430 \u0438\u043B\u0438 \u043D\u0435\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043B\u044C\u043D\u0430 (HTTP " + res.data.status + ")"));
   }
-  /**
-   * Step 1: Initiates device registration by sending login/phone/card
-   * POST /CSAMAPI/registerApp.do with operation=register
-   */
-  async register(loginRaw) {
-    var _a3;
-    if (!this.identity) {
-      await this.init();
-    }
-    const identity = this.identity;
-    const login = normalizeSberLogin(loginRaw);
-    this.loginInput = login;
-    const form = {
-      operation: "register",
-      login,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      deviceName: identity.deviceName,
-      devID: identity.devId,
-      devIDOld: identity.devIdOld,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV
-    };
-    const cookieHeader = formatCookieHeader2(this.cookies);
-    const headers = __spreadValues({
-      "Content-Type": "application/x-www-form-urlencoded"
-    }, cookieHeader ? { Cookie: cookieHeader } : {});
-    const url = SBER_BASE_URL + "CSAMAPI/registerApp.do";
-    const res = await proxyFetch(url, {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(form).toString()
-    });
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to initiate Sberbank registration"));
-    }
-    this.updateCookies(res.data.multiValueHeaders);
-    const bodyText = res.data.body || "";
-    const doc = parseXml(bodyText);
-    const code = getFirstTagText(doc, "code");
-    if (code !== "0") {
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-    const mGuid = getFirstTagText(doc, "mGUID");
-    if (!mGuid) {
-      return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C mGUID \u0438\u0437 \u043E\u0442\u0432\u0435\u0442\u0430 \u0431\u0430\u043D\u043A\u0430"));
-    }
-    this.mGuid = mGuid;
-    const attemptsStr = getFirstTagText(doc, "attemptsRemain");
-    if (attemptsStr) {
-      const parsed = parseInt(attemptsStr, 10);
-      if (!isNaN(parsed)) {
-        this.attemptsRemain = parsed;
-      }
-    }
-    return ok({
-      mGuid,
-      attemptsRemain: (_a3 = this.attemptsRemain) != null ? _a3 : void 0
-    });
+  const jsonResult = await res.data.json();
+  if (jsonResult.error !== null) {
+    return err(new AggregateError([jsonResult.error], "\u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u0432\u0435\u0440\u043D\u0443\u043B \u043D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442"));
   }
-  /**
-   * Step 2: Confirms SMS password and sets PIN
-   * POST /CSAMAPI/registerApp.do with operation=confirm, then operation=createPIN
-   */
-  async confirm(smsPassword, pin = SBER_DEFAULT_PIN) {
-    if (!this.identity || !this.mGuid) {
-      return err(new Error("\u0421\u0435\u0441\u0441\u0438\u044F \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438 \u043D\u0435 \u0438\u043D\u0438\u0446\u0438\u0430\u043B\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u0430"));
-    }
-    const identity = this.identity;
-    const mGuid = this.mGuid;
-    this.pin = pin;
-    const confirmForm = {
-      operation: "confirm",
-      mGUID: mGuid,
-      smsPassword: smsPassword.trim(),
-      version: identity.version,
-      appType: "android",
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV,
-      confirmData: smsPassword.trim(),
-      confirmOperation: "confirmSMS"
-    };
-    let cookieHeader = formatCookieHeader2(this.cookies);
-    let headers = __spreadValues({
-      "Content-Type": "application/x-www-form-urlencoded"
-    }, cookieHeader ? { Cookie: cookieHeader } : {});
-    const confirmRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/registerApp.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(confirmForm).toString()
-    });
-    if (confirmRes.error !== null) {
-      return err(new AggregateError([confirmRes.error], "Failed to submit SMS confirmation"));
-    }
-    this.updateCookies(confirmRes.data.multiValueHeaders);
-    const doc = parseXml(confirmRes.data.body || "");
-    const code = getFirstTagText(doc, "code");
-    if (code !== "0") {
-      const attemptsStr = getFirstTagText(doc, "attemptsRemain");
-      if (attemptsStr) {
-        const parsed = parseInt(attemptsStr, 10);
-        if (!isNaN(parsed)) {
-          this.attemptsRemain = parsed;
-        }
-      }
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-    const pinForm = {
-      operation: "createPIN",
-      mGUID: mGuid,
-      password: pin,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      deviceName: identity.deviceName,
-      devID: identity.devId,
-      devIDOld: identity.devIdOld,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV
-    };
-    cookieHeader = formatCookieHeader2(this.cookies);
-    headers = __spreadValues({
-      "Content-Type": "application/x-www-form-urlencoded"
-    }, cookieHeader ? { Cookie: cookieHeader } : {});
-    const pinRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/registerApp.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(pinForm).toString()
-    });
-    if (pinRes.error !== null) {
-      return err(new AggregateError([pinRes.error], "Failed to create PIN"));
-    }
-    this.updateCookies(pinRes.data.multiValueHeaders);
-    const pinDoc = parseXml(pinRes.data.body || "");
-    const pinCode = getFirstTagText(pinDoc, "code");
-    if (pinCode !== "0") {
-      const errMsg = extractErrorMessage(pinDoc);
-      return err(new Error(errMsg));
-    }
-    const session = {
-      mGuid,
-      pin,
-      login: this.loginInput || "",
-      cookies: this.cookies
-    };
-    await setStoredSberSession(session);
-    return ok(void 0);
+  const data = jsonResult.data;
+  if (!data || data.success === false) {
+    const errorObj = data == null ? void 0 : data.error;
+    const errorMsg = (errorObj == null ? void 0 : errorObj.title) || (errorObj == null ? void 0 : errorObj.text) || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u043E\u043B\u0443\u0447\u0435\u043D\u0438\u044F \u043F\u0440\u043E\u0434\u0443\u043A\u0442\u043E\u0432";
+    return err(new Error(errorMsg));
   }
-  /**
-   * Logs into Sberbank using mGUID and PIN to obtain a fresh session cookie
-   * POST /CSAMAPI/login.do -> POST /mobile9/postCSALogin.do
-   */
-  async login(mGuid, pin = SBER_DEFAULT_PIN) {
-    if (!this.identity) {
-      await this.init();
-    }
-    const identity = this.identity;
-    const loginForm = {
-      operation: "button.login",
-      password: pin,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      osVersion: "28.0",
-      deviceName: identity.deviceName,
-      isLightScheme: "false",
-      isSafe: "true",
-      mGUID: mGuid,
-      devID: identity.devId,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV
-    };
-    const cookieHeader = formatCookieHeader2(this.cookies);
-    const headers = __spreadValues({
-      "Content-Type": "application/x-www-form-urlencoded"
-    }, cookieHeader ? { Cookie: cookieHeader } : {});
-    const loginRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/login.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(loginForm).toString()
-    });
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to authenticate with Sberbank"));
-    }
-    this.updateCookies(loginRes.data.multiValueHeaders);
-    const doc = parseXml(loginRes.data.body || "");
-    const code = getFirstTagText(doc, "code");
-    if (code !== "0") {
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-    const token = getFirstTagText(doc, "token");
-    if (!token) {
-      return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u043E\u043D\u043D\u044B\u0439 \u0442\u043E\u043A\u0435\u043D Sberbank"));
-    }
-    const csaForm = {
-      token,
-      appName: "\u0421\u0431\u0435\u0440\u0431\u0430\u043D\u043A",
-      appBuildOSType: "android",
-      appVersion: identity.appVersion,
-      appBuildType: "RELEASE",
-      appFormat: "STANDALONE",
-      deviceName: identity.deviceName,
-      deviceType: "ANE-LX1",
-      deviceOSType: "android",
-      deviceOSVersion: "9"
-    };
-    const csaCookieHeader = formatCookieHeader2(this.cookies);
-    const csaHeaders = __spreadValues({
-      "Content-Type": "application/x-www-form-urlencoded"
-    }, csaCookieHeader ? { Cookie: csaCookieHeader } : {});
-    const csaRes = await proxyFetch(SBER_BASE_URL + "mobile9/postCSALogin.do", {
-      method: "POST",
-      headers: csaHeaders,
-      body: new URLSearchParams(csaForm).toString()
-    });
-    if (csaRes.error !== null) {
-      return err(new AggregateError([csaRes.error], "Failed to complete CSA login"));
-    }
-    this.updateCookies(csaRes.data.multiValueHeaders);
-    const sessionCookie = this.cookies["JSESSIONID"];
-    if (!sessionCookie) {
-      return err(new Error("\u041E\u0442\u0432\u0435\u0442 CSA login \u043D\u0435 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u0441\u0435\u0441\u0441\u0438\u043E\u043D\u043D\u0443\u044E cookie JSESSIONID"));
-    }
-    const stored = await getStoredSberSession();
-    if (stored) {
-      stored.sessionCookie = sessionCookie;
-      stored.sessionExpiresAt = Date.now() + 25 * 60 * 1e3;
-      stored.cookies = this.cookies;
-      await setStoredSberSession(stored);
-    }
-    return ok(sessionCookie);
-  }
-};
+  const products = parseModernSberProducts(data);
+  return ok(products);
+}
 async function getSberAccounts() {
   const session = await getStoredSberSession();
-  if (!session || !session.mGuid) {
-    return err(new Error("Not authenticated in Sberbank"));
+  if (!session || !session.ufsSession || !session.ufsToken) {
+    return err(new Error("\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0435"));
   }
-  const authSession = new SberbankAuthSession();
-  if (session.cookies) {
-    authSession.cookies = __spreadValues({}, session.cookies);
+  return await fetchSberProducts(session);
+}
+var SberWebAuthSession = class {
+  constructor() {
+    __publicField(this, "config", null);
+    __publicField(this, "clientA", BigInt(0));
+    __publicField(this, "clientSecretA", BigInt(0));
+    __publicField(this, "srpN", BigInt(0));
+    __publicField(this, "srpG", BigInt(2));
+    __publicField(this, "token", null);
+    __publicField(this, "loginValue", "");
+    __publicField(this, "passwordValue", "");
+    __publicField(this, "deviceprint", "");
+    __publicField(this, "expectedM2", null);
+    __publicField(this, "pinPublicKey", null);
+    __publicField(this, "csrfToken", null);
+    this.deviceprint = generateDeviceprint();
   }
-  let cookie = session.sessionCookie;
-  const isExpired = !session.sessionExpiresAt || Date.now() >= session.sessionExpiresAt;
-  if (!cookie || isExpired) {
-    const loginRes = await authSession.login(session.mGuid, session.pin || SBER_DEFAULT_PIN);
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to refresh Sberbank session"));
+  parseConfigFromHtml(html) {
+    const idx = html.indexOf("window.config = {");
+    if (idx === -1) {
+      throw new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043E\u0431\u043D\u0430\u0440\u0443\u0436\u0438\u0442\u044C \u043A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u044E \u043D\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0435 \u0432\u0445\u043E\u0434\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430");
     }
-    cookie = loginRes.data;
-  }
-  const fetchProducts = async (jsessionId) => {
-    const headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: `JSESSIONID=${jsessionId}`
+    let depth = 0;
+    let end = idx;
+    for (let i = idx + "window.config =".length; i < html.length; i++) {
+      if (html[i] === "{") depth++;
+      else if (html[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+    const configStr = html.slice(idx, end);
+    const processIdMatch = configStr.match(/processId:\s*"([^"]+)"/);
+    const nMatch = configStr.match(/srpConfig:\s*\{[\s\S]*?N:\s*"([^"]+)"/);
+    const gMatch = configStr.match(/srpConfig:\s*\{[\s\S]*?g:\s*"([^"]+)"/);
+    const baseApiMatch = configStr.match(/baseApiUrl:\s*"([^"]+)"/);
+    if (!processIdMatch || !nMatch) {
+      throw new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0438\u0437\u0432\u043B\u0435\u0447\u044C SRP \u043F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u044B \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430");
+    }
+    return {
+      processId: processIdMatch[1],
+      nHex: nMatch[1],
+      gHex: gMatch ? gMatch[1] : "2",
+      baseApiUrl: baseApiMatch ? baseApiMatch[1] : "CSAFront"
     };
-    const res = await proxyFetch(SBER_BASE_URL + "mobile9/private/products/list.do", {
+  }
+  /**
+   * Step 1: Initiates SRP authentication with login and password.
+   * Prompts Sberbank to verify the password and send the SMS verification code!
+   */
+  async startLogin(login, pass) {
+    this.loginValue = login.trim();
+    this.passwordValue = pass;
+    const pageRes = await proxyFetch(SBER_AUTH_PAGE, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+      }
+    });
+    if (pageRes.error !== null) {
+      return err(new AggregateError([pageRes.error], "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0432\u0445\u043E\u0434\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    const configParse = await withResult(() => this.parseConfigFromHtml(pageRes.data.body || ""))();
+    if (configParse.error !== null) {
+      return err(new AggregateError([configParse.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0440\u0430\u0437\u0431\u043E\u0440\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    this.config = configParse.data;
+    this.srpN = hexToBigInt(this.config.nHex);
+    this.srpG = BigInt(this.config.gHex);
+    const width = Math.floor((this.srpN.toString(2).length + 7) / 8);
+    const aBytes = new Uint8Array(Math.floor(width / 8) || 32);
+    crypto.getRandomValues(aBytes);
+    let aHex = "";
+    for (let i = 0; i < aBytes.length; i++) aHex += aBytes[i].toString(16).padStart(2, "0");
+    this.clientSecretA = BigInt("0x" + aHex);
+    this.clientA = modPow(this.srpG, this.clientSecretA, this.srpN);
+    const beginForm = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      operation: "button.begin",
+      login: this.loginValue,
+      pageInputType: "INDEX",
+      storeLogin: "true",
+      srp_A: this.clientA.toString(16),
+      publicKeyCredentialAvailable: "true"
+    });
+    const primaryHeaders = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true"
+    };
+    const beginRes = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
+      method: "POST",
+      headers: primaryHeaders,
+      body: beginForm.toString()
+    });
+    if (beginRes.error !== null) {
+      return err(new AggregateError([beginRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u0445\u043E\u0434\u0430"));
+    }
+    const beginJsonRes = await beginRes.data.json();
+    if (beginJsonRes.error !== null) {
+      return err(new AggregateError([beginJsonRes.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    const beginPayload = beginJsonRes.data;
+    if (beginPayload.error && beginPayload.error.code !== 200) {
+      const errCode = beginPayload.error.code;
+      if (beginPayload.error.captcha) {
+        return err(new Error("\u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u0437\u0430\u043F\u0440\u043E\u0441\u0438\u043B \u043A\u0430\u043F\u0447\u0443 (\u0440\u0435\u043A\u043E\u043C\u0435\u043D\u0434\u0443\u0435\u0442\u0441\u044F \u0432\u043E\u0439\u0442\u0438 \u043F\u043E Cookie)"));
+      }
+      return err(new Error(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430: ${errCode}`));
+    }
+    const token = beginPayload.token;
+    const srpInfo = beginPayload.srpInfo;
+    if (!token || !srpInfo || !srpInfo.srp_s || !srpInfo.srp_B) {
+      return err(new Error("\u041E\u0442\u0432\u0435\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430 \u043D\u0435 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 SRP challenge"));
+    }
+    this.token = token;
+    const salt = hexToBigInt(srpInfo.srp_s);
+    const serverB = hexToBigInt(srpInfo.srp_B);
+    const k = await subtleSha512BigInt(padBytes(this.srpN, width), padBytes(this.srpG, width));
+    const x = await subtleSha512BigInt(
+      bigIntToBytes(salt),
+      new TextEncoder().encode(this.passwordValue)
+    );
+    const u = await subtleSha512BigInt(padBytes(this.clientA, width), padBytes(serverB, width));
+    const shared = modPow(
+      (serverB - k * modPow(this.srpG, x, this.srpN)) % this.srpN,
+      this.clientSecretA + u * x,
+      this.srpN
+    );
+    const sessionHash = await subtleSha512(padBytes(shared, width));
+    const hN = await subtleSha512(bigIntToBytes(this.srpN));
+    const hG = await subtleSha512(bigIntToBytes(this.srpG));
+    const xorBuf = new Uint8Array(hN.length);
+    for (let i = 0; i < hN.length; i++) xorBuf[i] = hN[i] ^ hG[i];
+    const m1 = await subtleSha512(
+      xorBuf,
+      bigIntToBytes(salt),
+      padBytes(this.clientA, width),
+      padBytes(serverB, width),
+      sessionHash
+    );
+    let m1Hex = "";
+    for (let i = 0; i < m1.length; i++) m1Hex += m1[i].toString(16).padStart(2, "0");
+    const m1Int = BigInt("0x" + m1Hex);
+    this.expectedM2 = await subtleSha512(
+      padBytes(this.clientA, width),
+      bigIntToBytes(m1Int),
+      sessionHash
+    );
+    const step2Form = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      "org.apache.struts.taglib.html.TOKEN": this.token || "",
+      operation: "button.next",
+      login: this.loginValue,
+      pageInputType: "INDEX",
+      storeLogin: "true",
+      srp_M: m1Int.toString(16),
+      token: this.token || ""
+    });
+    const step2Res = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
+      method: "POST",
+      headers: primaryHeaders,
+      body: step2Form.toString()
+    });
+    if (step2Res.error !== null) {
+      return err(new AggregateError([step2Res.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 SRP \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u0430"));
+    }
+    const step2JsonRes = await step2Res.data.json();
+    if (step2JsonRes.error !== null) {
+      return err(new AggregateError([step2JsonRes.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    const step2Payload = step2JsonRes.data;
+    if (step2Payload.token) {
+      this.token = step2Payload.token;
+    }
+    if (step2Payload.state === "NEED_CONFIRM") {
+      return ok({
+        needsOtp: true,
+        timeout: typeof step2Payload.timeout === "number" ? step2Payload.timeout : 120
+      });
+    }
+    if (step2Payload.state === "WRONG_PASS") {
+      return err(new Error("\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u043B\u043E\u0433\u0438\u043D \u0438\u043B\u0438 \u043F\u0430\u0440\u043E\u043B\u044C \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    return err(new Error(`\u041D\u0435\u043E\u0436\u0438\u0434\u0430\u043D\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430: ${step2Payload.state || "unknown"}`));
+  }
+  /**
+   * Step 2: Confirms SMS OTP code and sets PIN to complete session enrollment.
+   */
+  async confirmOtp(smsCode) {
+    var _a3;
+    if (!this.config || !this.token) {
+      return err(new Error("\u0421\u0435\u0441\u0441\u0438\u044F \u0430\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u0438 \u043D\u0435 \u0438\u043D\u0438\u0446\u0438\u0430\u043B\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u0430"));
+    }
+    const confirmForm = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      "org.apache.struts.taglib.html.TOKEN": this.token,
+      operation: "button.next",
+      confirmPassword: smsCode.trim(),
+      pageInputType: "INDEX",
+      token: this.token
+    });
+    const headers = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true"
+    };
+    const confirmRes = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
       method: "POST",
       headers,
-      body: "showProductType=cards,accounts,imaccounts,loans"
+      body: confirmForm.toString()
     });
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to request products list"));
+    if (confirmRes.error !== null) {
+      return err(new AggregateError([confirmRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 \u0421\u041C\u0421-\u043A\u043E\u0434\u0430"));
     }
-    const bodyText = res.data.body || "";
-    const doc = parseXml(bodyText);
-    const code = getFirstTagText(doc, "code");
-    if (code && code !== "0") {
-      return err(new Error(`\u0411\u0430\u043D\u043A \u0432\u0435\u0440\u043D\u0443\u043B \u0441\u0442\u0430\u0442\u0443\u0441: ${code}`));
+    this.csrfToken = confirmRes.data.headers.get("x-csrf-token");
+    const confirmJson = await confirmRes.data.json();
+    if (confirmJson.error !== null) {
+      return err(new AggregateError([confirmJson.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u0421\u041C\u0421"));
     }
-    const products = parseSberProductsXml(bodyText);
-    return ok(products);
-  };
-  let prodRes = await fetchProducts(cookie);
-  if (prodRes.error !== null) {
-    const loginRes = await authSession.login(session.mGuid, session.pin || SBER_DEFAULT_PIN);
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to re-login to Sberbank"));
+    const confirmPayload = confirmJson.data;
+    if (confirmPayload.token) {
+      this.token = confirmPayload.token;
     }
-    cookie = loginRes.data;
-    prodRes = await fetchProducts(cookie);
-    if (prodRes.error !== null) {
-      return err(new AggregateError([prodRes.error], "Failed to fetch Sberbank products after re-login"));
+    if (confirmPayload.state === "WRONG_PASS") {
+      return err(new Error("\u0412\u0432\u0435\u0434\u0451\u043D \u043D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0421\u041C\u0421-\u043A\u043E\u0434"));
     }
+    const pinInfo = confirmPayload.pinInfo;
+    if (pinInfo && pinInfo.publicKey) {
+      this.pinPublicKey = pinInfo.publicKey;
+    }
+    if (this.pinPublicKey) {
+      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, SBER_DEFAULT_PIN);
+      const pinHeaders = __spreadValues({
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        Origin: SBER_APP_ORIGIN,
+        Referer: SBER_AUTH_PAGE,
+        "Process-Id": this.config.processId,
+        "X-TS-AJAX-Request": "true"
+      }, this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {});
+      const pinRes = await proxyFetch(SBER_PIN_CREATE_URL, {
+        method: "POST",
+        headers: pinHeaders,
+        body: { pin: encryptedPin, deviceprint: this.deviceprint }
+      });
+      if (pinRes.error !== null) {
+        return err(new AggregateError([pinRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F PIN \u043A\u043E\u0434\u0430"));
+      }
+      if (pinRes.data.headers.get("x-csrf-token")) {
+        this.csrfToken = pinRes.data.headers.get("x-csrf-token");
+      }
+    }
+    const finishHeaders = __spreadValues({
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true"
+    }, this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {});
+    const finishRes = await proxyFetch(SBER_AUTH_FINISH_URL, {
+      method: "POST",
+      headers: finishHeaders,
+      body: { deviceprint: this.deviceprint }
+    });
+    if (finishRes.error !== null) {
+      return err(new AggregateError([finishRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0438\u044F \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438"));
+    }
+    const finishJson = await finishRes.data.json();
+    const redirectUrl = ((_a3 = finishJson.data) == null ? void 0 : _a3.redirect) || confirmPayload.redirect;
+    if (!redirectUrl) {
+      return err(new Error("\u0421\u0435\u0440\u0432\u0435\u0440 \u043D\u0435 \u043F\u0440\u0435\u0434\u043E\u0441\u0442\u0430\u0432\u0438\u043B URL \u043F\u0435\u0440\u0435\u043D\u0430\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F \u0441\u0435\u0441\u0441\u0438\u0438"));
+    }
+    const redirectRes = await proxyFetch(redirectUrl, {
+      method: "POST",
+      headers: {
+        Accept: "*/*",
+        "Content-Type": "application/json; charset=utf-8",
+        Origin: SBER_APP_ORIGIN,
+        Referer: `${SBER_APP_ORIGIN}/`,
+        "X-Seamless-Web": "true"
+      },
+      body: null
+    });
+    if (redirectRes.error !== null) {
+      return err(new AggregateError([redirectRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u0430 \u043F\u043E \u0441\u0441\u044B\u043B\u043A\u0435 \u0441\u0435\u0441\u0441\u0438\u0438"));
+    }
+    const redirectCookies = parseSetCookieHeaders2(redirectRes.data.multiValueHeaders);
+    let ufsSession = redirectCookies["UFS-SESSION"];
+    let ufsToken = redirectCookies["UFS-TOKEN"];
+    if (!ufsSession || !ufsToken) {
+      const parsed = parseSberCookies(redirectRes.data.body || "");
+      if (parsed.ufsSession && parsed.ufsToken) {
+        ufsSession = parsed.ufsSession;
+        ufsToken = parsed.ufsToken;
+      }
+    }
+    if (!ufsSession || !ufsToken) {
+      return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C UFS-SESSION / UFS-TOKEN \u0438\u0437 \u043E\u0442\u0432\u0435\u0442\u0430 \u0431\u0430\u043D\u043A\u0430"));
+    }
+    const session = {
+      ufsSession,
+      ufsToken,
+      apiBase: SBER_DEFAULT_API_BASE,
+      login: this.loginValue,
+      deviceprint: this.deviceprint,
+      lastUpdated: Date.now(),
+      cookies: redirectCookies
+    };
+    await setStoredSberSession(session);
+    return ok(session);
   }
-  return ok(prodRes.data);
-}
+};
 
 // sber_auth_store.ts
 var SberAuthStore = class {
   constructor() {
     // --- Observable State ---
     __publicField(this, "step", "IDLE" /* IDLE */);
-    __publicField(this, "inputValue", "");
+    __publicField(this, "loginMode", "cookie");
+    __publicField(this, "cookieInput", "");
+    __publicField(this, "loginInput", "");
+    __publicField(this, "passwordInput", "");
+    __publicField(this, "smsInput", "");
     __publicField(this, "isLoading", false);
     __publicField(this, "error", null);
-    __publicField(this, "attemptsRemain", null);
-    __publicField(this, "maskedLogin", null);
+    __publicField(this, "smsTimeout", null);
     // Account & Balance State
     __publicField(this, "isAuthenticated", false);
     __publicField(this, "accounts", []);
     __publicField(this, "totalBalance", null);
     __publicField(this, "isLoadingBalance", false);
     __publicField(this, "balanceError", null);
-    __publicField(this, "session", new SberbankAuthSession());
+    __publicField(this, "srpSession", new SberWebAuthSession());
     makeAutoObservable(this);
   }
   // --- Actions ---
-  setInputValue(val) {
-    this.inputValue = val;
+  setLoginMode(mode) {
+    this.loginMode = mode;
+    this.error = null;
+  }
+  setCookieInput(val) {
+    this.cookieInput = val;
+  }
+  setLoginInput(val) {
+    this.loginInput = val;
+  }
+  setPasswordInput(val) {
+    this.passwordInput = val;
+  }
+  setSmsInput(val) {
+    this.smsInput = val;
   }
   /**
    * Resets the auth modal state and closes the dialog
    */
   reset() {
     this.step = "IDLE" /* IDLE */;
-    this.inputValue = "";
+    this.cookieInput = "";
+    this.loginInput = "";
+    this.passwordInput = "";
+    this.smsInput = "";
     this.error = null;
     this.isLoading = false;
-    this.attemptsRemain = null;
-    this.maskedLogin = null;
+    this.smsTimeout = null;
   }
   /**
-   * Starts the Sberbank login/registration flow
+   * Starts the Sberbank login modal flow
    */
   startLogin() {
-    this.session = new SberbankAuthSession();
-    this.step = "LOGIN" /* LOGIN */;
-    this.inputValue = "";
+    this.srpSession = new SberWebAuthSession();
+    this.loginMode = "cookie";
+    this.step = "COOKIE" /* COOKIE */;
+    this.cookieInput = "";
+    this.loginInput = "";
+    this.passwordInput = "";
+    this.smsInput = "";
     this.error = null;
     this.isLoading = false;
-    this.attemptsRemain = null;
-    this.maskedLogin = null;
+    this.smsTimeout = null;
   }
   /**
    * Initializes auth state from stored session
    */
   async init() {
     const session = await getStoredSberSession();
-    if (session && session.mGuid) {
+    if (session && session.ufsSession && session.ufsToken) {
       runInAction(() => {
         this.isAuthenticated = true;
       });
@@ -30950,64 +31132,124 @@ var SberAuthStore = class {
     }
   }
   /**
-   * Submits the current step of the login flow
+   * Authenticate using direct cookie / token values
    */
-  async submit() {
+  async submitCookieLogin() {
     this.isLoading = true;
     this.error = null;
-    if (this.step === "LOGIN" /* LOGIN */) {
-      const rawInput = this.inputValue.trim();
-      const res = await this.session.register(rawInput);
-      if (res.error !== null) {
-        runInAction(() => {
-          this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u0438 \u0440\u0435\u0433\u0438\u0441\u0442\u0440\u0430\u0446\u0438\u0438 \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0430 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0435";
-          this.isLoading = false;
-        });
-        return;
-      }
+    const { ufsSession, ufsToken } = parseSberCookies(this.cookieInput);
+    if (!ufsSession || !ufsToken) {
       runInAction(() => {
-        var _a3;
-        this.step = "SMS" /* SMS */;
-        this.inputValue = "";
-        this.attemptsRemain = (_a3 = res.data.attemptsRemain) != null ? _a3 : null;
-        this.maskedLogin = rawInput;
         this.isLoading = false;
+        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 UFS-SESSION \u0438 UFS-TOKEN. \u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044C, \u0447\u0442\u043E \u0432\u044B \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043B\u0438 cookies \u0438\u0437 DevTools \u0438\u043B\u0438 \u0432\u0432\u0435\u043B\u0438 \u0438\u0445 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 UFS-SESSION=...; UFS-TOKEN=...";
       });
-    } else if (this.step === "SMS" /* SMS */) {
-      const smsCode = this.inputValue.trim();
-      const confirmRes = await this.session.confirm(smsCode, SBER_DEFAULT_PIN);
-      if (confirmRes.error !== null) {
-        runInAction(() => {
-          this.error = confirmRes.error.message || "\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0421\u041C\u0421-\u043A\u043E\u0434";
-          this.attemptsRemain = this.session.attemptsRemain;
-          this.isLoading = false;
-        });
-        return;
-      }
-      const mGuid = this.session.mGuid;
-      if (!mGuid) {
-        runInAction(() => {
-          this.error = "\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438: \u043E\u0442\u0441\u0443\u0442\u0441\u0442\u0432\u0443\u0435\u0442 mGUID";
-          this.isLoading = false;
-        });
-        return;
-      }
-      const loginRes = await this.session.login(mGuid, SBER_DEFAULT_PIN);
-      if (loginRes.error !== null) {
-        runInAction(() => {
-          this.error = loginRes.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u0432\u0445\u043E\u0434\u0430 \u043F\u043E\u0441\u043B\u0435 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F";
-          this.isLoading = false;
-        });
-        return;
-      }
-      runInAction(() => {
-        this.isAuthenticated = true;
-        this.step = "SUCCESS" /* SUCCESS */;
-        this.inputValue = "";
-        this.isLoading = false;
-      });
-      await this.loadBalance();
+      return;
     }
+    const testSession = {
+      ufsSession,
+      ufsToken,
+      apiBase: SBER_DEFAULT_API_BASE,
+      lastUpdated: Date.now()
+    };
+    const res = await fetchSberProducts(testSession);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 \u0441\u0435\u0441\u0441\u0438\u0438 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430";
+      });
+      return;
+    }
+    await setStoredSberSession(testSession);
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = "SUCCESS" /* SUCCESS */;
+      this.isLoading = false;
+      this.accounts = res.data;
+      this.calculateTotalBalance(res.data);
+    });
+  }
+  /**
+   * Starts SRP login with Login and Password -> requests SMS from Sberbank
+   */
+  async submitSrpLogin() {
+    if (!this.loginInput.trim() || !this.passwordInput) {
+      this.error = "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043B\u043E\u0433\u0438\u043D \u0438 \u043F\u0430\u0440\u043E\u043B\u044C";
+      return;
+    }
+    this.isLoading = true;
+    this.error = null;
+    const res = await this.srpSession.startLogin(this.loginInput, this.passwordInput);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0435";
+      });
+      return;
+    }
+    runInAction(() => {
+      this.isLoading = false;
+      this.step = "SMS" /* SMS */;
+      this.smsInput = "";
+      this.smsTimeout = res.data.timeout || 120;
+    });
+  }
+  /**
+   * Submits SMS OTP code to finish web login
+   */
+  async submitSmsCode() {
+    const code = this.smsInput.trim();
+    if (!code) {
+      this.error = "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421";
+      return;
+    }
+    this.isLoading = true;
+    this.error = null;
+    const res = await this.srpSession.confirmOtp(code);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u0421\u041C\u0421-\u043A\u043E\u0434\u0430";
+      });
+      return;
+    }
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = "SUCCESS" /* SUCCESS */;
+      this.isLoading = false;
+      this.smsInput = "";
+    });
+    await this.loadBalance();
+  }
+  /**
+   * General submit handler router
+   */
+  async submit() {
+    if (this.loginMode === "cookie") {
+      await this.submitCookieLogin();
+    } else if (this.step === "LOGIN" /* LOGIN */ || this.step === "COOKIE" /* COOKIE */) {
+      await this.submitSrpLogin();
+    } else if (this.step === "SMS" /* SMS */) {
+      await this.submitSmsCode();
+    }
+  }
+  calculateTotalBalance(prods) {
+    const cardAccounts = new Set(
+      prods.filter((p) => p.type === "card" && p.cardAccount).map((p) => p.cardAccount)
+    );
+    let total = 0;
+    let count = 0;
+    for (const prod of prods) {
+      if (prod.isBlocked || prod.type === "deposit") continue;
+      if (prod.type === "account" && prod.number && cardAccounts.has(prod.number)) {
+        continue;
+      }
+      const curr = prod.currencyCode.toUpperCase();
+      if (!curr || curr === "RUB" || curr === "643" || curr === "810" || prod.currencyName.includes("\u0440\u0443\u0431") || prod.currencyName.includes("\u20BD")) {
+        total += prod.balance;
+        count++;
+      }
+    }
+    this.totalBalance = count > 0 ? Math.round(total * 100) / 100 : null;
   }
   /**
    * Fetches accounts and calculates current total RUB balance
@@ -31022,29 +31264,13 @@ var SberAuthStore = class {
       this.isLoadingBalance = false;
       if (res.error !== null) {
         this.balanceError = res.error.message;
-        if (res.error.message.includes("Not authenticated") || res.error.message.includes("Unauthorized")) {
+        if (res.error.message.includes("\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D") || res.error.message.includes("\u0438\u0441\u0442\u0435\u043A\u043B\u0430") || res.error.message.includes("401") || res.error.message.includes("403")) {
           this.isAuthenticated = false;
         }
         return;
       }
       this.accounts = res.data;
-      const cardAccounts = new Set(
-        res.data.filter((p) => p.type === "card" && p.cardAccount).map((p) => p.cardAccount)
-      );
-      let total = 0;
-      let count = 0;
-      for (const prod of res.data) {
-        if (prod.isBlocked || prod.type === "loan") continue;
-        if (prod.type === "account" && prod.number && cardAccounts.has(prod.number)) {
-          continue;
-        }
-        const curr = prod.currencyCode.toUpperCase();
-        if (!curr || curr === "RUB" || curr === "643" || curr === "810" || prod.currencyName.includes("\u0440\u0443\u0431") || prod.currencyName.includes("\u20BD")) {
-          total += prod.balance;
-          count++;
-        }
-      }
-      this.totalBalance = count > 0 ? Math.round(total * 100) / 100 : null;
+      this.calculateTotalBalance(res.data);
       this.isAuthenticated = true;
     });
   }
@@ -31516,11 +31742,21 @@ var TinkoffLoginDialog = observer(() => {
 // sber_login.tsx
 var import_jsx_runtime8 = __toESM(require_jsx_runtime());
 var SberLoginDialog = observer(() => {
-  const { step, inputValue, isLoading, error, maskedLogin, attemptsRemain } = sberAuthStore;
+  const {
+    step,
+    loginMode,
+    cookieInput,
+    loginInput,
+    passwordInput,
+    smsInput,
+    isLoading,
+    error,
+    smsTimeout
+  } = sberAuthStore;
   if (step === "SUCCESS" /* SUCCESS */) {
     return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "modal-content", style: { textAlign: "center", padding: "36px 24px" }, children: [
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h2", { style: { fontSize: "22px", fontWeight: "bold", marginBottom: "12px", color: "var(--success-color)" }, children: "\u2713 \u0423\u0441\u043F\u0435\u0448\u043D\u043E!" }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { style: { color: "var(--text-secondary)", marginBottom: "24px", fontSize: "14px" }, children: "\u0412\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0432\u043E\u0448\u043B\u0438 \u0432 \u0430\u043A\u043A\u0430\u0443\u043D\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430." }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { style: { color: "var(--text-secondary)", marginBottom: "24px", fontSize: "14px" }, children: "\u0412\u044B \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u043F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u043B\u0438 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D. \u0421\u0447\u0435\u0442\u0430 \u0438 \u0431\u0430\u043B\u0430\u043D\u0441\u044B \u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u044B." }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
         "button",
         {
@@ -31532,43 +31768,78 @@ var SberLoginDialog = observer(() => {
       )
     ] }) });
   }
-  const getConfig = () => {
-    switch (step) {
-      case "LOGIN" /* LOGIN */:
-        return {
-          title: "\u0412\u0445\u043E\u0434 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A",
-          label: "\u041D\u043E\u043C\u0435\u0440 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430 \u0438\u043B\u0438 \u043D\u043E\u043C\u0435\u0440 \u043A\u0430\u0440\u0442\u044B",
-          placeholder: "+7 999 123-45-67 \u0438\u043B\u0438 \u043D\u043E\u043C\u0435\u0440 \u043A\u0430\u0440\u0442\u044B",
-          type: "text",
-          inputMode: "text"
-        };
-      case "SMS" /* SMS */:
-        return {
-          title: "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u0435 \u0421\u041C\u0421",
-          label: maskedLogin ? `\u041A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421 (\u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D \u0434\u043B\u044F ${maskedLogin})` : "\u041A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421",
-          placeholder: "5 \u0446\u0438\u0444\u0440",
-          type: "text",
-          inputMode: "numeric"
-        };
-      default:
-        return {
-          title: "\u0412\u0445\u043E\u0434 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A",
-          label: "\u0417\u043D\u0430\u0447\u0435\u043D\u0438\u0435",
-          placeholder: "",
-          type: "text",
-          inputMode: "text"
-        };
-    }
-  };
-  const config = getConfig();
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!inputValue.trim()) return;
-    sberAuthStore.submit();
-  };
+  if (step === "SMS" /* SMS */) {
+    return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "modal-content", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h3", { style: { margin: 0 }, children: "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u0435 \u0421\u041C\u0421" }),
+        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          "button",
+          {
+            onClick: () => sberAuthStore.reset(),
+            style: {
+              background: "none",
+              border: "none",
+              color: "var(--text-secondary)",
+              fontSize: "24px",
+              cursor: "pointer",
+              lineHeight: 1
+            },
+            children: "\xD7"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { style: { fontSize: "13px", color: "var(--text-secondary)", marginBottom: "16px" }, children: "\u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u043B \u043E\u0444\u0438\u0446\u0438\u0430\u043B\u044C\u043D\u043E\u0435 \u0421\u041C\u0421 \u0441 \u043A\u043E\u0434\u043E\u043C \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u043D\u0430 \u0432\u0430\u0448 \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D\u043D\u044B\u0439 \u043D\u043E\u043C\u0435\u0440 \u0442\u0435\u043B\u0435\u0444\u043E\u043D\u0430." }),
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+        "form",
+        {
+          onSubmit: (e) => {
+            e.preventDefault();
+            sberAuthStore.submit();
+          },
+          children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u041A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421" }),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+                "input",
+                {
+                  className: "form-input",
+                  type: "text",
+                  inputMode: "numeric",
+                  placeholder: "\u0426\u0438\u0444\u0440\u044B \u0438\u0437 \u0421\u041C\u0421",
+                  value: smsInput,
+                  disabled: isLoading,
+                  onChange: (e) => sberAuthStore.setSmsInput(e.target.value),
+                  required: true,
+                  autoFocus: true
+                }
+              )
+            ] }),
+            smsTimeout && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "6px" }, children: [
+              "\u0412\u0440\u0435\u043C\u044F \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F \u043A\u043E\u0434\u0430: ",
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("strong", { children: [
+                smsTimeout,
+                " \u0441\u0435\u043A."
+              ] })
+            ] }),
+            error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "button",
+              {
+                type: "submit",
+                disabled: isLoading,
+                className: "btn btn-primary",
+                style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
+                children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430..." : "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0432\u0445\u043E\u0434"
+              }
+            )
+          ]
+        }
+      )
+    ] }) });
+  }
   return /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h3", { style: { margin: 0 }, children: config.title }),
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h3", { style: { margin: 0 }, children: "\u0412\u0445\u043E\u0434 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D" }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
         "button",
         {
@@ -31585,40 +31856,161 @@ var SberLoginDialog = observer(() => {
         }
       )
     ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("form", { onSubmit: handleSubmit, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: config.label }),
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
-          "input",
-          {
-            className: "form-input",
-            type: config.type,
-            inputMode: config.inputMode,
-            placeholder: config.placeholder,
-            value: inputValue,
-            disabled: isLoading,
-            onChange: (e) => sberAuthStore.setInputValue(e.target.value),
-            required: true,
-            autoFocus: true
-          }
-        )
-      ] }),
-      attemptsRemain !== null && attemptsRemain !== void 0 && step === "SMS" /* SMS */ && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px" }, children: [
-        "\u041E\u0441\u0442\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043F\u044B\u0442\u043E\u043A: ",
-        /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("strong", { children: attemptsRemain })
-      ] }),
-      error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
-      /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
-        "button",
-        {
-          type: "submit",
-          disabled: isLoading,
-          className: "btn btn-primary",
-          style: { width: "100%", marginTop: "14px", background: "#21a038", color: "#fff", fontWeight: 600 },
-          children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430..." : "\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C"
-        }
-      )
-    ] })
+    /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+      "div",
+      {
+        style: {
+          display: "flex",
+          gap: "8px",
+          background: "rgba(255, 255, 255, 0.05)",
+          padding: "4px",
+          borderRadius: "8px",
+          marginBottom: "18px"
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "button",
+              onClick: () => sberAuthStore.setLoginMode("cookie"),
+              style: {
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 500,
+                background: loginMode === "cookie" ? "var(--card-bg)" : "transparent",
+                color: loginMode === "cookie" ? "var(--text-primary)" : "var(--text-secondary)",
+                transition: "all 0.2s ease"
+              },
+              children: "\u041F\u043E Cookie / \u0422\u043E\u043A\u0435\u043D\u0443"
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "button",
+              onClick: () => sberAuthStore.setLoginMode("srp"),
+              style: {
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 500,
+                background: loginMode === "srp" ? "var(--card-bg)" : "transparent",
+                color: loginMode === "srp" ? "var(--text-primary)" : "var(--text-secondary)",
+                transition: "all 0.2s ease"
+              },
+              children: "\u041B\u043E\u0433\u0438\u043D \u0438 \u041F\u0430\u0440\u043E\u043B\u044C"
+            }
+          )
+        ]
+      }
+    ),
+    loginMode === "cookie" ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+      "form",
+      {
+        onSubmit: (e) => {
+          e.preventDefault();
+          sberAuthStore.submit();
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("p", { style: { fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: 1.5 }, children: [
+            "\u0412\u043E\u0439\u0434\u0438\u0442\u0435 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 (\u043D\u0430 ",
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "online.sberbank.ru" }),
+            "), \u043E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 DevTools (F12) \u2192 \u0421\u0435\u0442\u044C \u0438\u043B\u0438 Application \u2192 Cookies \u0438 \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 ",
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "UFS-SESSION" }),
+            " \u0438 ",
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "UFS-TOKEN" }),
+            " (\u0438\u043B\u0438 \u0432\u0441\u044E \u0441\u0442\u0440\u043E\u043A\u0443 Cookie)."
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u0421\u0442\u0440\u043E\u043A\u0430 Cookie \u0438\u043B\u0438 \u0442\u043E\u043A\u0435\u043D\u044B" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "textarea",
+              {
+                className: "form-input",
+                style: { height: "90px", resize: "vertical", fontSize: "12px", fontFamily: "monospace" },
+                placeholder: "UFS-SESSION=...; UFS-TOKEN=...",
+                value: cookieInput,
+                disabled: isLoading,
+                onChange: (e) => sberAuthStore.setCookieInput(e.target.value),
+                required: true,
+                autoFocus: true
+              }
+            )
+          ] }),
+          error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "submit",
+              disabled: isLoading,
+              className: "btn btn-primary",
+              style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
+              children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438..." : "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E \u0442\u043E\u043A\u0435\u043D\u0443"
+            }
+          )
+        ]
+      }
+    ) : /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+      "form",
+      {
+        onSubmit: (e) => {
+          e.preventDefault();
+          sberAuthStore.submit();
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { style: { fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: 1.5 }, children: "\u0412\u0445\u043E\u0434 \u0447\u0435\u0440\u0435\u0437 \u0432\u0435\u0431-\u043A\u043B\u0438\u0435\u043D\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430 \u043F\u043E \u043F\u0440\u043E\u0442\u043E\u043A\u043E\u043B\u0443 SRP-512. \u0411\u0430\u043D\u043A \u043F\u0440\u043E\u0432\u0435\u0440\u0438\u0442 \u0434\u0430\u043D\u043D\u044B\u0435 \u0438 \u043E\u0442\u043F\u0440\u0430\u0432\u0438\u0442 \u043E\u0444\u0438\u0446\u0438\u0430\u043B\u044C\u043D\u043E\u0435 \u0421\u041C\u0421 \u043D\u0430 \u0432\u0430\u0448 \u0442\u0435\u043B\u0435\u0444\u043E\u043D." }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", style: { marginBottom: "12px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u041B\u043E\u0433\u0438\u043D (\u0442\u0435\u043B\u0435\u0444\u043E\u043D \u0438\u043B\u0438 \u043D\u043E\u043C\u0435\u0440 \u043A\u0430\u0440\u0442\u044B)" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "input",
+              {
+                className: "form-input",
+                type: "text",
+                placeholder: "+7 999 123-45-67 \u0438\u043B\u0438 \u043B\u043E\u0433\u0438\u043D",
+                value: loginInput,
+                disabled: isLoading,
+                onChange: (e) => sberAuthStore.setLoginInput(e.target.value),
+                required: true,
+                autoFocus: true
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u041F\u0430\u0440\u043E\u043B\u044C" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "input",
+              {
+                className: "form-input",
+                type: "password",
+                placeholder: "\u041F\u0430\u0440\u043E\u043B\u044C \u043E\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D",
+                value: passwordInput,
+                disabled: isLoading,
+                onChange: (e) => sberAuthStore.setPasswordInput(e.target.value),
+                required: true
+              }
+            )
+          ] }),
+          error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "submit",
+              disabled: isLoading,
+              className: "btn btn-primary",
+              style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
+              children: isLoading ? "\u0417\u0430\u043F\u0440\u043E\u0441 \u0421\u041C\u0421..." : "\u041F\u043E\u043B\u0443\u0447\u0438\u0442\u044C \u0421\u041C\u0421-\u043A\u043E\u0434"
+            }
+          )
+        ]
+      }
+    )
   ] }) });
 });
 
@@ -31646,7 +32038,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-09 21:05:03 +0300" : "dev"
+          true ? "2026-09-09 22:27:52 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -31798,4 +32190,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-3CKV5IRP.js.map
+//# sourceMappingURL=app-XIPBBV2N.js.map
