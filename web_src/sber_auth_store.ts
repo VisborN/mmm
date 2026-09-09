@@ -1,30 +1,41 @@
 /* eslint-disable @typescript-eslint/explicit-function-return-type */
 import { makeAutoObservable, runInAction } from "mobx";
 import {
-  SberbankAuthSession,
   SberProduct,
+  SberSession,
   getStoredSberSession,
   setStoredSberSession,
   getSberAccounts,
-  SBER_DEFAULT_PIN,
+  fetchSberProducts,
+  parseSberCookies,
+  SberWebAuthSession,
+  SBER_DEFAULT_API_BASE,
 } from "./infrastructure/sberbank";
 
 export enum SberLoginStep {
   IDLE = "IDLE",
+  COOKIE = "COOKIE",
   LOGIN = "LOGIN",
   SMS = "SMS",
   LOADING = "LOADING",
   SUCCESS = "SUCCESS",
 }
 
+export type SberLoginMode = "cookie" | "srp";
+
 export class SberAuthStore {
   // --- Observable State ---
   step: SberLoginStep = SberLoginStep.IDLE;
-  inputValue: string = "";
+  loginMode: SberLoginMode = "cookie";
+
+  cookieInput: string = "";
+  loginInput: string = "";
+  passwordInput: string = "";
+  smsInput: string = "";
+
   isLoading: boolean = false;
   error: string | null = null;
-  attemptsRemain: number | null = null;
-  maskedLogin: string | null = null;
+  smsTimeout: number | null = null;
 
   // Account & Balance State
   isAuthenticated: boolean = false;
@@ -33,7 +44,7 @@ export class SberAuthStore {
   isLoadingBalance: boolean = false;
   balanceError: string | null = null;
 
-  private session: SberbankAuthSession = new SberbankAuthSession();
+  private srpSession: SberWebAuthSession = new SberWebAuthSession();
 
   constructor() {
     makeAutoObservable(this);
@@ -41,8 +52,25 @@ export class SberAuthStore {
 
   // --- Actions ---
 
-  setInputValue(val: string) {
-    this.inputValue = val;
+  setLoginMode(mode: SberLoginMode) {
+    this.loginMode = mode;
+    this.error = null;
+  }
+
+  setCookieInput(val: string) {
+    this.cookieInput = val;
+  }
+
+  setLoginInput(val: string) {
+    this.loginInput = val;
+  }
+
+  setPasswordInput(val: string) {
+    this.passwordInput = val;
+  }
+
+  setSmsInput(val: string) {
+    this.smsInput = val;
   }
 
   /**
@@ -50,24 +78,29 @@ export class SberAuthStore {
    */
   reset() {
     this.step = SberLoginStep.IDLE;
-    this.inputValue = "";
+    this.cookieInput = "";
+    this.loginInput = "";
+    this.passwordInput = "";
+    this.smsInput = "";
     this.error = null;
     this.isLoading = false;
-    this.attemptsRemain = null;
-    this.maskedLogin = null;
+    this.smsTimeout = null;
   }
 
   /**
-   * Starts the Sberbank login/registration flow
+   * Starts the Sberbank login modal flow
    */
   startLogin() {
-    this.session = new SberbankAuthSession();
-    this.step = SberLoginStep.LOGIN;
-    this.inputValue = "";
+    this.srpSession = new SberWebAuthSession();
+    this.loginMode = "cookie";
+    this.step = SberLoginStep.COOKIE;
+    this.cookieInput = "";
+    this.loginInput = "";
+    this.passwordInput = "";
+    this.smsInput = "";
     this.error = null;
     this.isLoading = false;
-    this.attemptsRemain = null;
-    this.maskedLogin = null;
+    this.smsTimeout = null;
   }
 
   /**
@@ -75,7 +108,7 @@ export class SberAuthStore {
    */
   async init() {
     const session = await getStoredSberSession();
-    if (session && session.mGuid) {
+    if (session && session.ufsSession && session.ufsToken) {
       runInAction(() => {
         this.isAuthenticated = true;
       });
@@ -90,72 +123,156 @@ export class SberAuthStore {
   }
 
   /**
-   * Submits the current step of the login flow
+   * Authenticate using direct cookie / token values
    */
-  async submit() {
+  async submitCookieLogin() {
     this.isLoading = true;
     this.error = null;
 
-    if (this.step === SberLoginStep.LOGIN) {
-      const rawInput = this.inputValue.trim();
-      const res = await this.session.register(rawInput);
-
-      if (res.error !== null) {
-        runInAction(() => {
-          this.error = res.error.message || "Ошибка при регистрации устройства в СберБанке";
-          this.isLoading = false;
-        });
-        return;
-      }
-
+    const { ufsSession, ufsToken } = parseSberCookies(this.cookieInput);
+    if (!ufsSession || !ufsToken) {
       runInAction(() => {
-        this.step = SberLoginStep.SMS;
-        this.inputValue = "";
-        this.attemptsRemain = res.data.attemptsRemain ?? null;
-        this.maskedLogin = rawInput;
         this.isLoading = false;
+        this.error =
+          "Не удалось найти UFS-SESSION и UFS-TOKEN. Убедитесь, что вы скопировали cookies из DevTools или ввели их в формате UFS-SESSION=...; UFS-TOKEN=...";
       });
-    } else if (this.step === SberLoginStep.SMS) {
-      const smsCode = this.inputValue.trim();
-      const confirmRes = await this.session.confirm(smsCode, SBER_DEFAULT_PIN);
-
-      if (confirmRes.error !== null) {
-        runInAction(() => {
-          this.error = confirmRes.error.message || "Неверный СМС-код";
-          this.attemptsRemain = this.session.attemptsRemain;
-          this.isLoading = false;
-        });
-        return;
-      }
-
-      // Automatically log in using the newly created PIN & mGUID
-      const mGuid = this.session.mGuid;
-      if (!mGuid) {
-        runInAction(() => {
-          this.error = "Ошибка сессии: отсутствует mGUID";
-          this.isLoading = false;
-        });
-        return;
-      }
-
-      const loginRes = await this.session.login(mGuid, SBER_DEFAULT_PIN);
-      if (loginRes.error !== null) {
-        runInAction(() => {
-          this.error = loginRes.error.message || "Ошибка входа после подтверждения";
-          this.isLoading = false;
-        });
-        return;
-      }
-
-      runInAction(() => {
-        this.isAuthenticated = true;
-        this.step = SberLoginStep.SUCCESS;
-        this.inputValue = "";
-        this.isLoading = false;
-      });
-
-      await this.loadBalance();
+      return;
     }
+
+    const testSession: SberSession = {
+      ufsSession,
+      ufsToken,
+      apiBase: SBER_DEFAULT_API_BASE,
+      lastUpdated: Date.now(),
+    };
+
+    const res = await fetchSberProducts(testSession);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "Ошибка проверки сессии СберБанка";
+      });
+      return;
+    }
+
+    await setStoredSberSession(testSession);
+
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = SberLoginStep.SUCCESS;
+      this.isLoading = false;
+      this.accounts = res.data;
+      this.calculateTotalBalance(res.data);
+    });
+  }
+
+  /**
+   * Starts SRP login with Login and Password -> requests SMS from Sberbank
+   */
+  async submitSrpLogin() {
+    if (!this.loginInput.trim() || !this.passwordInput) {
+      this.error = "Введите логин и пароль";
+      return;
+    }
+
+    this.isLoading = true;
+    this.error = null;
+
+    const res = await this.srpSession.startLogin(this.loginInput, this.passwordInput);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "Ошибка авторизации в СберБанке";
+      });
+      return;
+    }
+
+    runInAction(() => {
+      this.isLoading = false;
+      this.step = SberLoginStep.SMS;
+      this.smsInput = "";
+      this.smsTimeout = res.data.timeout || 120;
+    });
+  }
+
+  /**
+   * Submits SMS OTP code to finish web login
+   */
+  async submitSmsCode() {
+    const code = this.smsInput.trim();
+    if (!code) {
+      this.error = "Введите код из СМС";
+      return;
+    }
+
+    this.isLoading = true;
+    this.error = null;
+
+    const res = await this.srpSession.confirmOtp(code);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "Ошибка подтверждения СМС-кода";
+      });
+      return;
+    }
+
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = SberLoginStep.SUCCESS;
+      this.isLoading = false;
+      this.smsInput = "";
+    });
+
+    await this.loadBalance();
+  }
+
+  /**
+   * General submit handler router
+   */
+  async submit() {
+    if (this.loginMode === "cookie") {
+      await this.submitCookieLogin();
+    } else if (this.step === SberLoginStep.LOGIN || this.step === SberLoginStep.COOKIE) {
+      await this.submitSrpLogin();
+    } else if (this.step === SberLoginStep.SMS) {
+      await this.submitSmsCode();
+    }
+  }
+
+  private calculateTotalBalance(prods: SberProduct[]) {
+    // To avoid double-counting, identify accounts backing active cards
+    const cardAccounts = new Set(
+      prods
+        .filter((p) => p.type === "card" && p.cardAccount)
+        .map((p) => p.cardAccount)
+    );
+
+    let total = 0;
+    let count = 0;
+
+    for (const prod of prods) {
+      if (prod.isBlocked || prod.type === "deposit") continue;
+      if (prod.type === "account" && prod.number && cardAccounts.has(prod.number)) {
+        // Skip card-backing account already accounted for in card balance
+        continue;
+      }
+
+      const curr = prod.currencyCode.toUpperCase();
+      if (
+        !curr ||
+        curr === "RUB" ||
+        curr === "643" ||
+        curr === "810" ||
+        prod.currencyName.includes("руб") ||
+        prod.currencyName.includes("₽")
+      ) {
+        total += prod.balance;
+        count++;
+      }
+    }
+
+    this.totalBalance = count > 0 ? Math.round(total * 100) / 100 : null;
   }
 
   /**
@@ -174,8 +291,10 @@ export class SberAuthStore {
       if (res.error !== null) {
         this.balanceError = res.error.message;
         if (
-          res.error.message.includes("Not authenticated") ||
-          res.error.message.includes("Unauthorized")
+          res.error.message.includes("Не авторизован") ||
+          res.error.message.includes("истекла") ||
+          res.error.message.includes("401") ||
+          res.error.message.includes("403")
         ) {
           this.isAuthenticated = false;
         }
@@ -183,39 +302,7 @@ export class SberAuthStore {
       }
 
       this.accounts = res.data;
-
-      // To avoid double-counting, identify accounts backing active cards
-      const cardAccounts = new Set(
-        res.data
-          .filter((p) => p.type === "card" && p.cardAccount)
-          .map((p) => p.cardAccount)
-      );
-
-      let total = 0;
-      let count = 0;
-
-      for (const prod of res.data) {
-        if (prod.isBlocked || prod.type === "loan") continue;
-        if (prod.type === "account" && prod.number && cardAccounts.has(prod.number)) {
-          // Skip card-backing account already accounted for in card balance
-          continue;
-        }
-
-        const curr = prod.currencyCode.toUpperCase();
-        if (
-          !curr ||
-          curr === "RUB" ||
-          curr === "643" ||
-          curr === "810" ||
-          prod.currencyName.includes("руб") ||
-          prod.currencyName.includes("₽")
-        ) {
-          total += prod.balance;
-          count++;
-        }
-      }
-
-      this.totalBalance = count > 0 ? Math.round(total * 100) / 100 : null;
+      this.calculateTotalBalance(res.data);
       this.isAuthenticated = true;
     });
   }

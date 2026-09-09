@@ -3,51 +3,40 @@ import { proxyFetch } from "./proxy";
 import { JsonStore } from "./json_store";
 
 // -----------------------------------------------------------------------------
-// Constants matching reverse-engineered Sberbank Android client
+// Constants & Configuration
 // -----------------------------------------------------------------------------
 
-export const SBER_BASE_URL = "https://online.sberbank.ru:4477/";
-export const SBER_DEFAULT_PIN = "42424";
+export const SBER_APP_ORIGIN = "https://online.sberbank.ru";
+export const SBER_AUTH_PAGE = "https://online.sberbank.ru/CSAFront/index.do";
+export const SBER_PRIMARY_AUTH_URL = "https://online.sberbank.ru/CSAFront/authMainJson.do";
+export const SBER_PIN_CREATE_URL = "https://online.sberbank.ru/CSAFront/api/v1/pin/create";
+export const SBER_AUTH_FINISH_URL = "https://online.sberbank.ru/CSAFront/api/v1/auth";
+export const SBER_DEFAULT_API_BASE = "https://web-standin2.online.sberbank.ru";
+export const SBER_PRODUCTS_PATH = "/main-screen/rest/v2/m1/web/section/meta";
 
-export const SBER_IDENTITY_STORAGE_KEY = "sber_identity";
 export const SBER_SESSION_STORAGE_KEY = "sber_session";
-
-export const SBER_DEFAULT_COOKIES: Record<string, string> = {
-  JSESSIONID: "0000uHrFvcD0Xv3qIYW5bXDS_Jy:1akk7tu3m|rsDPJSESSIONID=PBC5YS:-152294547",
-  SWJSESSIONID: "8f0961c07d8ff7ca1a881002df39ec2f",
-};
-
-const SBER_MOBILE_SDK_DATA =
-  '{"TIMESTAMP":"2019-09-13T07:23:14Z","HardwareID":"-1","SIM_ID":"-1","PhoneNumber":"-1","GeoLocationInfo":[{"Timestamp":"0","Status":"1"}],"DeviceModel":"ANE-LX1","MultitaskingSupported":true,"DeviceName":"marky","DeviceSystemName":"Android","DeviceSystemVersion":"28","Languages":"ru","WiFiMacAddress":"02:00:00:00:00:00","WiFiNetworksData":{"BBSID":"02:00:00:00:00:00","SignalStrength":"-47","Channel":"null"},"CellTowerId":"-1","LocationAreaCode":"-1","ScreenSize":"1080x2060","RSA_ApplicationKey":"2C501591EA5BF79F1C0ABA8B628C2571","MCC":"286","MNC":"02","OS_ID":"1f32651b72df5515","SDK_VERSION":"3.10.0","Compromised":0,"Emulator":0}';
-
-const SBER_MOBILE_SDK_KAV =
-  '{"osVersion":0,"KavSdkId":"","KavSdkVersion":"","KavSdkVirusDBVersion":"SdkVirusDbInfo(year=0, month=0, day=0, hour=0, minute=0, second=0, knownThreatsCount=0, records=0, size=0)","KavSdkVirusDBStatus":"","KavSdkVirusDBStatusDate":"","KavSdkRoot":false,"LowPasswordQuality":false,"NonMarketAppsAllowed":false,"UsbDebugOn":false,"ScanStatus":"NONE"}';
+export const SBER_DEFAULT_PIN = "42424";
 
 // -----------------------------------------------------------------------------
 // Interfaces
 // -----------------------------------------------------------------------------
 
-export interface SberIdentity {
-  devId: string;
-  devIdOld: string;
-  deviceName: string;
-  appVersion: string;
-  version: string;
-}
-
 export interface SberSession {
-  mGuid: string;
-  pin: string;
-  login: string;
-  sessionCookie?: string;
-  sessionExpiresAt?: number;
+  ufsSession: string;
+  ufsToken: string;
+  apiBase?: string;
+  webBase?: string;
+  login?: string;
+  pin?: string;
+  deviceprint?: string;
   cookies?: Record<string, string>;
+  lastUpdated?: number;
 }
 
 export interface SberProduct {
   id: string;
   name: string;
-  type: "card" | "account" | "loan" | "other";
+  type: "card" | "account" | "deposit" | "other";
   number?: string;
   cardAccount?: string;
   balance: number;
@@ -58,41 +47,12 @@ export interface SberProduct {
 }
 
 // -----------------------------------------------------------------------------
-// Identity & Session Management
+// Storage
 // -----------------------------------------------------------------------------
-
-export function generateRandomHex(length: number = 40): string {
-  const bytes = new Uint8Array(Math.ceil(length / 2));
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0"))
-    .join("")
-    .slice(0, length);
-}
-
-export function createFreshSberIdentity(): SberIdentity {
-  const devId = generateRandomHex(40);
-  return {
-    devId,
-    devIdOld: devId,
-    deviceName: "HUAWEI_ANE-LX1",
-    appVersion: "10.2.0",
-    version: "9.20",
-  };
-}
-
-export async function getOrCreateSberIdentity(): Promise<SberIdentity> {
-  const res = await JsonStore.getJson<SberIdentity>(SBER_IDENTITY_STORAGE_KEY);
-  if (res.error === null && res.data && res.data.devId) {
-    return res.data;
-  }
-  const identity = createFreshSberIdentity();
-  await JsonStore.setJson(SBER_IDENTITY_STORAGE_KEY, identity);
-  return identity;
-}
 
 export async function getStoredSberSession(): Promise<SberSession | null> {
   const res = await JsonStore.getJson<SberSession>(SBER_SESSION_STORAGE_KEY);
-  if (res.error !== null || !res.data || !res.data.mGuid) {
+  if (res.error !== null || !res.data || !res.data.ufsSession || !res.data.ufsToken) {
     return null;
   }
   return res.data;
@@ -107,30 +67,49 @@ export async function setStoredSberSession(session: SberSession | null): Promise
 }
 
 // -----------------------------------------------------------------------------
-// Utilities & Cookie Jar
+// Cookie Utilities
 // -----------------------------------------------------------------------------
 
-export function normalizeSberLogin(raw: string): string {
+/**
+ * Parses user-provided cookie string, JSON, or header containing UFS-SESSION and UFS-TOKEN.
+ */
+export function parseSberCookies(raw: string): { ufsSession?: string; ufsToken?: string } {
   const trimmed = raw.trim();
-  const digitsOnly = trimmed.replace(/\D/g, "");
+  if (!trimmed) return {};
 
-  // If it's a 16-19 digit card number
-  if (digitsOnly.length >= 16 && digitsOnly.length <= 19) {
-    return digitsOnly;
+  // 1. Try parsing as JSON (e.g. {"ufs_session": "...", "ufs_token": "..."} or {"UFS-SESSION": "..."})
+  try {
+    const obj = JSON.parse(trimmed);
+    if (typeof obj === "object" && obj !== null) {
+      const ufsSession =
+        obj.ufs_session ||
+        obj["UFS-SESSION"] ||
+        obj.ufsSession ||
+        obj["ufs-session"];
+      const ufsToken =
+        obj.ufs_token ||
+        obj["UFS-TOKEN"] ||
+        obj.ufsToken ||
+        obj["ufs-token"];
+      if (ufsSession && ufsToken) {
+        return {
+          ufsSession: String(ufsSession).trim(),
+          ufsToken: String(ufsToken).trim(),
+        };
+      }
+    }
+  } catch {
+    // Not JSON, continue to cookie string regex
   }
 
-  // Russian phone formats
-  if (digitsOnly.length === 10) {
-    return "7" + digitsOnly;
-  }
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("8")) {
-    return "7" + digitsOnly.slice(1);
-  }
-  if (digitsOnly.length === 11 && digitsOnly.startsWith("7")) {
-    return digitsOnly;
-  }
+  // 2. Extract from Netscape or Cookie header format: UFS-SESSION=xxx; UFS-TOKEN=yyy
+  const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
+  const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
 
-  return trimmed;
+  const ufsSession = sessionMatch ? sessionMatch[1].trim() : undefined;
+  const ufsToken = tokenMatch ? tokenMatch[1].trim() : undefined;
+
+  return { ufsSession, ufsToken };
 }
 
 export function parseSetCookieHeaders(
@@ -157,573 +136,792 @@ export function parseSetCookieHeaders(
   return cookies;
 }
 
-export function formatCookieHeader(cookies: Record<string, string>): string | undefined {
-  const entries = Object.entries(cookies);
-  if (entries.length === 0) return undefined;
-  return entries.map(([k, v]) => `${k}=${v}`).join("; ");
+// -----------------------------------------------------------------------------
+// BigInt & Crypto Helpers for SRP-512 & RSA-OAEP
+// -----------------------------------------------------------------------------
+
+function hexToBigInt(hex: string): bigint {
+  return BigInt("0x" + hex);
 }
 
-export function parseXml(xml: string): Document {
-  const parser = new DOMParser();
-  return parser.parseFromString(xml, "text/xml");
+function bigIntToBytes(val: bigint): Uint8Array {
+  let hex = val.toString(16);
+  if (hex.length % 2 !== 0) hex = "0" + hex;
+  const len = hex.length / 2;
+  const u8 = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    u8[i] = parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+  }
+  return u8;
 }
 
-export function getFirstTagText(el: Document | Element, tagName: string): string | null {
-  const elements = el.getElementsByTagName(tagName);
-  if (elements.length === 0) return null;
-  return elements[0].textContent?.trim() || null;
+function padBytes(val: bigint, width: number): Uint8Array {
+  const bytes = bigIntToBytes(val);
+  if (bytes.length >= width) return bytes;
+  const res = new Uint8Array(width);
+  res.set(bytes, width - bytes.length);
+  return res;
 }
 
-export function extractErrorMessage(doc: Document): string {
-  const errors = doc.getElementsByTagName("error");
-  if (errors.length > 0) {
-    const textEl = errors[0].getElementsByTagName("text")[0] || errors[0];
-    const text = textEl.textContent?.trim();
-    if (text && !text.includes("\ufffd") && text.length > 0) {
-      return text;
+function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
+  let res = BigInt(1);
+  let b = ((base % mod) + mod) % mod;
+  let e = exp;
+  while (e > BigInt(0)) {
+    if (e % BigInt(2) === BigInt(1)) res = (res * b) % mod;
+    e = e / BigInt(2);
+    b = (b * b) % mod;
+  }
+  return res;
+}
+
+async function subtleSha512(...parts: Uint8Array[]): Promise<Uint8Array> {
+  let totalLen = 0;
+  for (const p of parts) totalLen += p.length;
+  const combined = new Uint8Array(totalLen);
+  let offset = 0;
+  for (const p of parts) {
+    combined.set(p, offset);
+    offset += p.length;
+  }
+  const hashBuf = await crypto.subtle.digest("SHA-512", combined.buffer as ArrayBuffer);
+  return new Uint8Array(hashBuf);
+}
+
+async function subtleSha512BigInt(...parts: Uint8Array[]): Promise<bigint> {
+  const buf = await subtleSha512(...parts);
+  let hex = "";
+  for (let i = 0; i < buf.length; i++) {
+    hex += buf[i].toString(16).padStart(2, "0");
+  }
+  return BigInt("0x" + hex);
+}
+
+async function subtleSha1(data: Uint8Array): Promise<Uint8Array> {
+  const hashBuf = await crypto.subtle.digest("SHA-1", data.buffer as ArrayBuffer);
+  return new Uint8Array(hashBuf);
+}
+
+async function subtleMgf1(seed: Uint8Array, length: number): Promise<Uint8Array> {
+  const result = new Uint8Array(length);
+  let offset = 0;
+  let counter = 0;
+  while (offset < length) {
+    const counterBytes = new Uint8Array(4);
+    counterBytes[0] = (counter >>> 24) & 0xff;
+    counterBytes[1] = (counter >>> 16) & 0xff;
+    counterBytes[2] = (counter >>> 8) & 0xff;
+    counterBytes[3] = counter & 0xff;
+
+    const input = new Uint8Array(seed.length + 4);
+    input.set(seed, 0);
+    input.set(counterBytes, seed.length);
+
+    const digest = await subtleSha1(input);
+    const toCopy = Math.min(digest.length, length - offset);
+    result.set(digest.subarray(0, toCopy), offset);
+    offset += toCopy;
+    counter++;
+  }
+  return result;
+}
+
+function parseDerInteger(data: Uint8Array, offset: number): { val: bigint; nextOffset: number } {
+  if (data[offset] !== 0x02) throw new Error("expected INTEGER tag in DER");
+  offset++;
+  let length = data[offset];
+  offset++;
+  if (length & 0x80) {
+    const nBytes = length & 0x7f;
+    length = 0;
+    for (let i = 0; i < nBytes; i++) {
+      length = (length << 8) | data[offset++];
     }
   }
-
-  const desc = getFirstTagText(doc, "description");
-  if (desc && !desc.includes("\ufffd") && desc.length > 0) {
-    return desc;
+  const intBytes = data.subarray(offset, offset + length);
+  let hex = "";
+  for (let i = 0; i < intBytes.length; i++) {
+    hex += intBytes[i].toString(16).padStart(2, "0");
   }
-
-  const code = getFirstTagText(doc, "code");
-  const attempts = getFirstTagText(doc, "attemptsRemain");
-
-  if (code === "1") {
-    return attempts
-      ? `Неверный код подтверждения. Осталось попыток: ${attempts}.`
-      : "Неверный код подтверждения из СМС.";
-  }
-  if (code === "2") {
-    return "Ошибка выполнения операции на стороне банка.";
-  }
-  if (code === "7") {
-    return "Регистрация устройства не подтверждена.";
-  }
-  return code ? `Ошибка банка (код ${code})` : "Произошла ошибка при обращении к банку";
+  return { val: BigInt("0x" + hex), nextOffset: offset + length };
 }
 
-export function parseSberProductsXml(xml: string): SberProduct[] {
-  const doc = parseXml(xml);
+function parseRsaPublicKeyDer(b64Der: string): { modulus: bigint; exponent: bigint } {
+  const cleanB64 = b64Der.replace(/\s+/g, "");
+  const binaryString = atob(cleanB64);
+  const der = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    der[i] = binaryString.charCodeAt(i);
+  }
+
+  let modulus = BigInt(0);
+  let exponent = BigInt(0);
+  for (let i = 0; i < der.length - 10; i++) {
+    if (der[i] === 0x02) {
+      try {
+        const r1 = parseDerInteger(der, i);
+        if (r1.val > (BigInt(2) ** BigInt(1024)) && der[r1.nextOffset] === 0x02) {
+          const r2 = parseDerInteger(der, r1.nextOffset);
+          modulus = r1.val;
+          exponent = r2.val;
+          break;
+        }
+      } catch {
+        // Continue searching
+      }
+    }
+  }
+  if (modulus === BigInt(0) || exponent === BigInt(0)) throw new Error("Could not parse RSA public key from DER");
+  return { modulus, exponent };
+}
+
+/**
+ * Encrypts a PIN string using RSA-OAEP with SHA-1, matching Sber's node-forge frontend logic.
+ */
+export async function rsaOaepEncrypt(publicKeyB64: string, text: string): Promise<string> {
+  const { modulus, exponent } = parseRsaPublicKeyDer(publicKeyB64);
+  const width = Math.floor((modulus.toString(2).length + 7) / 8);
+  const message = new TextEncoder().encode(text);
+  const digestSize = 20; // SHA-1
+
+  if (message.length > width - 2 * digestSize - 2) {
+    throw new Error("Message too long for RSA-OAEP key");
+  }
+
+  const seed = new Uint8Array(digestSize);
+  crypto.getRandomValues(seed);
+
+  const emptyHash = await subtleSha1(new Uint8Array(0));
+  const padLen = width - message.length - 2 * digestSize - 2;
+  const dataBlock = new Uint8Array(emptyHash.length + padLen + 1 + message.length);
+  dataBlock.set(emptyHash, 0);
+  dataBlock.fill(0, emptyHash.length, emptyHash.length + padLen);
+  dataBlock[emptyHash.length + padLen] = 0x01;
+  dataBlock.set(message, emptyHash.length + padLen + 1);
+
+  const dbMask = await subtleMgf1(seed, width - digestSize - 1);
+  const maskedData = new Uint8Array(dataBlock.length);
+  for (let i = 0; i < dataBlock.length; i++) maskedData[i] = dataBlock[i] ^ dbMask[i];
+
+  const seedMask = await subtleMgf1(maskedData, digestSize);
+  const maskedSeed = new Uint8Array(seed.length);
+  for (let i = 0; i < seed.length; i++) maskedSeed[i] = seed[i] ^ seedMask[i];
+
+  const encoded = new Uint8Array(width);
+  encoded[0] = 0x00;
+  encoded.set(maskedSeed, 1);
+  encoded.set(maskedData, 1 + maskedSeed.length);
+
+  let hex = "";
+  for (let i = 0; i < encoded.length; i++) hex += encoded[i].toString(16).padStart(2, "0");
+  const encodedInt = BigInt("0x" + hex);
+
+  const encryptedInt = modPow(encodedInt, exponent, modulus);
+  const encryptedBytes = padBytes(encryptedInt, width);
+
+  let binary = "";
+  for (let i = 0; i < encryptedBytes.length; i++) {
+    binary += String.fromCharCode(encryptedBytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
+ * Generates synthetic deviceprint in the format of window.bfd.getData().
+ */
+export function generateDeviceprint(): string {
+  const randomHex = (len: number): string => {
+    const bytes = new Uint8Array(len);
+    crypto.getRandomValues(bytes);
+    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  };
+
+  const uuid = `${randomHex(4)}-${randomHex(2)}-4${randomHex(1).slice(1)}-${randomHex(2)}-${randomHex(6)}`;
+
+  const fields: Record<string, string> = {
+    version: "5.3.0",
+    os: "Windows",
+    osVersion: "10.0",
+    browser: "Chrome",
+    browserVersion: "146.0.0.0",
+    platform: "Win32",
+    screen: "1920x1080",
+    colorDepth: "24",
+    timezone: "-180",
+    language: "ru-RU",
+    cpuCores: "8",
+    canvas: randomHex(16),
+    webgl: randomHex(16),
+    fonts: randomHex(8),
+    audio: randomHex(8),
+    uuid,
+  };
+
+  return Object.entries(fields)
+    .map(([k, v]) => `${k}=${v}`)
+    .join("&");
+}
+
+// -----------------------------------------------------------------------------
+// Products Parser
+// -----------------------------------------------------------------------------
+
+/**
+ * Parses modern Sberbank products JSON response from /main-screen/rest/v2/m1/web/section/meta.
+ */
+export function parseModernSberProducts(payload: unknown): SberProduct[] {
+  if (!payload || typeof payload !== "object") return [];
+  const root = payload as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  let data: any = root; // eslint-disable-line @typescript-eslint/no-explicit-any
+  for (const key of ["body", "sections", "technicalSection", "sectionProductData"]) {
+    if (data && typeof data === "object" && data[key]) {
+      data = data[key];
+    }
+  }
+  if (!data || typeof data !== "object") return [];
+
+  const accountsList: any[] = [ // eslint-disable-line @typescript-eslint/no-explicit-any
+    ...(Array.isArray(data.ctaccounts?.data) ? data.ctaccounts.data : []),
+    ...(Array.isArray(data.sharingCtAccounts?.data) ? data.sharingCtAccounts.data : []),
+    ...(Array.isArray(data.accounts?.data) ? data.accounts.data : []),
+  ];
+  const cardsList: any[] = Array.isArray(data.cardsInWallet?.data) ? data.cardsInWallet.data : []; // eslint-disable-line @typescript-eslint/no-explicit-any
+
   const products: SberProduct[] = [];
+  const accountNumbers = new Map<string, { id: string; balance: number }>();
 
-  // Parse Cards
-  const cardsContainer = doc.getElementsByTagName("cards")[0];
-  if (cardsContainer) {
-    const cardElements = cardsContainer.getElementsByTagName("card");
-    for (let i = 0; i < cardElements.length; i++) {
-      const el = cardElements[i];
-      const id = getFirstTagText(el, "id") || `card-${i}`;
-      const name = getFirstTagText(el, "name") || "Карта СберБанка";
-      const number = getFirstTagText(el, "number") || undefined;
-      const cardAccount = getFirstTagText(el, "cardAccount") || undefined;
-      const state = getFirstTagText(el, "state") || "active";
-      const isBlocked = state.toLowerCase() === "blocked";
+  for (const item of accountsList) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id || "");
+    const name = String(item.name || "Счёт");
+    const number = String(item.number || "");
+    const balanceObj = item.balance;
+    const rawAmt = balanceObj && balanceObj.amount !== undefined ? Number(balanceObj.amount) : 0;
+    const balance = isNaN(rawAmt) ? 0 : rawAmt;
+    const currencyCode = String(balanceObj?.currencyCode || balanceObj?.currency?.code || "RUB");
+    const isBlocked = item.arrested === true || item.state === "BLOCKED";
 
-      const limitAmountStr =
-        getFirstTagText(el, "availableLimit") ||
-        getFirstTagText(el, "amount") ||
-        "0";
-      const cleanNum = limitAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-
-      const currencyEl = el.getElementsByTagName("currency")[0];
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "₽" : "₽";
-
-      products.push({
-        id,
-        name,
-        type: "card",
-        number,
-        cardAccount,
-        balance,
-        currencyCode,
-        currencyName,
-        state,
-        isBlocked,
-      });
+    if (number) {
+      accountNumbers.set(number, { id, balance });
     }
+
+    products.push({
+      id,
+      name,
+      type: "account",
+      number,
+      balance,
+      currencyCode,
+      currencyName: currencyCode === "RUB" || currencyCode === "643" ? "руб." : currencyCode,
+      state: item.state ? String(item.state) : undefined,
+      isBlocked,
+    });
   }
 
-  // Parse Accounts
-  const accountsContainer = doc.getElementsByTagName("accounts")[0];
-  if (accountsContainer) {
-    const accountElements = accountsContainer.getElementsByTagName("account");
-    for (let i = 0; i < accountElements.length; i++) {
-      const el = accountElements[i];
-      const id = getFirstTagText(el, "id") || `acc-${i}`;
-      const name = getFirstTagText(el, "name") || "Счет СберБанка";
-      const number = getFirstTagText(el, "number") || undefined;
-      const state = getFirstTagText(el, "state") || "active";
-      const isBlocked = state.toLowerCase() === "blocked" || state.toLowerCase() === "closed";
+  for (const item of cardsList) {
+    if (!item || typeof item !== "object") continue;
+    const id = String(item.id || "");
+    const name = String(item.name || "Карта");
+    const number = String(item.number || "");
+    const cardAccount = String(item.cardAccount || "");
+    const isCTA = item.isCTA === true;
 
-      const balanceContainer = el.getElementsByTagName("balance")[0];
-      const availcashContainer = el.getElementsByTagName("availcash")[0];
-      const targetContainer = balanceContainer || availcashContainer;
+    const parent = isCTA && cardAccount ? accountNumbers.get(cardAccount) : undefined;
+    const balanceKey = parent ? "availableTotalLimit" : "availableLimit";
+    const balanceObj = item[balanceKey] || item.availableLimit || item.balance;
+    const rawAmt = balanceObj && balanceObj.amount !== undefined ? Number(balanceObj.amount) : 0;
+    const balance = isNaN(rawAmt) ? 0 : rawAmt;
+    const currencyCode = String(balanceObj?.currencyCode || balanceObj?.currency?.code || "RUB");
+    const isBlocked = item.arrested === true || item.state === "BLOCKED";
 
-      const balanceAmountStr = targetContainer
-        ? getFirstTagText(targetContainer, "amount") || "0"
-        : getFirstTagText(el, "amount") || "0";
-
-      const cleanNum = balanceAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-
-      const currencyEl = targetContainer ? targetContainer.getElementsByTagName("currency")[0] : null;
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "₽" : "₽";
-
-      products.push({
-        id,
-        name,
-        type: "account",
-        number,
-        balance,
-        currencyCode,
-        currencyName,
-        state,
-        isBlocked,
-      });
-    }
-  }
-
-  // Parse Loans
-  const loansContainer = doc.getElementsByTagName("loans")[0];
-  if (loansContainer) {
-    const loanElements = loansContainer.getElementsByTagName("loan");
-    for (let i = 0; i < loanElements.length; i++) {
-      const el = loanElements[i];
-      const id = getFirstTagText(el, "id") || `loan-${i}`;
-      const name = getFirstTagText(el, "name") || "Кредит СберБанка";
-      const number = getFirstTagText(el, "number") || undefined;
-
-      const balanceContainer = el.getElementsByTagName("balance")[0];
-      const loanAmountStr = balanceContainer
-        ? getFirstTagText(balanceContainer, "amount") || "0"
-        : getFirstTagText(el, "amount") || "0";
-
-      const cleanNum = loanAmountStr.replace(/\s/g, "").replace(",", ".");
-      const match = cleanNum.match(/-?\d+(\.\d+)?/);
-      const balance = match ? parseFloat(match[0]) : 0;
-
-      const currencyEl = el.getElementsByTagName("currency")[0];
-      const currencyCode = currencyEl ? getFirstTagText(currencyEl, "code") || "RUB" : "RUB";
-      const currencyName = currencyEl ? getFirstTagText(currencyEl, "name") || "₽" : "₽";
-
-      products.push({
-        id,
-        name,
-        type: "loan",
-        number,
-        balance,
-        currencyCode,
-        currencyName,
-        state: "active",
-        isBlocked: false,
-      });
-    }
+    products.push({
+      id,
+      name,
+      type: "card",
+      number,
+      cardAccount: cardAccount || undefined,
+      balance,
+      currencyCode,
+      currencyName: currencyCode === "RUB" || currencyCode === "643" ? "руб." : currencyCode,
+      state: item.state ? String(item.state) : undefined,
+      isBlocked,
+    });
   }
 
   return products;
 }
 
 // -----------------------------------------------------------------------------
-// Sberbank Auth Session
-// -----------------------------------------------------------------------------
-
-export interface SberRegisterStepResult {
-  mGuid: string;
-  attemptsRemain?: number;
-}
-
-export class SberbankAuthSession {
-  identity: SberIdentity | null = null;
-  cookies: Record<string, string> = { ...SBER_DEFAULT_COOKIES };
-  mGuid: string | null = null;
-  loginInput: string | null = null;
-  pin: string = SBER_DEFAULT_PIN;
-  attemptsRemain: number | null = null;
-
-  async init(): Promise<void> {
-    this.identity = await getOrCreateSberIdentity();
-    this.cookies = { ...SBER_DEFAULT_COOKIES };
-    this.mGuid = null;
-    this.loginInput = null;
-    this.attemptsRemain = null;
-  }
-
-  private updateCookies(headers?: Record<string, string[]>): void {
-    const newCookies = parseSetCookieHeaders(headers);
-    this.cookies = { ...this.cookies, ...newCookies };
-  }
-
-  /**
-   * Step 1: Initiates device registration by sending login/phone/card
-   * POST /CSAMAPI/registerApp.do with operation=register
-   */
-  async register(loginRaw: string): Promise<Result<SberRegisterStepResult, Error>> {
-    if (!this.identity) {
-      await this.init();
-    }
-    const identity = this.identity!;
-    const login = normalizeSberLogin(loginRaw);
-    this.loginInput = login;
-
-    const form: Record<string, string> = {
-      operation: "register",
-      login,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      deviceName: identity.deviceName,
-      devID: identity.devId,
-      devIDOld: identity.devIdOld,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV,
-    };
-
-    const cookieHeader = formatCookieHeader(this.cookies);
-    const headers: Record<string, string> = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-    };
-
-    const url = SBER_BASE_URL + "CSAMAPI/registerApp.do";
-    const res = await proxyFetch(url, {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(form).toString(),
-    });
-
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to initiate Sberbank registration"));
-    }
-
-    this.updateCookies(res.data.multiValueHeaders);
-
-    const bodyText = res.data.body || "";
-    const doc = parseXml(bodyText);
-    const code = getFirstTagText(doc, "code");
-
-    if (code !== "0") {
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-
-    const mGuid = getFirstTagText(doc, "mGUID");
-    if (!mGuid) {
-      return err(new Error("Не удалось получить mGUID из ответа банка"));
-    }
-
-    this.mGuid = mGuid;
-    const attemptsStr = getFirstTagText(doc, "attemptsRemain");
-    if (attemptsStr) {
-      const parsed = parseInt(attemptsStr, 10);
-      if (!isNaN(parsed)) {
-        this.attemptsRemain = parsed;
-      }
-    }
-
-    return ok({
-      mGuid,
-      attemptsRemain: this.attemptsRemain ?? undefined,
-    });
-  }
-
-  /**
-   * Step 2: Confirms SMS password and sets PIN
-   * POST /CSAMAPI/registerApp.do with operation=confirm, then operation=createPIN
-   */
-  async confirm(smsPassword: string, pin: string = SBER_DEFAULT_PIN): Promise<Result<void, Error>> {
-    if (!this.identity || !this.mGuid) {
-      return err(new Error("Сессия регистрации не инициализирована"));
-    }
-
-    const identity = this.identity;
-    const mGuid = this.mGuid;
-    this.pin = pin;
-
-    // 1. Confirm SMS code
-    const confirmForm: Record<string, string> = {
-      operation: "confirm",
-      mGUID: mGuid,
-      smsPassword: smsPassword.trim(),
-      version: identity.version,
-      appType: "android",
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV,
-      confirmData: smsPassword.trim(),
-      confirmOperation: "confirmSMS",
-    };
-
-    let cookieHeader = formatCookieHeader(this.cookies);
-    let headers: Record<string, string> = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-    };
-
-    const confirmRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/registerApp.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(confirmForm).toString(),
-    });
-
-    if (confirmRes.error !== null) {
-      return err(new AggregateError([confirmRes.error], "Failed to submit SMS confirmation"));
-    }
-
-    this.updateCookies(confirmRes.data.multiValueHeaders);
-
-    const doc = parseXml(confirmRes.data.body || "");
-    const code = getFirstTagText(doc, "code");
-
-    if (code !== "0") {
-      const attemptsStr = getFirstTagText(doc, "attemptsRemain");
-      if (attemptsStr) {
-        const parsed = parseInt(attemptsStr, 10);
-        if (!isNaN(parsed)) {
-          this.attemptsRemain = parsed;
-        }
-      }
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-
-    // 2. Create PIN
-    const pinForm: Record<string, string> = {
-      operation: "createPIN",
-      mGUID: mGuid,
-      password: pin,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      deviceName: identity.deviceName,
-      devID: identity.devId,
-      devIDOld: identity.devIdOld,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV,
-    };
-
-    cookieHeader = formatCookieHeader(this.cookies);
-    headers = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-    };
-
-    const pinRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/registerApp.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(pinForm).toString(),
-    });
-
-    if (pinRes.error !== null) {
-      return err(new AggregateError([pinRes.error], "Failed to create PIN"));
-    }
-
-    this.updateCookies(pinRes.data.multiValueHeaders);
-
-    const pinDoc = parseXml(pinRes.data.body || "");
-    const pinCode = getFirstTagText(pinDoc, "code");
-    if (pinCode !== "0") {
-      const errMsg = extractErrorMessage(pinDoc);
-      return err(new Error(errMsg));
-    }
-
-    // Registration fully successful! Save session
-    const session: SberSession = {
-      mGuid,
-      pin,
-      login: this.loginInput || "",
-      cookies: this.cookies,
-    };
-    await setStoredSberSession(session);
-
-    return ok(undefined);
-  }
-
-  /**
-   * Logs into Sberbank using mGUID and PIN to obtain a fresh session cookie
-   * POST /CSAMAPI/login.do -> POST /mobile9/postCSALogin.do
-   */
-  async login(mGuid: string, pin: string = SBER_DEFAULT_PIN): Promise<Result<string, Error>> {
-    if (!this.identity) {
-      await this.init();
-    }
-    const identity = this.identity!;
-
-    const loginForm: Record<string, string> = {
-      operation: "button.login",
-      password: pin,
-      version: identity.version,
-      appType: "android",
-      appVersion: identity.appVersion,
-      osVersion: "28.0",
-      deviceName: identity.deviceName,
-      isLightScheme: "false",
-      isSafe: "true",
-      mGUID: mGuid,
-      devID: identity.devId,
-      mobileSdkData: SBER_MOBILE_SDK_DATA,
-      mobileSDKKAV: SBER_MOBILE_SDK_KAV,
-    };
-
-    const cookieHeader = formatCookieHeader(this.cookies);
-    const headers: Record<string, string> = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
-    };
-
-    const loginRes = await proxyFetch(SBER_BASE_URL + "CSAMAPI/login.do", {
-      method: "POST",
-      headers,
-      body: new URLSearchParams(loginForm).toString(),
-    });
-
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to authenticate with Sberbank"));
-    }
-
-    this.updateCookies(loginRes.data.multiValueHeaders);
-
-    const doc = parseXml(loginRes.data.body || "");
-    const code = getFirstTagText(doc, "code");
-
-    if (code !== "0") {
-      const errMsg = extractErrorMessage(doc);
-      return err(new Error(errMsg));
-    }
-
-    const token = getFirstTagText(doc, "token");
-    if (!token) {
-      return err(new Error("Не удалось получить авторизационный токен Sberbank"));
-    }
-
-    // Exchange token via postCSALogin.do
-    const csaForm: Record<string, string> = {
-      token,
-      appName: "Сбербанк",
-      appBuildOSType: "android",
-      appVersion: identity.appVersion,
-      appBuildType: "RELEASE",
-      appFormat: "STANDALONE",
-      deviceName: identity.deviceName,
-      deviceType: "ANE-LX1",
-      deviceOSType: "android",
-      deviceOSVersion: "9",
-    };
-
-    const csaCookieHeader = formatCookieHeader(this.cookies);
-    const csaHeaders: Record<string, string> = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      ...(csaCookieHeader ? { Cookie: csaCookieHeader } : {}),
-    };
-
-    const csaRes = await proxyFetch(SBER_BASE_URL + "mobile9/postCSALogin.do", {
-      method: "POST",
-      headers: csaHeaders,
-      body: new URLSearchParams(csaForm).toString(),
-    });
-
-    if (csaRes.error !== null) {
-      return err(new AggregateError([csaRes.error], "Failed to complete CSA login"));
-    }
-
-    this.updateCookies(csaRes.data.multiValueHeaders);
-
-    const sessionCookie = this.cookies["JSESSIONID"];
-    if (!sessionCookie) {
-      return err(new Error("Ответ CSA login не содержит сессионную cookie JSESSIONID"));
-    }
-
-    // Save active session cookie with 25-minute expiry
-    const stored = await getStoredSberSession();
-    if (stored) {
-      stored.sessionCookie = sessionCookie;
-      stored.sessionExpiresAt = Date.now() + 25 * 60 * 1000;
-      stored.cookies = this.cookies;
-      await setStoredSberSession(stored);
-    }
-
-    return ok(sessionCookie);
-  }
-}
-
-// -----------------------------------------------------------------------------
-// High-Level Business API
+// Sberbank Web API Client
 // -----------------------------------------------------------------------------
 
 /**
- * Fetches all products (cards, accounts, loans) from /mobile9/private/products/list.do.
- * Automatically performs login if session cookie is missing or expired.
+ * Executes a request to Sberbank Online products endpoint with session cookies.
+ */
+export async function fetchSberProducts(session: SberSession): Promise<Result<SberProduct[], Error>> {
+  if (!session.ufsSession || !session.ufsToken) {
+    return err(new Error("Отсутствуют cookies сессии (UFS-SESSION / UFS-TOKEN)"));
+  }
+
+  const apiBase = session.apiBase || SBER_DEFAULT_API_BASE;
+  const targetUrl = `${apiBase.replace(/\/+$/, "")}${SBER_PRODUCTS_PATH}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json, text/plain, */*",
+    Origin: SBER_APP_ORIGIN,
+    Referer: `${SBER_APP_ORIGIN}/`,
+    Cookie: `UFS-SESSION=${session.ufsSession}; UFS-TOKEN=${session.ufsToken}`,
+  };
+
+  const res = await proxyFetch(targetUrl, {
+    method: "POST",
+    headers,
+    body: { withData: true, forceUpdate: false },
+  });
+
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "Не удалось сделать запрос к API СберБанка"));
+  }
+
+  if (res.data.status === 401 || res.data.status === 403) {
+    return err(new Error("Сессия СберБанка истекла или недействительна (HTTP " + res.data.status + ")"));
+  }
+
+  const jsonResult = await res.data.json<Record<string, unknown>>();
+  if (jsonResult.error !== null) {
+    return err(new AggregateError([jsonResult.error], "СберБанк вернул некорректный ответ"));
+  }
+
+  const data = jsonResult.data;
+  if (!data || data.success === false) {
+    const errorObj = data?.error as Record<string, unknown> | undefined;
+    const errorMsg = (errorObj?.title || errorObj?.text || "Ошибка получения продуктов") as string;
+    return err(new Error(errorMsg));
+  }
+
+  const products = parseModernSberProducts(data);
+  return ok(products);
+}
+
+/**
+ * Public high-level function to get accounts & cards using the stored session.
  */
 export async function getSberAccounts(): Promise<Result<SberProduct[], Error>> {
   const session = await getStoredSberSession();
-  if (!session || !session.mGuid) {
-    return err(new Error("Not authenticated in Sberbank"));
+  if (!session || !session.ufsSession || !session.ufsToken) {
+    return err(new Error("Не авторизован в СберБанке"));
   }
 
-  const authSession = new SberbankAuthSession();
-  if (session.cookies) {
-    authSession.cookies = { ...session.cookies };
+  return await fetchSberProducts(session);
+}
+
+// -----------------------------------------------------------------------------
+// Interactive Web SRP Login Session
+// -----------------------------------------------------------------------------
+
+export interface SrpConfig {
+  nHex: string;
+  gHex: string;
+  processId: string;
+  baseApiUrl: string;
+}
+
+export class SberWebAuthSession {
+  private config: SrpConfig | null = null;
+  private clientA: bigint = BigInt(0);
+  private clientSecretA: bigint = BigInt(0);
+  private srpN: bigint = BigInt(0);
+  private srpG: bigint = BigInt(2);
+  private token: string | null = null;
+  private loginValue: string = "";
+  private passwordValue: string = "";
+  private deviceprint: string = "";
+  public expectedM2: Uint8Array | null = null;
+  private pinPublicKey: string | null = null;
+  private csrfToken: string | null = null;
+
+  constructor() {
+    this.deviceprint = generateDeviceprint();
   }
 
-  let cookie = session.sessionCookie;
-  const isExpired = !session.sessionExpiresAt || Date.now() >= session.sessionExpiresAt;
-
-  if (!cookie || isExpired) {
-    const loginRes = await authSession.login(session.mGuid, session.pin || SBER_DEFAULT_PIN);
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to refresh Sberbank session"));
+  private parseConfigFromHtml(html: string): SrpConfig {
+    const idx = html.indexOf("window.config = {");
+    if (idx === -1) {
+      throw new Error("Не удалось обнаружить конфигурацию на странице входа СберБанка");
     }
-    cookie = loginRes.data;
+
+    let depth = 0;
+    let end = idx;
+    for (let i = idx + "window.config =".length; i < html.length; i++) {
+      if (html[i] === "{") depth++;
+      else if (html[i] === "}") {
+        depth--;
+        if (depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+    }
+
+    const configStr = html.slice(idx, end);
+    const processIdMatch = configStr.match(/processId:\s*"([^"]+)"/);
+    const nMatch = configStr.match(/srpConfig:\s*\{[\s\S]*?N:\s*"([^"]+)"/);
+    const gMatch = configStr.match(/srpConfig:\s*\{[\s\S]*?g:\s*"([^"]+)"/);
+    const baseApiMatch = configStr.match(/baseApiUrl:\s*"([^"]+)"/);
+
+    if (!processIdMatch || !nMatch) {
+      throw new Error("Не удалось извлечь SRP параметры СберБанка");
+    }
+
+    return {
+      processId: processIdMatch[1],
+      nHex: nMatch[1],
+      gHex: gMatch ? gMatch[1] : "2",
+      baseApiUrl: baseApiMatch ? baseApiMatch[1] : "CSAFront",
+    };
   }
 
-  const fetchProducts = async (jsessionId: string): Promise<Result<SberProduct[], Error>> => {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/x-www-form-urlencoded",
-      Cookie: `JSESSIONID=${jsessionId}`,
-    };
+  /**
+   * Step 1: Initiates SRP authentication with login and password.
+   * Prompts Sberbank to verify the password and send the SMS verification code!
+   */
+  async startLogin(
+    login: string,
+    pass: string
+  ): Promise<Result<{ needsOtp: boolean; timeout?: number }, Error>> {
+    this.loginValue = login.trim();
+    this.passwordValue = pass;
 
-    const res = await proxyFetch(SBER_BASE_URL + "mobile9/private/products/list.do", {
-      method: "POST",
-      headers,
-      body: "showProductType=cards,accounts,imaccounts,loans",
+    // 1. Fetch CSAFront/index.do
+    const pageRes = await proxyFetch(SBER_AUTH_PAGE, {
+      method: "GET",
+      headers: {
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      },
     });
 
-    if (res.error !== null) {
-      return err(new AggregateError([res.error], "Failed to request products list"));
+    if (pageRes.error !== null) {
+      return err(new AggregateError([pageRes.error], "Не удалось загрузить страницу входа СберБанка"));
     }
 
-    const bodyText = res.data.body || "";
-    const doc = parseXml(bodyText);
-    const code = getFirstTagText(doc, "code");
-
-    if (code && code !== "0") {
-      return err(new Error(`Банк вернул статус: ${code}`));
+    const configParse = await withResult(() => this.parseConfigFromHtml(pageRes.data.body || ""))();
+    if (configParse.error !== null) {
+      return err(new AggregateError([configParse.error], "Ошибка разбора страницы СберБанка"));
     }
 
-    const products = parseSberProductsXml(bodyText);
-    return ok(products);
-  };
+    this.config = configParse.data;
+    this.srpN = hexToBigInt(this.config.nHex);
+    this.srpG = BigInt(this.config.gHex);
 
-  let prodRes = await fetchProducts(cookie);
-  if (prodRes.error !== null) {
-    // Retry once with a fresh login
-    const loginRes = await authSession.login(session.mGuid, session.pin || SBER_DEFAULT_PIN);
-    if (loginRes.error !== null) {
-      return err(new AggregateError([loginRes.error], "Failed to re-login to Sberbank"));
+    // Generate client secret a and public A
+    const width = Math.floor((this.srpN.toString(2).length + 7) / 8);
+    const aBytes = new Uint8Array(Math.floor(width / 8) || 32);
+    crypto.getRandomValues(aBytes);
+    let aHex = "";
+    for (let i = 0; i < aBytes.length; i++) aHex += aBytes[i].toString(16).padStart(2, "0");
+    this.clientSecretA = BigInt("0x" + aHex);
+    this.clientA = modPow(this.srpG, this.clientSecretA, this.srpN);
+
+    // 2. Post button.begin
+    const beginForm = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      operation: "button.begin",
+      login: this.loginValue,
+      pageInputType: "INDEX",
+      storeLogin: "true",
+      srp_A: this.clientA.toString(16),
+      publicKeyCredentialAvailable: "true",
+    });
+
+    const primaryHeaders: Record<string, string> = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true",
+    };
+
+    const beginRes = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
+      method: "POST",
+      headers: primaryHeaders,
+      body: beginForm.toString(),
+    });
+
+    if (beginRes.error !== null) {
+      return err(new AggregateError([beginRes.error], "Ошибка запроса начала входа"));
     }
-    cookie = loginRes.data;
-    prodRes = await fetchProducts(cookie);
-    if (prodRes.error !== null) {
-      return err(new AggregateError([prodRes.error], "Failed to fetch Sberbank products after re-login"));
+
+    const beginJsonRes = await beginRes.data.json<Record<string, any>>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (beginJsonRes.error !== null) {
+      return err(new AggregateError([beginJsonRes.error], "Некорректный ответ от сервера СберБанка"));
     }
+
+    const beginPayload = beginJsonRes.data;
+    if (beginPayload.error && beginPayload.error.code !== 200) {
+      const errCode = beginPayload.error.code;
+      if (beginPayload.error.captcha) {
+        return err(new Error("СберБанк запросил капчу (рекомендуется войти по Cookie)"));
+      }
+      return err(new Error(`Ошибка СберБанка: ${errCode}`));
+    }
+
+    const token = beginPayload.token;
+    const srpInfo = beginPayload.srpInfo;
+    if (!token || !srpInfo || !srpInfo.srp_s || !srpInfo.srp_B) {
+      return err(new Error("Ответ СберБанка не содержит SRP challenge"));
+    }
+    this.token = token;
+
+    // 3. Compute SRP-512 challenge proof m1
+    const salt = hexToBigInt(srpInfo.srp_s);
+    const serverB = hexToBigInt(srpInfo.srp_B);
+
+    const k = await subtleSha512BigInt(padBytes(this.srpN, width), padBytes(this.srpG, width));
+    const x = await subtleSha512BigInt(
+      bigIntToBytes(salt),
+      new TextEncoder().encode(this.passwordValue)
+    );
+    const u = await subtleSha512BigInt(padBytes(this.clientA, width), padBytes(serverB, width));
+    const shared = modPow(
+      (serverB - k * modPow(this.srpG, x, this.srpN)) % this.srpN,
+      this.clientSecretA + u * x,
+      this.srpN
+    );
+    const sessionHash = await subtleSha512(padBytes(shared, width));
+
+    const hN = await subtleSha512(bigIntToBytes(this.srpN));
+    const hG = await subtleSha512(bigIntToBytes(this.srpG));
+    const xorBuf = new Uint8Array(hN.length);
+    for (let i = 0; i < hN.length; i++) xorBuf[i] = hN[i] ^ hG[i];
+
+    const m1 = await subtleSha512(
+      xorBuf,
+      bigIntToBytes(salt),
+      padBytes(this.clientA, width),
+      padBytes(serverB, width),
+      sessionHash
+    );
+
+    let m1Hex = "";
+    for (let i = 0; i < m1.length; i++) m1Hex += m1[i].toString(16).padStart(2, "0");
+    const m1Int = BigInt("0x" + m1Hex);
+
+    this.expectedM2 = await subtleSha512(
+      padBytes(this.clientA, width),
+      bigIntToBytes(m1Int),
+      sessionHash
+    );
+
+    // 4. Send SRP proof m1 -> Triggers the actual SMS!
+    const step2Form = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      "org.apache.struts.taglib.html.TOKEN": this.token || "",
+      operation: "button.next",
+      login: this.loginValue,
+      pageInputType: "INDEX",
+      storeLogin: "true",
+      srp_M: m1Int.toString(16),
+      token: this.token || "",
+    });
+
+    const step2Res = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
+      method: "POST",
+      headers: primaryHeaders,
+      body: step2Form.toString(),
+    });
+
+    if (step2Res.error !== null) {
+      return err(new AggregateError([step2Res.error], "Ошибка отправки SRP доказательства"));
+    }
+
+    const step2JsonRes = await step2Res.data.json<Record<string, any>>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (step2JsonRes.error !== null) {
+      return err(new AggregateError([step2JsonRes.error], "Некорректный ответ от сервера СберБанка"));
+    }
+
+    const step2Payload = step2JsonRes.data;
+    if (step2Payload.token) {
+      this.token = step2Payload.token;
+    }
+
+    if (step2Payload.state === "NEED_CONFIRM") {
+      return ok({
+        needsOtp: true,
+        timeout: typeof step2Payload.timeout === "number" ? step2Payload.timeout : 120,
+      });
+    }
+
+    if (step2Payload.state === "WRONG_PASS") {
+      return err(new Error("Неверный логин или пароль СберБанка"));
+    }
+
+    return err(new Error(`Неожиданный ответ СберБанка: ${step2Payload.state || "unknown"}`));
   }
 
-  return ok(prodRes.data);
+  /**
+   * Step 2: Confirms SMS OTP code and sets PIN to complete session enrollment.
+   */
+  async confirmOtp(smsCode: string): Promise<Result<SberSession, Error>> {
+    if (!this.config || !this.token) {
+      return err(new Error("Сессия аутентификации не инициализирована"));
+    }
+
+    const confirmForm = new URLSearchParams({
+      deviceprint: this.deviceprint,
+      jsEvents: "",
+      domElements: "",
+      "org.apache.struts.taglib.html.TOKEN": this.token,
+      operation: "button.next",
+      confirmPassword: smsCode.trim(),
+      pageInputType: "INDEX",
+      token: this.token,
+    });
+
+    const headers: Record<string, string> = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/x-www-form-urlencoded",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true",
+    };
+
+    const confirmRes = await proxyFetch(SBER_PRIMARY_AUTH_URL, {
+      method: "POST",
+      headers,
+      body: confirmForm.toString(),
+    });
+
+    if (confirmRes.error !== null) {
+      return err(new AggregateError([confirmRes.error], "Ошибка отправки СМС-кода"));
+    }
+
+    this.csrfToken = confirmRes.data.headers.get("x-csrf-token");
+
+    const confirmJson = await confirmRes.data.json<Record<string, any>>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+    if (confirmJson.error !== null) {
+      return err(new AggregateError([confirmJson.error], "Некорректный ответ подтверждения СМС"));
+    }
+
+    const confirmPayload = confirmJson.data;
+    if (confirmPayload.token) {
+      this.token = confirmPayload.token;
+    }
+
+    if (confirmPayload.state === "WRONG_PASS") {
+      return err(new Error("Введён неверный СМС-код"));
+    }
+
+    const pinInfo = confirmPayload.pinInfo;
+    if (pinInfo && pinInfo.publicKey) {
+      this.pinPublicKey = pinInfo.publicKey;
+    }
+
+    // If PIN enrollment is needed
+    if (this.pinPublicKey) {
+      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, SBER_DEFAULT_PIN);
+      const pinHeaders: Record<string, string> = {
+        Accept: "application/json, text/plain, */*",
+        "Content-Type": "application/json",
+        Origin: SBER_APP_ORIGIN,
+        Referer: SBER_AUTH_PAGE,
+        "Process-Id": this.config.processId,
+        "X-TS-AJAX-Request": "true",
+        ...(this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {}),
+      };
+
+      const pinRes = await proxyFetch(SBER_PIN_CREATE_URL, {
+        method: "POST",
+        headers: pinHeaders,
+        body: { pin: encryptedPin, deviceprint: this.deviceprint },
+      });
+
+      if (pinRes.error !== null) {
+        return err(new AggregateError([pinRes.error], "Ошибка создания PIN кода"));
+      }
+      if (pinRes.data.headers.get("x-csrf-token")) {
+        this.csrfToken = pinRes.data.headers.get("x-csrf-token");
+      }
+    }
+
+    // Finish auth to get redirect URL
+    const finishHeaders: Record<string, string> = {
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "X-TS-AJAX-Request": "true",
+      ...(this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {}),
+    };
+
+    const finishRes = await proxyFetch(SBER_AUTH_FINISH_URL, {
+      method: "POST",
+      headers: finishHeaders,
+      body: { deviceprint: this.deviceprint },
+    });
+
+    if (finishRes.error !== null) {
+      return err(new AggregateError([finishRes.error], "Ошибка завершения авторизации"));
+    }
+
+    const finishJson = await finishRes.data.json<Record<string, any>>(); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const redirectUrl = finishJson.data?.redirect || confirmPayload.redirect;
+    if (!redirectUrl) {
+      return err(new Error("Сервер не предоставил URL перенаправления сессии"));
+    }
+
+    // Follow seamless redirect to receive UFS-SESSION and UFS-TOKEN cookies
+    const redirectRes = await proxyFetch(redirectUrl, {
+      method: "POST",
+      headers: {
+        Accept: "*/*",
+        "Content-Type": "application/json; charset=utf-8",
+        Origin: SBER_APP_ORIGIN,
+        Referer: `${SBER_APP_ORIGIN}/`,
+        "X-Seamless-Web": "true",
+      },
+      body: null,
+    });
+
+    if (redirectRes.error !== null) {
+      return err(new AggregateError([redirectRes.error], "Ошибка перехода по ссылке сессии"));
+    }
+
+    const redirectCookies = parseSetCookieHeaders(redirectRes.data.multiValueHeaders);
+    let ufsSession = redirectCookies["UFS-SESSION"];
+    let ufsToken = redirectCookies["UFS-TOKEN"];
+
+    if (!ufsSession || !ufsToken) {
+      // Also check body or cookies from previous calls
+      const parsed = parseSberCookies(redirectRes.data.body || "");
+      if (parsed.ufsSession && parsed.ufsToken) {
+        ufsSession = parsed.ufsSession;
+        ufsToken = parsed.ufsToken;
+      }
+    }
+
+    if (!ufsSession || !ufsToken) {
+      return err(new Error("Не удалось получить UFS-SESSION / UFS-TOKEN из ответа банка"));
+    }
+
+    const session: SberSession = {
+      ufsSession,
+      ufsToken,
+      apiBase: SBER_DEFAULT_API_BASE,
+      login: this.loginValue,
+      deviceprint: this.deviceprint,
+      lastUpdated: Date.now(),
+      cookies: redirectCookies,
+    };
+
+    await setStoredSberSession(session);
+    return ok(session);
+  }
 }
