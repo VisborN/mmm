@@ -28600,14 +28600,16 @@ var AppStore = class {
   }
   openTransactionModal(transaction2) {
     this.currentTransaction = transaction2 || null;
-    window.location.hash = "modal-tx";
+    this.isTransactionModalOpen = true;
+    if (window.location.hash !== "#modal-tx") {
+      window.location.hash = "modal-tx";
+    }
   }
   closeTransactionModal() {
+    this.isTransactionModalOpen = false;
+    this.currentTransaction = null;
     if (window.location.hash === "#modal-tx") {
       window.history.back();
-    } else {
-      this.isTransactionModalOpen = false;
-      this.currentTransaction = null;
     }
   }
   async saveTransaction(transaction2) {
@@ -28624,14 +28626,16 @@ var AppStore = class {
   }
   openAccountModal(account) {
     this.currentAccount = account || null;
-    window.location.hash = "modal-account";
+    this.isAccountModalOpen = true;
+    if (window.location.hash !== "#modal-account") {
+      window.location.hash = "modal-account";
+    }
   }
   closeAccountModal() {
+    this.isAccountModalOpen = false;
+    this.currentAccount = null;
     if (window.location.hash === "#modal-account") {
       window.history.back();
-    } else {
-      this.isAccountModalOpen = false;
-      this.currentAccount = null;
     }
   }
   async saveAccount(account) {
@@ -29015,11 +29019,8 @@ var TransactionsView = observer(() => {
     return acc;
   }, {});
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
-  if (store.transactions.length === 0) {
-    return /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." });
-  }
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { children: [
-    sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
+    store.transactions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." }) : sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "date-header", children: formatDate(dateStr) }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { children: groupedTransactions[dateStr].map((tx) => {
         const isPositive = tx.type === "deposit";
@@ -32110,7 +32111,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-10 09:03:08 +0300" : "dev"
+          true ? "2026-09-10 11:37:45 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32262,4 +32263,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-IMC5WKSO.js.map
+//# sourceMappingURL=app-VAXDPBFN.js.map
