@@ -264,15 +264,17 @@ export class AppStore {
 
     openTransactionModal(transaction?: Transaction): void {
         this.currentTransaction = transaction || null;
-        window.location.hash = 'modal-tx';
+        this.isTransactionModalOpen = true;
+        if (window.location.hash !== '#modal-tx') {
+            window.location.hash = 'modal-tx';
+        }
     }
 
     closeTransactionModal(): void {
+        this.isTransactionModalOpen = false;
+        this.currentTransaction = null;
         if (window.location.hash === '#modal-tx') {
             window.history.back();
-        } else {
-            this.isTransactionModalOpen = false;
-            this.currentTransaction = null;
         }
     }
 
@@ -292,15 +294,17 @@ export class AppStore {
 
     openAccountModal(account?: Account): void {
         this.currentAccount = account || null;
-        window.location.hash = 'modal-account';
+        this.isAccountModalOpen = true;
+        if (window.location.hash !== '#modal-account') {
+            window.location.hash = 'modal-account';
+        }
     }
 
     closeAccountModal(): void {
+        this.isAccountModalOpen = false;
+        this.currentAccount = null;
         if (window.location.hash === '#modal-account') {
             window.history.back();
-        } else {
-            this.isAccountModalOpen = false;
-            this.currentAccount = null;
         }
     }
 
