@@ -24,7 +24,7 @@
 - **Session & Credentials Model**: Modern Sberbank Online web session is cookie-backed. Minimum required credentials are `UFS-SESSION` and `UFS-TOKEN` cookies. Stored in IndexedDB (`sber_session`).
 - **Authentication Modes**:
   1. **Direct Cookie / Session Input**: Fast and reliable. The user pastes `UFS-SESSION` and `UFS-TOKEN` (or the raw Cookie header / JSON export). Verified instantly by querying the products endpoint.
-  2. **Interactive Web SRP Login**: Full web-client authentication via `CSAFront/index.do` and `CSAFront/authMainJson.do` with SRP-512 and login + password. The server verifies password and triggers official SMS delivery. After SMS OTP confirmation and optional RSA-OAEP PIN enrollment, the post-login redirect issues authenticated `UFS-SESSION` and `UFS-TOKEN`.
+  2. **Interactive Web SRP Login**: Full web-client authentication via `CSAFront/index.do` and `CSAFront/authMainJson.do` with SRP-512 and login + password. The server verifies password and triggers official SMS delivery. After SMS OTP confirmation and optional RSA-OAEP PIN enrollment, the post-login redirect issues authenticated `UFS-SESSION` and `UFS-TOKEN`. Cookie continuity is maintained across all flow stages, along with modern Chrome browser headers and Go proxy TLS 1.2/1.3 cipher suite impersonation (`impersonate: "chrome"`).
 - **Products & Balances**: Fetched via `POST {apiBase}/main-screen/rest/v2/m1/web/section/meta` with payload `{"withData": true, "forceUpdate": false}`. Cards (`cardsInWallet`) and accounts (`ctaccounts`, `sharingCtAccounts`, `accounts`) are parsed with automatic deduplication of card-backing accounts to prevent double-counting.
 
 
