@@ -103,6 +103,7 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     url.hostname === 'accounts.google.com' ||
     url.hostname.includes('tinkoff.ru') ||
     url.hostname.includes('tbank.ru') ||
+    url.hostname.includes('sberbank.ru') ||
     url.hostname.includes('yandexcloud.net') ||
     url.pathname.startsWith('/proxy')
   ) {
