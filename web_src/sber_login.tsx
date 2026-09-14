@@ -288,7 +288,7 @@ export const SberLoginDialog = observer(() => {
             </div>
 
             <div className="form-group">
-              <label className="form-label">5-значный PIN-код от СберБанк Онлайн</label>
+              <label className="form-label">5-значный PIN-код от СберБанк Онлайн (опционально)</label>
               <input
                 className="form-input"
                 type="password"
@@ -298,10 +298,9 @@ export const SberLoginDialog = observer(() => {
                 value={pinInput}
                 disabled={isLoading}
                 onChange={(e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                required
               />
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
-                Сохраняется в этом браузере. При истечении сессии СберБанк продлит её автоматически по PIN-коду без повторного копирования кук.
+                Скопируйте куки из DevTools (вкладка Сеть или Application → Cookies). Если строка содержит куку <code>sb_user</code> (из /CSAFront) и указан PIN, приложение сможет автоматически продлевать сессию без повторного копирования кук.
               </div>
             </div>
 
@@ -313,11 +312,11 @@ export const SberLoginDialog = observer(() => {
 
             <button
               type="submit"
-              disabled={isLoading || !cookieInput.trim() || pinInput.length !== 5}
+              disabled={isLoading || !cookieInput.trim() || (Boolean(pinInput.trim()) && pinInput.trim().length !== 5)}
               className="btn btn-primary"
               style={{ width: '100%', marginTop: '16px', background: '#21a038', color: '#fff', fontWeight: 600 }}
             >
-              {isLoading ? 'Проверка сессии...' : 'Войти и сохранить PIN'}
+              {isLoading ? 'Проверка сессии...' : 'Войти по Cookie'}
             </button>
           </form>
         ) : (
