@@ -589,10 +589,36 @@ export async function fetchSberProducts(session: SberSession): Promise<Result<Sb
 export async function getSberAccounts(): Promise<Result<SberProduct[], Error>> {
   const session = await getStoredSberSession();
   if (!session || !session.ufsSession || !session.ufsToken) {
+    if (session && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+      const authSession = new SberWebAuthSession();
+      const loginRes = await authSession.loginWithPin(session.pin, session.cookies);
+      if (loginRes.error === null) {
+        return await fetchSberProducts(loginRes.data);
+      }
+    }
     return err(new Error("Не авторизован в СберБанке"));
   }
 
-  return await fetchSberProducts(session);
+  const res = await fetchSberProducts(session);
+  if (res.error !== null) {
+    if (
+      (res.error.message.includes("истекла") ||
+       res.error.message.includes("401") ||
+       res.error.message.includes("403")) &&
+      session.pin &&
+      session.cookies &&
+      (session.cookies.sb_user || session.cookies["sb_user"])
+    ) {
+      const authSession = new SberWebAuthSession();
+      const loginRes = await authSession.loginWithPin(session.pin, session.cookies);
+      if (loginRes.error === null) {
+        return await fetchSberProducts(loginRes.data);
+      }
+    }
+    return res;
+  }
+
+  return res;
 }
 
 // -----------------------------------------------------------------------------
@@ -895,7 +921,7 @@ export class SberWebAuthSession {
   /**
    * Step 2: Confirms SMS OTP code and sets PIN to complete session enrollment.
    */
-  async confirmOtp(smsCode: string): Promise<Result<SberSession, Error>> {
+  async confirmOtp(smsCode: string, userPin?: string): Promise<Result<SberSession, Error>> {
     if (!this.config || !this.token) {
       return err(new Error("Сессия аутентификации не инициализирована"));
     }
@@ -962,9 +988,11 @@ export class SberWebAuthSession {
       this.pinPublicKey = pinInfo.publicKey;
     }
 
+    const pinToUse = userPin && /^\d{5}$/.test(userPin.trim()) ? userPin.trim() : SBER_DEFAULT_PIN;
+
     // If PIN enrollment is needed
     if (this.pinPublicKey) {
-      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, SBER_DEFAULT_PIN);
+      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, pinToUse);
       const pinCookieHeader = this.getCookieHeader();
       const pinRqUid = generateRqUid();
       const pinHeaders: Record<string, string> = {
@@ -1108,7 +1136,7 @@ export class SberWebAuthSession {
       ufsToken,
       apiBase,
       login: this.loginValue,
-      pin: SBER_DEFAULT_PIN,
+      pin: pinToUse,
       deviceprint: this.deviceprint,
       lastUpdated: Date.now(),
       cookies: this.cookies,

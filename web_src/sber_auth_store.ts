@@ -21,7 +21,7 @@ export enum SberLoginStep {
   SUCCESS = "SUCCESS",
 }
 
-export type SberLoginMode = "cookie" | "srp";
+export type SberLoginMode = "cookie" | "srp" | "pin";
 
 export class SberAuthStore {
   // --- Observable State ---
@@ -32,6 +32,10 @@ export class SberAuthStore {
   loginInput: string = "";
   passwordInput: string = "";
   smsInput: string = "";
+  pinInput: string = "42424";
+
+  hasSavedPinSession: boolean = false;
+  savedPin: string | null = null;
 
   isLoading: boolean = false;
   error: string | null = null;
@@ -73,6 +77,10 @@ export class SberAuthStore {
     this.smsInput = val;
   }
 
+  setPinInput(val: string) {
+    this.pinInput = val;
+  }
+
   /**
    * Resets the auth modal state and closes the dialog
    */
@@ -90,17 +98,30 @@ export class SberAuthStore {
   /**
    * Starts the Sberbank login modal flow
    */
-  startLogin() {
+  async startLogin() {
     this.srpSession = new SberWebAuthSession();
-    this.loginMode = "cookie";
-    this.step = SberLoginStep.COOKIE;
-    this.cookieInput = "";
-    this.loginInput = "";
-    this.passwordInput = "";
-    this.smsInput = "";
-    this.error = null;
-    this.isLoading = false;
-    this.smsTimeout = null;
+    const session = await getStoredSberSession();
+    const hasPin = Boolean(
+      session &&
+      session.pin &&
+      session.cookies &&
+      (session.cookies.sb_user || session.cookies["sb_user"])
+    );
+
+    runInAction(() => {
+      this.hasSavedPinSession = hasPin;
+      this.savedPin = session?.pin || null;
+      this.pinInput = session?.pin || "42424";
+      this.loginMode = hasPin ? "pin" : "cookie";
+      this.step = SberLoginStep.COOKIE;
+      this.cookieInput = "";
+      this.loginInput = "";
+      this.passwordInput = "";
+      this.smsInput = "";
+      this.error = null;
+      this.isLoading = false;
+      this.smsTimeout = null;
+    });
   }
 
   /**
@@ -108,17 +129,32 @@ export class SberAuthStore {
    */
   async init() {
     const session = await getStoredSberSession();
-    if (session && session.ufsSession && session.ufsToken) {
-      runInAction(() => {
-        this.isAuthenticated = true;
-      });
-      await this.loadBalance();
-    } else {
-      runInAction(() => {
-        this.isAuthenticated = false;
-        this.accounts = [];
-        this.totalBalance = null;
-      });
+    if (session) {
+      if (session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+        runInAction(() => {
+          this.hasSavedPinSession = true;
+          this.savedPin = session.pin || null;
+          this.pinInput = session.pin || "42424";
+        });
+      }
+      if (session.ufsSession && session.ufsToken) {
+        runInAction(() => {
+          this.isAuthenticated = true;
+        });
+        await this.loadBalance();
+        return;
+      }
+    }
+
+    runInAction(() => {
+      this.isAuthenticated = false;
+      this.accounts = [];
+      this.totalBalance = null;
+    });
+
+    // Auto-reconnect using saved PIN from memory
+    if (session && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+      await this.submitPinLogin(session.pin);
     }
   }
 
@@ -196,6 +232,45 @@ export class SberAuthStore {
   }
 
   /**
+   * Authenticate using saved 5-digit PIN (without SMS)
+   */
+  async submitPinLogin(pinOverride?: string) {
+    const session = await getStoredSberSession();
+    const pin = (pinOverride || this.pinInput || session?.pin || "").trim();
+    if (!pin || pin.length !== 5) {
+      this.error = "PIN должен состоять из 5 цифр";
+      return;
+    }
+
+    if (!session?.cookies || (!session.cookies.sb_user && !session.cookies["sb_user"])) {
+      this.error = "Для входа по PIN необходима предварительная авторизация в этом браузере";
+      return;
+    }
+
+    this.isLoading = true;
+    this.error = null;
+
+    const res = await this.srpSession.loginWithPin(pin, session.cookies);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "Ошибка входа по PIN-коду";
+      });
+      return;
+    }
+
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = SberLoginStep.SUCCESS;
+      this.isLoading = false;
+      this.hasSavedPinSession = true;
+      this.savedPin = pin;
+    });
+
+    await this.loadBalance();
+  }
+
+  /**
    * Submits SMS OTP code to finish web login
    */
   async submitSmsCode() {
@@ -205,10 +280,16 @@ export class SberAuthStore {
       return;
     }
 
+    const pinToEnroll = (this.pinInput || "42424").trim();
+    if (pinToEnroll && pinToEnroll.length !== 5) {
+      this.error = "PIN должен состоять из 5 цифр";
+      return;
+    }
+
     this.isLoading = true;
     this.error = null;
 
-    const res = await this.srpSession.confirmOtp(code);
+    const res = await this.srpSession.confirmOtp(code, pinToEnroll);
     if (res.error !== null) {
       runInAction(() => {
         this.isLoading = false;
@@ -222,6 +303,8 @@ export class SberAuthStore {
       this.step = SberLoginStep.SUCCESS;
       this.isLoading = false;
       this.smsInput = "";
+      this.hasSavedPinSession = true;
+      this.savedPin = pinToEnroll;
     });
 
     await this.loadBalance();
@@ -231,7 +314,9 @@ export class SberAuthStore {
    * General submit handler router
    */
   async submit() {
-    if (this.loginMode === "cookie") {
+    if (this.loginMode === "pin") {
+      await this.submitPinLogin();
+    } else if (this.loginMode === "cookie") {
       await this.submitCookieLogin();
     } else if (this.step === SberLoginStep.LOGIN || this.step === SberLoginStep.COOKIE) {
       await this.submitSrpLogin();

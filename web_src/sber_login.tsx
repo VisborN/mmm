@@ -10,6 +10,9 @@ export const SberLoginDialog = observer(() => {
     loginInput,
     passwordInput,
     smsInput,
+    pinInput,
+    hasSavedPinSession,
+    savedPin,
     isLoading,
     error,
     smsTimeout,
@@ -83,6 +86,24 @@ export const SberLoginDialog = observer(() => {
               />
             </div>
 
+            <div className="form-group" style={{ marginTop: '12px' }}>
+              <label className="form-label">5-значный PIN для входа без СМС</label>
+              <input
+                className="form-input"
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="42424"
+                value={pinInput}
+                disabled={isLoading}
+                onChange={(e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                required
+              />
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
+                Сохраняется в этом браузере. При следующих авторизациях СберБанк войдёт автоматически без запроса СМС.
+              </div>
+            </div>
+
             {smsTimeout && (
               <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '6px' }}>
                 Время действия кода: <strong>{smsTimeout} сек.</strong>
@@ -97,7 +118,7 @@ export const SberLoginDialog = observer(() => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || pinInput.length !== 5}
               className="btn btn-primary"
               style={{ width: '100%', marginTop: '16px', background: '#21a038', color: '#fff', fontWeight: 600 }}
             >
@@ -140,24 +161,26 @@ export const SberLoginDialog = observer(() => {
             marginBottom: '18px',
           }}
         >
-          <button
-            type="button"
-            onClick={() => sberAuthStore.setLoginMode('cookie')}
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: 500,
-              background: loginMode === 'cookie' ? 'var(--card-bg)' : 'transparent',
-              color: loginMode === 'cookie' ? 'var(--text-primary)' : 'var(--text-secondary)',
-              transition: 'all 0.2s ease',
-            }}
-          >
-            По Cookie / Токену
-          </button>
+          {hasSavedPinSession && (
+            <button
+              type="button"
+              onClick={() => sberAuthStore.setLoginMode('pin')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: 500,
+                background: loginMode === 'pin' ? 'var(--card-bg)' : 'transparent',
+                color: loginMode === 'pin' ? 'var(--text-primary)' : 'var(--text-secondary)',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Вход по PIN
+            </button>
+          )}
           <button
             type="button"
             onClick={() => sberAuthStore.setLoginMode('srp')}
@@ -176,9 +199,69 @@ export const SberLoginDialog = observer(() => {
           >
             Логин и Пароль
           </button>
+          <button
+            type="button"
+            onClick={() => sberAuthStore.setLoginMode('cookie')}
+            style={{
+              flex: 1,
+              padding: '8px 12px',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '13px',
+              fontWeight: 500,
+              background: loginMode === 'cookie' ? 'var(--card-bg)' : 'transparent',
+              color: loginMode === 'cookie' ? 'var(--text-primary)' : 'var(--text-secondary)',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            По Cookie
+          </button>
         </div>
 
-        {loginMode === 'cookie' ? (
+        {loginMode === 'pin' ? (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              sberAuthStore.submit();
+            }}
+          >
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '14px', lineHeight: 1.5 }}>
+              В браузере сохранён профиль безопасности. Вход выполняется напрямую по PIN-коду без запроса СМС.
+            </p>
+
+            <div className="form-group">
+              <label className="form-label">5-значный PIN-код</label>
+              <input
+                className="form-input"
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="42424"
+                value={pinInput}
+                disabled={isLoading}
+                onChange={(e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                required
+                autoFocus
+              />
+            </div>
+
+            {error && (
+              <div className="error-banner" style={{ margin: '14px 0', padding: '10px 12px', fontSize: '13px' }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading || pinInput.length !== 5}
+              className="btn btn-primary"
+              style={{ width: '100%', marginTop: '16px', background: '#21a038', color: '#fff', fontWeight: 600 }}
+            >
+              {isLoading ? 'Авторизация...' : (savedPin === pinInput ? 'Войти по PIN из памяти' : 'Войти по PIN')}
+            </button>
+          </form>
+        ) : loginMode === 'cookie' ? (
           <form
             onSubmit={(e) => {
               e.preventDefault();
