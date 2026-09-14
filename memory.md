@@ -25,7 +25,8 @@
 - **Authentication Modes**:
   1. **Direct Cookie / Session Input**: Fast and reliable. The user pastes `UFS-SESSION` and `UFS-TOKEN` (or the raw Cookie header / JSON export). Verified instantly by querying the products endpoint.
   2. **Interactive Web SRP Login**: Full web-client authentication via `CSAFront/index.do` and `CSAFront/authMainJson.do` with SRP-512 and login + password. The server verifies password and triggers official SMS delivery. After SMS OTP confirmation and optional RSA-OAEP PIN enrollment, the post-login redirect issues authenticated `UFS-SESSION` and `UFS-TOKEN`.
-  3. **Remembered PIN Login**: When `sb_user` cookie is saved, supports fast PIN login via `/CSAFront/api/v1/pin/begin` and `/CSAFront/api/v1/pin/logon` with SRP-512.
+  3. **Remembered PIN Login**: When `sb_user` cookie and 5-digit PIN are saved in IndexedDB, supports fast PIN login via `/CSAFront/api/v1/pin/begin` and `/CSAFront/api/v1/pin/logon` with SRP-512 without SMS prompts.
+  4. **Browser PIN Persistence & Silent Reconnect**: The 5-digit PIN entered during first login is persisted in IndexedDB (`SberSession.pin`). When product balance requests detect an expired session (401/403) or on application startup (`sberAuthStore.init()`), the system automatically and silently re-authenticates using the stored PIN and `sb_user` cookie. Users can also manually log in using the saved PIN directly from the login modal.
 - **Critical Protocol & Gateway Details**:
   - **`Rq-Uid`**: Every `/CSAFront/api/v1/...` POST request (`pin/create`, `auth`, `pin/begin`, `pin/logon`) requires a unique UUID v4 in the `Rq-Uid` header for gateway correlation; omitting it results in a 30s gateway timeout.
   - **`deviceprint`**: Uses the RSA BSAFE / BiZone 1.7.3 format (`version=1.7.3&pm_br=Chrome&...`) aligned with browser headers.
@@ -33,5 +34,6 @@
   - **`X-CSRF-Token`**: Extracted from headers and forwarded across all stage transitions.
   - **Seamless Redirect & Activation**: Redirect POST includes `Process-Id` and `X-Seamless-Web: true`. Session activation is finalized via `GET {apiBase}/api/front/ready`.
 - **Products & Balances**: Fetched via `POST {apiBase}/main-screen/rest/v2/m1/web/section/meta` with payload `{"withData": true, "forceUpdate": false}`. Cards (`cardsInWallet`) and accounts (`ctaccounts`, `sharingCtAccounts`, `accounts`) are parsed with automatic deduplication of card-backing accounts to prevent double-counting.
+
 
 
