@@ -19,12 +19,19 @@
 - **Account Balances**: Loaded via `GET /v1/accounts_light?withDigitalRub=false` with automatic token refresh (proactive when expiry < 60s, or reactive on 401 Unauthorized). Displayed in Settings view ([`web_src/settings_view.tsx`](file:///home/vdudko/documents/mmm/web_src/settings_view.tsx)).
 
 ## Sberbank Web API Integration
-- **Architecture**: Based on reverse engineering and implementation from `sber-mcp` (`ex3lite/sber-mcp`). Located in [`web_src/infrastructure/sberbank.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/sberbank.ts), [`web_src/sber_auth_store.ts`](file:///home/vdudko/documents/mmm/web_src/sber_auth_store.ts), and [`web_src/sber_login.tsx`](file:///home/vdudko/documents/mmm/web_src/sber_login.tsx).
-- **Transport**: Standard HTTPS requests to `https://online.sberbank.ru/` and dynamic UFS hosts (e.g. `https://web-standin2.online.sberbank.ru/`) are proxied through Yandex Cloud Serverless Proxy ([`web_src/infrastructure/proxy.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/proxy.ts)).
+- **Architecture**: Based on reverse engineering and implementation from `sber-mcp` (`ex3lite/sber-mcp`) and verified against browser HAR captures from iOS Safari and Chrome. Located in [`web_src/infrastructure/sberbank.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/sberbank.ts), [`web_src/sber_auth_store.ts`](file:///home/vdudko/documents/mmm/web_src/sber_auth_store.ts), and [`web_src/sber_login.tsx`](file:///home/vdudko/documents/mmm/web_src/sber_login.tsx).
+- **Transport**: Standard HTTPS requests to `https://online.sberbank.ru/` and dynamic UFS hosts (e.g. `https://web2.online.sberbank.ru/`) are proxied through Yandex Cloud Serverless Proxy ([`web_src/infrastructure/proxy.ts`](file:///home/vdudko/documents/mmm/web_src/infrastructure/proxy.ts)).
 - **Session & Credentials Model**: Modern Sberbank Online web session is cookie-backed. Minimum required credentials are `UFS-SESSION` and `UFS-TOKEN` cookies. Stored in IndexedDB (`sber_session`).
 - **Authentication Modes**:
   1. **Direct Cookie / Session Input**: Fast and reliable. The user pastes `UFS-SESSION` and `UFS-TOKEN` (or the raw Cookie header / JSON export). Verified instantly by querying the products endpoint.
-  2. **Interactive Web SRP Login**: Full web-client authentication via `CSAFront/index.do` and `CSAFront/authMainJson.do` with SRP-512 and login + password. The server verifies password and triggers official SMS delivery. After SMS OTP confirmation and optional RSA-OAEP PIN enrollment, the post-login redirect issues authenticated `UFS-SESSION` and `UFS-TOKEN`. Cookie continuity is maintained across all flow stages, along with modern Chrome browser headers and Go proxy TLS 1.2/1.3 cipher suite impersonation (`impersonate: "chrome"`).
+  2. **Interactive Web SRP Login**: Full web-client authentication via `CSAFront/index.do` and `CSAFront/authMainJson.do` with SRP-512 and login + password. The server verifies password and triggers official SMS delivery. After SMS OTP confirmation and optional RSA-OAEP PIN enrollment, the post-login redirect issues authenticated `UFS-SESSION` and `UFS-TOKEN`.
+  3. **Remembered PIN Login**: When `sb_user` cookie is saved, supports fast PIN login via `/CSAFront/api/v1/pin/begin` and `/CSAFront/api/v1/pin/logon` with SRP-512.
+- **Critical Protocol & Gateway Details**:
+  - **`Rq-Uid`**: Every `/CSAFront/api/v1/...` POST request (`pin/create`, `auth`, `pin/begin`, `pin/logon`) requires a unique UUID v4 in the `Rq-Uid` header for gateway correlation; omitting it results in a 30s gateway timeout.
+  - **`deviceprint`**: Uses the RSA BSAFE / BiZone 1.7.3 format (`version=1.7.3&pm_br=Chrome&...`) aligned with browser headers.
+  - **`publicKeyCredentialAvailable`**: Set to `"false"` during `button.begin` to prevent server from deviating to WebAuthn / Passkey flow.
+  - **`X-CSRF-Token`**: Extracted from headers and forwarded across all stage transitions.
+  - **Seamless Redirect & Activation**: Redirect POST includes `Process-Id` and `X-Seamless-Web: true`. Session activation is finalized via `GET {apiBase}/api/front/ready`.
 - **Products & Balances**: Fetched via `POST {apiBase}/main-screen/rest/v2/m1/web/section/meta` with payload `{"withData": true, "forceUpdate": false}`. Cards (`cardsInWallet`) and accounts (`ctaccounts`, `sharingCtAccounts`, `accounts`) are parsed with automatic deduplication of card-backing accounts to prevent double-counting.
 
 
