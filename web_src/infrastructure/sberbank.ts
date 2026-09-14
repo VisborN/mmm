@@ -632,6 +632,42 @@ export interface SrpConfig {
   baseApiUrl: string;
 }
 
+/**
+ * Generates client-side cookies set by Sberbank web frontend scripts (BiZone, SAS, Dynatrace)
+ * upon loading index.do, required by Sberbank WAF on primary authentication.
+ */
+export function generateSberClientCookies(existingCookies?: Record<string, string>): Record<string, string> {
+  const sbSid = existingCookies?.["sb-sid"] || crypto.randomUUID();
+  const svUuid = crypto.randomUUID();
+  const nowSec = Math.floor(Date.now() / 1000);
+  const nowMs = Date.now();
+
+  const SAS_API_KEY = "38ab27095c197a3960dda31a837595eb5f3149f4fba55081033ba14b411c2f27";
+  const sv = `SV1.${svUuid}.${nowSec}`;
+  const sas = `SV1.${svUuid}.${nowSec}.${nowSec + 35}`;
+
+  // Authentic BiZone tokens wrapping the session UUID
+  const sbId =
+    existingCookies?.["sb-id"] ||
+    `gYGW3FAssp5NPK1gY1ducIV2AAABoJ6oVMoBediXduw_AC_jFmMChLKo-XqH0P45n-vL4owiWtyn${btoa(sbSid).replace(/=/g, "")}`;
+  const sbPid =
+    existingCookies?.["sb-pid"] ||
+    "gYEk0sVU42ZPjJVWw-R7er-wAAABoJ6oVMqRV0q86iiWJACdlcSI1ERdrjcuRTSnqVLCud6XouS0cw";
+
+  return {
+    "sbrf.pers_notice": "1",
+    "sb-sid": sbSid,
+    _sv: sv,
+    [`_sas.${SAS_API_KEY}`]: sas,
+    "sb-id": sbId,
+    "sb-pid": sbPid,
+    dtPC: `18$168226935_20h${Math.floor(Math.random() * 20)}vGSTAPNUCCKKWUCREMBCKRCQCSFMFEHOD-0e0`,
+    rxvt: `${nowMs + 1800000}|${nowMs}`,
+    rxVisitor: `${nowMs}5ENDNKIJNV4O0D9J0MA7GPC33G5OFEGO`,
+    dtCookie: "v_4_srv_18_sn_JEKER3LLLBV2KT8M08F6FEM39VGQ2HA8_app-3A087a48404605d036_1_ol_0_perc_100000_mul_1",
+  };
+}
+
 export class SberWebAuthSession {
   private config: SrpConfig | null = null;
   private clientA: bigint = BigInt(0);
@@ -733,6 +769,13 @@ export class SberWebAuthSession {
 
     this.updateCookies(pageRes.data.multiValueHeaders);
 
+    // Merge client-side anti-fraud cookies (BiZone, SAS, Dynatrace) expected by Sberbank WAF
+    const clientCookies = generateSberClientCookies(this.cookies);
+    this.cookies = {
+      ...clientCookies,
+      ...this.cookies,
+    };
+
     const configParse = await withResult(() => this.parseConfigFromHtml(pageRes.data.body || ""))();
     if (configParse.error !== null) {
       return err(new AggregateError([configParse.error], "Ошибка разбора страницы СберБанка"));
@@ -770,6 +813,7 @@ export class SberWebAuthSession {
       "Content-Type": "application/x-www-form-urlencoded",
       Origin: SBER_APP_ORIGIN,
       Referer: SBER_AUTH_PAGE,
+      "Page-Id": "",
       "Process-Id": this.config.processId,
       "X-TS-AJAX-Request": "true",
       "Sec-Fetch-Dest": "empty",
@@ -943,6 +987,7 @@ export class SberWebAuthSession {
       "Content-Type": "application/x-www-form-urlencoded",
       Origin: SBER_APP_ORIGIN,
       Referer: SBER_AUTH_PAGE,
+      "Page-Id": "",
       "Process-Id": this.config.processId,
       "X-TS-AJAX-Request": "true",
       "Sec-Fetch-Dest": "empty",
@@ -1155,7 +1200,8 @@ export class SberWebAuthSession {
     existingCookies?: Record<string, string>
   ): Promise<Result<SberSession, Error>> {
     if (existingCookies) {
-      this.cookies = { ...this.cookies, ...existingCookies };
+      const clientCookies = generateSberClientCookies(existingCookies);
+      this.cookies = { ...clientCookies, ...this.cookies, ...existingCookies };
     }
 
     const pageHeaders: Record<string, string> = {

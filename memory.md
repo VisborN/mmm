@@ -29,6 +29,8 @@
   4. **Browser PIN Persistence & Silent Reconnect**: The 5-digit PIN entered during first login is persisted in IndexedDB (`SberSession.pin`). When product balance requests detect an expired session (401/403) or on application startup (`sberAuthStore.init()`), the system automatically and silently re-authenticates using the stored PIN and `sb_user` cookie. Users can also manually log in using the saved PIN directly from the login modal.
 - **Critical Protocol & Gateway Details**:
   - **`Rq-Uid`**: Every `/CSAFront/api/v1/...` POST request (`pin/create`, `auth`, `pin/begin`, `pin/logon`) requires a unique UUID v4 in the `Rq-Uid` header for gateway correlation; omitting it results in a 30s gateway timeout.
+  - **Client-Side Cookies & Headers**: To avoid WAF socket delays (tarpit) on `authMainJson.do`, client-side anti-fraud cookies (`sb-id`, `sb-sid`, `_sv`, `_sas...`, `dtPC`, `dtCookie`, `rxvt`, `rxVisitor`) are generated and passed along with `"Page-Id": ""` and `"Process-Id"`.
+  - **API Gateway & Cloud Function Timeout**: Integration timeout in `api-gateway.yaml` and function `execution-timeout` in `.github/workflows/deploy-serverless.yml` set to 30s to accommodate upstream bank processing.
   - **`deviceprint`**: Uses the RSA BSAFE / BiZone 1.7.3 format (`version=1.7.3&pm_br=Chrome&...`) aligned with browser headers.
   - **`publicKeyCredentialAvailable`**: Set to `"false"` during `button.begin` to prevent server from deviating to WebAuthn / Passkey flow.
   - **`X-CSRF-Token`**: Extracted from headers and forwarded across all stage transitions.
