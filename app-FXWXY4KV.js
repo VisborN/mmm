@@ -30803,6 +30803,29 @@ async function getSberAccounts() {
   }
   return res;
 }
+function generateSberClientCookies(existingCookies) {
+  const sbSid = (existingCookies == null ? void 0 : existingCookies["sb-sid"]) || crypto.randomUUID();
+  const svUuid = crypto.randomUUID();
+  const nowSec = Math.floor(Date.now() / 1e3);
+  const nowMs = Date.now();
+  const SAS_API_KEY = "38ab27095c197a3960dda31a837595eb5f3149f4fba55081033ba14b411c2f27";
+  const sv = `SV1.${svUuid}.${nowSec}`;
+  const sas = `SV1.${svUuid}.${nowSec}.${nowSec + 35}`;
+  const sbId = (existingCookies == null ? void 0 : existingCookies["sb-id"]) || `gYGW3FAssp5NPK1gY1ducIV2AAABoJ6oVMoBediXduw_AC_jFmMChLKo-XqH0P45n-vL4owiWtyn${btoa(sbSid).replace(/=/g, "")}`;
+  const sbPid = (existingCookies == null ? void 0 : existingCookies["sb-pid"]) || "gYEk0sVU42ZPjJVWw-R7er-wAAABoJ6oVMqRV0q86iiWJACdlcSI1ERdrjcuRTSnqVLCud6XouS0cw";
+  return {
+    "sbrf.pers_notice": "1",
+    "sb-sid": sbSid,
+    _sv: sv,
+    [`_sas.${SAS_API_KEY}`]: sas,
+    "sb-id": sbId,
+    "sb-pid": sbPid,
+    dtPC: `18$168226935_20h${Math.floor(Math.random() * 20)}vGSTAPNUCCKKWUCREMBCKRCQCSFMFEHOD-0e0`,
+    rxvt: `${nowMs + 18e5}|${nowMs}`,
+    rxVisitor: `${nowMs}5ENDNKIJNV4O0D9J0MA7GPC33G5OFEGO`,
+    dtCookie: "v_4_srv_18_sn_JEKER3LLLBV2KT8M08F6FEM39VGQ2HA8_app-3A087a48404605d036_1_ol_0_perc_100000_mul_1"
+  };
+}
 var SberWebAuthSession = class {
   constructor() {
     __publicField(this, "config", null);
@@ -30884,6 +30907,8 @@ var SberWebAuthSession = class {
       return err(new AggregateError([pageRes.error], "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0432\u0445\u043E\u0434\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
     }
     this.updateCookies(pageRes.data.multiValueHeaders);
+    const clientCookies = generateSberClientCookies(this.cookies);
+    this.cookies = __spreadValues(__spreadValues({}, clientCookies), this.cookies);
     const configParse = await withResult(() => this.parseConfigFromHtml(pageRes.data.body || ""))();
     if (configParse.error !== null) {
       return err(new AggregateError([configParse.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0440\u0430\u0437\u0431\u043E\u0440\u0430 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
@@ -30915,6 +30940,7 @@ var SberWebAuthSession = class {
       "Content-Type": "application/x-www-form-urlencoded",
       Origin: SBER_APP_ORIGIN,
       Referer: SBER_AUTH_PAGE,
+      "Page-Id": "",
       "Process-Id": this.config.processId,
       "X-TS-AJAX-Request": "true",
       "Sec-Fetch-Dest": "empty",
@@ -31057,6 +31083,7 @@ var SberWebAuthSession = class {
       "Content-Type": "application/x-www-form-urlencoded",
       Origin: SBER_APP_ORIGIN,
       Referer: SBER_AUTH_PAGE,
+      "Page-Id": "",
       "Process-Id": this.config.processId,
       "X-TS-AJAX-Request": "true",
       "Sec-Fetch-Dest": "empty",
@@ -31223,7 +31250,8 @@ var SberWebAuthSession = class {
    */
   async loginWithPin(pin, existingCookies) {
     if (existingCookies) {
-      this.cookies = __spreadValues(__spreadValues({}, this.cookies), existingCookies);
+      const clientCookies = generateSberClientCookies(existingCookies);
+      this.cookies = __spreadValues(__spreadValues(__spreadValues({}, clientCookies), this.cookies), existingCookies);
     }
     const pageHeaders = __spreadValues(__spreadValues({
       Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
@@ -32564,7 +32592,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-14 11:00:52 +0300" : "dev"
+          true ? "2026-09-14 11:21:53 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32716,4 +32744,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-TOWU46ME.js.map
+//# sourceMappingURL=app-FXWXY4KV.js.map
