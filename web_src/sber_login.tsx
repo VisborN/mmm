@@ -269,22 +269,40 @@ export const SberLoginDialog = observer(() => {
             }}
           >
             <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: 1.5 }}>
-              Войдите в СберБанк Онлайн в браузере (на <code>online.sberbank.ru</code>), откройте DevTools (F12) → Сеть
-              или Application → Cookies и скопируйте <code>UFS-SESSION</code> и <code>UFS-TOKEN</code> (или всю строку Cookie).
+              Войдите в СберБанк Онлайн в браузере (на <code>online.sberbank.ru</code>), откройте DevTools (F12) → Сеть (Network),
+              выберите любой запрос и скопируйте заголовок <code>Cookie</code> целиком.
             </p>
 
-            <div className="form-group">
-              <label className="form-label">Строка Cookie или токены</label>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label className="form-label">Строка Cookie целиком</label>
               <textarea
                 className="form-input"
                 style={{ height: '90px', resize: 'vertical', fontSize: '12px', fontFamily: 'monospace' }}
-                placeholder="UFS-SESSION=...; UFS-TOKEN=..."
+                placeholder="Cookie: UFS-SESSION=...; UFS-TOKEN=...; sb_user=..."
                 value={cookieInput}
                 disabled={isLoading}
                 onChange={(e) => sberAuthStore.setCookieInput(e.target.value)}
                 required
                 autoFocus
               />
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">5-значный PIN-код от СберБанк Онлайн</label>
+              <input
+                className="form-input"
+                type="password"
+                inputMode="numeric"
+                maxLength={5}
+                placeholder="42424"
+                value={pinInput}
+                disabled={isLoading}
+                onChange={(e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                required
+              />
+              <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.4 }}>
+                Сохраняется в этом браузере. При истечении сессии СберБанк продлит её автоматически по PIN-коду без повторного копирования кук.
+              </div>
             </div>
 
             {error && (
@@ -295,11 +313,11 @@ export const SberLoginDialog = observer(() => {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !cookieInput.trim() || pinInput.length !== 5}
               className="btn btn-primary"
               style={{ width: '100%', marginTop: '16px', background: '#21a038', color: '#fff', fontWeight: 600 }}
             >
-              {isLoading ? 'Проверка сессии...' : 'Войти по токену'}
+              {isLoading ? 'Проверка сессии...' : 'Войти и сохранить PIN'}
             </button>
           </form>
         ) : (

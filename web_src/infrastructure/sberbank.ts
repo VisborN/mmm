@@ -79,46 +79,119 @@ export async function setStoredSberSession(session: SberSession | null): Promise
 // Cookie Utilities
 // -----------------------------------------------------------------------------
 
-/**
- * Parses user-provided cookie string, JSON, or header containing UFS-SESSION and UFS-TOKEN.
- */
-export function parseSberCookies(raw: string): { ufsSession?: string; ufsToken?: string } {
-  const trimmed = raw.trim();
-  if (!trimmed) return {};
+export interface ParsedSberCookies {
+  ufsSession?: string;
+  ufsToken?: string;
+  cookies: Record<string, string>;
+}
 
-  // 1. Try parsing as JSON (e.g. {"ufs_session": "...", "ufs_token": "..."} or {"UFS-SESSION": "..."})
+/**
+ * Parses user-provided cookie string, JSON, or header containing UFS-SESSION, UFS-TOKEN,
+ * sb_user, and other session cookies into a dictionary.
+ */
+export function parseSberCookies(raw: string): ParsedSberCookies {
+  const trimmed = raw.trim();
+  const cookies: Record<string, string> = {};
+  if (!trimmed) return { cookies };
+
+  // 1. Try parsing as JSON (e.g. array of cookies or object with cookie key-value pairs)
   try {
     const obj = JSON.parse(trimmed);
     if (typeof obj === "object" && obj !== null) {
-      const ufsSession =
-        obj.ufs_session ||
-        obj["UFS-SESSION"] ||
-        obj.ufsSession ||
-        obj["ufs-session"];
-      const ufsToken =
-        obj.ufs_token ||
-        obj["UFS-TOKEN"] ||
-        obj.ufsToken ||
-        obj["ufs-token"];
-      if (ufsSession && ufsToken) {
-        return {
-          ufsSession: String(ufsSession).trim(),
-          ufsToken: String(ufsToken).trim(),
-        };
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          if (item && typeof item === "object" && item.name && item.value !== undefined) {
+            cookies[String(item.name).trim()] = String(item.value).trim();
+          }
+        }
+      } else {
+        for (const [k, v] of Object.entries(obj)) {
+          if (v !== undefined && v !== null) {
+            cookies[k.trim()] = String(v).trim();
+          }
+        }
       }
     }
   } catch {
-    // Not JSON, continue to cookie string regex
+    // Not JSON, continue to cookie string parsing
   }
 
-  // 2. Extract from Netscape or Cookie header format: UFS-SESSION=xxx; UFS-TOKEN=yyy
-  const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
-  const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
+  // 2. Parse text lines or semicolon-separated cookies (HTTP Cookie header or DevTools table copy)
+  const textWithoutPrefix = trimmed.replace(/^cookie:\s*/i, "");
+  const parts = textWithoutPrefix.split(/[\r\n;]+/);
 
-  const ufsSession = sessionMatch ? sessionMatch[1].trim() : undefined;
-  const ufsToken = tokenMatch ? tokenMatch[1].trim() : undefined;
+  for (const part of parts) {
+    const item = part.trim();
+    if (!item) continue;
 
-  return { ufsSession, ufsToken };
+    // Check tab-separated (e.g. DevTools Application tab table copy or Netscape format)
+    const tabParts = item.split("\t").map((p) => p.trim()).filter(Boolean);
+    if (tabParts.length >= 2) {
+      const name = tabParts[0];
+      const val = tabParts[1];
+      if (name && val && !cookies[name]) {
+        cookies[name] = val;
+      }
+      continue;
+    }
+
+    // Check key=value
+    const eqIdx = item.indexOf("=");
+    if (eqIdx !== -1) {
+      const name = item.slice(0, eqIdx).trim();
+      const val = item.slice(eqIdx + 1).trim();
+      if (name && !cookies[name]) {
+        cookies[name] = val;
+      }
+    }
+  }
+
+  // Find ufsSession and ufsToken case-insensitively if not found directly
+  let ufsSession =
+    cookies["UFS-SESSION"] ||
+    cookies["ufs-session"] ||
+    cookies["ufs_session"] ||
+    cookies["ufsSession"];
+  let ufsToken =
+    cookies["UFS-TOKEN"] ||
+    cookies["ufs-token"] ||
+    cookies["ufs_token"] ||
+    cookies["ufsToken"];
+
+  if (!ufsSession || !ufsToken) {
+    for (const [k, v] of Object.entries(cookies)) {
+      if (!ufsSession && /^ufs[-_]?session$/i.test(k)) ufsSession = v;
+      if (!ufsToken && /^ufs[-_]?token$/i.test(k)) ufsToken = v;
+    }
+  }
+
+  // Regex fallback in case of non-standard formatting
+  if (!ufsSession) {
+    const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
+    if (sessionMatch) {
+      ufsSession = sessionMatch[1].trim();
+      cookies["UFS-SESSION"] = ufsSession;
+    }
+  }
+  if (!ufsToken) {
+    const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
+    if (tokenMatch) {
+      ufsToken = tokenMatch[1].trim();
+      cookies["UFS-TOKEN"] = ufsToken;
+    }
+  }
+
+  // Normalize sb_user if present with different casing
+  if (!cookies["sb_user"]) {
+    for (const [k, v] of Object.entries(cookies)) {
+      if (k.toLowerCase() === "sb_user") {
+        cookies["sb_user"] = v;
+        break;
+      }
+    }
+  }
+
+  return { ufsSession, ufsToken, cookies };
 }
 
 export function parseSetCookieHeaders(

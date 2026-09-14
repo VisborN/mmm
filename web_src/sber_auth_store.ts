@@ -159,18 +159,33 @@ export class SberAuthStore {
   }
 
   /**
-   * Authenticate using direct cookie / token values
+   * Authenticate using direct full cookie string and 5-digit PIN for session persistence
    */
   async submitCookieLogin() {
+    const pin = (this.pinInput || "").trim();
+    if (!pin || pin.length !== 5) {
+      this.error = "PIN должен состоять из 5 цифр";
+      return;
+    }
+
     this.isLoading = true;
     this.error = null;
 
-    const { ufsSession, ufsToken } = parseSberCookies(this.cookieInput);
+    const { ufsSession, ufsToken, cookies } = parseSberCookies(this.cookieInput);
     if (!ufsSession || !ufsToken) {
       runInAction(() => {
         this.isLoading = false;
         this.error =
-          "Не удалось найти UFS-SESSION и UFS-TOKEN. Убедитесь, что вы скопировали cookies из DevTools или ввели их в формате UFS-SESSION=...; UFS-TOKEN=...";
+          "Не удалось найти UFS-SESSION и UFS-TOKEN. Скопируйте строку Cookie целиком из DevTools (online.sberbank.ru).";
+      });
+      return;
+    }
+
+    if (!cookies.sb_user && !cookies["sb_user"]) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error =
+          "В строке cookies не найдена кука sb_user (необходима для работы PIN). Убедитесь, что скопировали строку Cookie целиком из вкладки Сеть (Network) в DevTools online.sberbank.ru.";
       });
       return;
     }
@@ -178,6 +193,8 @@ export class SberAuthStore {
     const testSession: SberSession = {
       ufsSession,
       ufsToken,
+      cookies,
+      pin,
       apiBase: SBER_DEFAULT_API_BASE,
       lastUpdated: Date.now(),
     };
@@ -197,6 +214,8 @@ export class SberAuthStore {
       this.isAuthenticated = true;
       this.step = SberLoginStep.SUCCESS;
       this.isLoading = false;
+      this.hasSavedPinSession = true;
+      this.savedPin = pin;
       this.accounts = res.data;
       this.calculateTotalBalance(res.data);
     });
