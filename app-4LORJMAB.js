@@ -30422,6 +30422,19 @@ function parseSetCookieHeaders2(multiValueHeaders) {
   }
   return cookies;
 }
+function getProxyHeader(res, name) {
+  if (res.headers && typeof res.headers.get === "function") {
+    const direct = res.headers.get(name);
+    if (direct) return direct;
+  }
+  const lower = name.toLowerCase();
+  for (const [k, vs] of Object.entries(res.multiValueHeaders || {})) {
+    if (k.toLowerCase() === lower && Array.isArray(vs) && vs.length > 0) {
+      return vs[0];
+    }
+  }
+  return null;
+}
 function hexToBigInt(hex) {
   return BigInt("0x" + hex);
 }
@@ -30581,32 +30594,64 @@ async function rsaOaepEncrypt(publicKeyB64, text) {
   }
   return btoa(binary);
 }
+function generateRqUid() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = bytes[6] & 15 | 64;
+  bytes[8] = bytes[8] & 63 | 128;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 function generateDeviceprint() {
-  const randomHex = (len) => {
-    const bytes = new Uint8Array(len);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-  };
-  const uuid = `${randomHex(4)}-${randomHex(2)}-4${randomHex(1).slice(1)}-${randomHex(2)}-${randomHex(6)}`;
-  const fields = {
-    version: "5.3.0",
-    os: "Windows",
-    osVersion: "10.0",
-    browser: "Chrome",
-    browserVersion: "146.0.0.0",
-    platform: "Win32",
-    screen: "1920x1080",
-    colorDepth: "24",
-    timezone: "-180",
-    language: "ru-RU",
-    cpuCores: "8",
-    canvas: randomHex(16),
-    webgl: randomHex(16),
-    fonts: randomHex(8),
-    audio: randomHex(8),
-    uuid
-  };
-  return Object.entries(fields).map(([k, v]) => `${k}=${v}`).join("&");
+  if (typeof window !== "undefined" && window.bfd && // eslint-disable-line @typescript-eslint/no-explicit-any
+  typeof window.bfd.getData === "function") {
+    try {
+      const data = window.bfd.getData();
+      if (typeof data === "string" && data.length > 0) {
+        return data;
+      }
+    } catch (e) {
+    }
+  }
+  const fields = [
+    ["version", "1.7.3"],
+    ["pm_br", "Chrome"],
+    ["pm_brmjv", "134"],
+    ["iframed", "0"],
+    ["intip", ""],
+    ["pm_expt", ""],
+    ["pm_fpacn", "Mozilla"],
+    ["pm_fpan", "Netscape"],
+    ["pm_fpasw", "internal-pdf-viewer|internal-pdf-viewer|internal-pdf-viewer|internal-pdf-viewer|internal-pdf-viewer"],
+    ["pm_fpco", "1"],
+    ["pm_fpjv", "0"],
+    ["pm_fpln", "lang=ru|syslang=|userlang="],
+    ["pm_fpol", "true"],
+    ["pm_fposp", ""],
+    ["pm_fpsaw", "1920"],
+    ["pm_fpsbd", ""],
+    ["pm_fpsc", "24|1920|1080|1080"],
+    ["pm_fpsdx", ""],
+    ["pm_fpsdy", ""],
+    ["pm_fpslx", ""],
+    ["pm_fpsly", ""],
+    ["pm_fpspd", "24"],
+    ["pm_fpsui", ""],
+    ["pm_fpsw", ""],
+    ["pm_fptz", "-180"],
+    ["pm_fpua", "mozilla/5.0 (windows nt 10.0; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/134.0.0.0 safari/537.36|5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36|Win32"],
+    ["pm_fpup", ""],
+    ["pm_inpt", ""],
+    ["pm_os", "Windows"],
+    ["adsblock", "0=false|1=false|2=false|3=false|4=false"],
+    ["audio", "baseLatency=0.005333333333333333|outputLatency=0|sampleRate=48000|state=suspended|maxChannelCount=2|numberOfInputs=1|numberOfOutputs=1|channelCount=2|channelCountMode=max|channelInterpretation=speakers|fftSize=2048|frequencyBinCount=1024|minDecibels=-100|maxDecibels=-30|smoothingTimeConstant=0.8"],
+    ["pm_fpsfse", "true"],
+    ["webgl", "ver=webgl2|vendor=Google Inc. (NVIDIA)|render=ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Direct3D11 vs_5_0 ps_5_0, D3D11)"]
+  ];
+  return fields.map(([k, v]) => `${k}=${v}`).join("&");
 }
 function parseModernSberProducts(payload) {
   var _a3, _b2, _c, _d, _e, _f;
@@ -30844,7 +30889,7 @@ var SberWebAuthSession = class {
       pageInputType: "INDEX",
       storeLogin: "true",
       srp_A: this.clientA.toString(16),
-      publicKeyCredentialAvailable: "true"
+      publicKeyCredentialAvailable: "false"
     });
     const cookieHeader = this.getCookieHeader();
     const primaryHeaders = __spreadValues(__spreadValues({
@@ -30868,6 +30913,10 @@ var SberWebAuthSession = class {
       return err(new AggregateError([beginRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u0445\u043E\u0434\u0430"));
     }
     this.updateCookies(beginRes.data.multiValueHeaders);
+    const csrf1 = getProxyHeader(beginRes.data, "x-csrf-token");
+    if (csrf1) {
+      this.csrfToken = csrf1;
+    }
     const beginJsonRes = await beginRes.data.json();
     if (beginJsonRes.error !== null) {
       return err(new AggregateError([beginJsonRes.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
@@ -30943,6 +30992,10 @@ var SberWebAuthSession = class {
       return err(new AggregateError([step2Res.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 SRP \u0434\u043E\u043A\u0430\u0437\u0430\u0442\u0435\u043B\u044C\u0441\u0442\u0432\u0430"));
     }
     this.updateCookies(step2Res.data.multiValueHeaders);
+    const csrf2 = getProxyHeader(step2Res.data, "x-csrf-token");
+    if (csrf2) {
+      this.csrfToken = csrf2;
+    }
     const step2JsonRes = await step2Res.data.json();
     if (step2JsonRes.error !== null) {
       return err(new AggregateError([step2JsonRes.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043E\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
@@ -31002,7 +31055,10 @@ var SberWebAuthSession = class {
       return err(new AggregateError([confirmRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 \u0421\u041C\u0421-\u043A\u043E\u0434\u0430"));
     }
     this.updateCookies(confirmRes.data.multiValueHeaders);
-    this.csrfToken = confirmRes.data.headers.get("x-csrf-token");
+    const confirmCsrf = getProxyHeader(confirmRes.data, "x-csrf-token");
+    if (confirmCsrf) {
+      this.csrfToken = confirmCsrf;
+    }
     const confirmJson = await confirmRes.data.json();
     if (confirmJson.error !== null) {
       return err(new AggregateError([confirmJson.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043F\u043E\u0434\u0442\u0432\u0435\u0440\u0436\u0434\u0435\u043D\u0438\u044F \u0421\u041C\u0421"));
@@ -31015,18 +31071,20 @@ var SberWebAuthSession = class {
       return err(new Error("\u0412\u0432\u0435\u0434\u0451\u043D \u043D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0421\u041C\u0421-\u043A\u043E\u0434"));
     }
     const pinInfo = confirmPayload.pinInfo;
-    if (pinInfo && pinInfo.publicKey) {
+    if (pinInfo && pinInfo.publicKey && !pinInfo.webPinSkip) {
       this.pinPublicKey = pinInfo.publicKey;
     }
     if (this.pinPublicKey) {
       const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, SBER_DEFAULT_PIN);
       const pinCookieHeader = this.getCookieHeader();
+      const pinRqUid = generateRqUid();
       const pinHeaders = __spreadValues(__spreadValues(__spreadValues({
         Accept: "application/json, text/plain, */*",
         "Content-Type": "application/json",
         Origin: SBER_APP_ORIGIN,
         Referer: SBER_AUTH_PAGE,
         "Process-Id": this.config.processId,
+        "Rq-Uid": pinRqUid,
         "X-TS-AJAX-Request": "true",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
@@ -31042,17 +31100,20 @@ var SberWebAuthSession = class {
         return err(new AggregateError([pinRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u043E\u0437\u0434\u0430\u043D\u0438\u044F PIN \u043A\u043E\u0434\u0430"));
       }
       this.updateCookies(pinRes.data.multiValueHeaders);
-      if (pinRes.data.headers.get("x-csrf-token")) {
-        this.csrfToken = pinRes.data.headers.get("x-csrf-token");
+      const pinCsrf = getProxyHeader(pinRes.data, "x-csrf-token");
+      if (pinCsrf) {
+        this.csrfToken = pinCsrf;
       }
     }
     const finishCookieHeader = this.getCookieHeader();
+    const finishRqUid = generateRqUid();
     const finishHeaders = __spreadValues(__spreadValues(__spreadValues({
       Accept: "application/json, text/plain, */*",
       "Content-Type": "application/json",
       Origin: SBER_APP_ORIGIN,
       Referer: SBER_AUTH_PAGE,
       "Process-Id": this.config.processId,
+      "Rq-Uid": finishRqUid,
       "X-TS-AJAX-Request": "true",
       "Sec-Fetch-Dest": "empty",
       "Sec-Fetch-Mode": "cors",
@@ -31081,6 +31142,7 @@ var SberWebAuthSession = class {
         "Content-Type": "application/json; charset=utf-8",
         Origin: SBER_APP_ORIGIN,
         Referer: `${SBER_APP_ORIGIN}/`,
+        "Process-Id": this.config.processId,
         "X-Seamless-Web": "true",
         "Sec-Fetch-Dest": "empty",
         "Sec-Fetch-Mode": "cors",
@@ -31105,11 +31167,233 @@ var SberWebAuthSession = class {
     if (!ufsSession || !ufsToken) {
       return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C UFS-SESSION / UFS-TOKEN \u0438\u0437 \u043E\u0442\u0432\u0435\u0442\u0430 \u0431\u0430\u043D\u043A\u0430"));
     }
+    let apiBase = SBER_DEFAULT_API_BASE;
+    try {
+      const parsedUrl = new URL(redirectUrl);
+      if (parsedUrl.origin) {
+        apiBase = parsedUrl.origin;
+      }
+    } catch (e) {
+    }
+    await proxyFetch(`${apiBase}/api/front/ready`, {
+      method: "GET",
+      headers: __spreadValues({
+        Accept: "application/json, text/plain, */*",
+        Origin: SBER_APP_ORIGIN,
+        Referer: `${SBER_APP_ORIGIN}/`,
+        Cookie: this.getCookieHeader()
+      }, SBER_CHROME_HEADERS),
+      impersonate: "chrome"
+    });
     const session = {
       ufsSession,
       ufsToken,
-      apiBase: SBER_DEFAULT_API_BASE,
+      apiBase,
       login: this.loginValue,
+      pin: SBER_DEFAULT_PIN,
+      deviceprint: this.deviceprint,
+      lastUpdated: Date.now(),
+      cookies: this.cookies
+    };
+    await setStoredSberSession(session);
+    return ok(session);
+  }
+  /**
+   * Remembered PIN Login: Logs in with a 5-digit PIN using saved cookies (sb_user).
+   * Does not require SMS code.
+   */
+  async loginWithPin(pin, existingCookies) {
+    if (existingCookies) {
+      this.cookies = __spreadValues(__spreadValues({}, this.cookies), existingCookies);
+    }
+    const pageHeaders = __spreadValues(__spreadValues({
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "none",
+      "Sec-Fetch-User": "?1",
+      "Upgrade-Insecure-Requests": "1"
+    }, SBER_CHROME_HEADERS), this.getCookieHeader() ? { Cookie: this.getCookieHeader() } : {});
+    const pageRes = await proxyFetch(SBER_AUTH_PAGE, {
+      method: "GET",
+      headers: pageHeaders,
+      impersonate: "chrome"
+    });
+    if (pageRes.error !== null) {
+      return err(new AggregateError([pageRes.error], "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u0443 \u0432\u0445\u043E\u0434\u0430 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0430"));
+    }
+    this.updateCookies(pageRes.data.multiValueHeaders);
+    const configParse = await withResult(() => this.parseConfigFromHtml(pageRes.data.body || ""))();
+    if (configParse.error !== null) {
+      return err(new AggregateError([configParse.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u0440\u0430\u0437\u0431\u043E\u0440\u0430 \u043A\u043E\u043D\u0444\u0438\u0433\u0443\u0440\u0430\u0446\u0438\u0438 \u0441\u0442\u0440\u0430\u043D\u0438\u0446\u044B \u0432\u0445\u043E\u0434\u0430"));
+    }
+    this.config = configParse.data;
+    this.srpN = hexToBigInt(this.config.nHex);
+    this.srpG = BigInt(this.config.gHex);
+    const width = Math.floor((this.srpN.toString(2).length + 7) / 8);
+    const aBytes = new Uint8Array(Math.floor(width / 8) || 32);
+    crypto.getRandomValues(aBytes);
+    let aHex = "";
+    for (let i = 0; i < aBytes.length; i++) aHex += aBytes[i].toString(16).padStart(2, "0");
+    this.clientSecretA = BigInt("0x" + aHex);
+    this.clientA = modPow(this.srpG, this.clientSecretA, this.srpN);
+    const pinBeginUrl = `${SBER_APP_ORIGIN}/${this.config.baseApiUrl}/api/v1/pin/begin`;
+    const beginRqUid = generateRqUid();
+    const beginCookieHeader = this.getCookieHeader();
+    const beginHeaders = __spreadValues(__spreadValues(__spreadValues({
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "Rq-Uid": beginRqUid,
+      "X-TS-AJAX-Request": "true",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin"
+    }, SBER_CHROME_HEADERS), beginCookieHeader ? { Cookie: beginCookieHeader } : {}), this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {});
+    const beginRes = await proxyFetch(pinBeginUrl, {
+      method: "POST",
+      headers: beginHeaders,
+      body: { srp_A: this.clientA.toString(16), deviceprint: this.deviceprint },
+      impersonate: "chrome"
+    });
+    if (beginRes.error !== null) {
+      return err(new AggregateError([beginRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u0445\u043E\u0434\u0430 \u043F\u043E PIN"));
+    }
+    this.updateCookies(beginRes.data.multiValueHeaders);
+    const csrf1 = getProxyHeader(beginRes.data, "x-csrf-token");
+    if (csrf1) this.csrfToken = csrf1;
+    const beginJson = await beginRes.data.json();
+    if (beginJson.error !== null) {
+      return err(new AggregateError([beginJson.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043D\u0430\u0447\u0430\u043B\u0430 \u0432\u0445\u043E\u0434\u0430 \u043F\u043E PIN"));
+    }
+    const beginData = beginJson.data;
+    if (!beginData || !beginData.srp_B || !beginData.srp_s) {
+      return err(new Error("\u041E\u0442\u0432\u0435\u0442 \u0441\u0435\u0440\u0432\u0435\u0440\u0430 \u043D\u0435 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u043F\u0430\u0440\u0430\u043C\u0435\u0442\u0440\u043E\u0432 SRP \u0434\u043B\u044F PIN"));
+    }
+    const salt = hexToBigInt(beginData.srp_s);
+    const serverB = hexToBigInt(beginData.srp_B);
+    const k = await subtleSha512BigInt(padBytes(this.srpN, width), padBytes(this.srpG, width));
+    const x = await subtleSha512BigInt(
+      bigIntToBytes(salt),
+      new TextEncoder().encode(pin)
+    );
+    const u = await subtleSha512BigInt(padBytes(this.clientA, width), padBytes(serverB, width));
+    const shared = modPow(
+      (serverB - k * modPow(this.srpG, x, this.srpN)) % this.srpN,
+      this.clientSecretA + u * x,
+      this.srpN
+    );
+    const sessionHash = await subtleSha512(padBytes(shared, width));
+    const hN = await subtleSha512(bigIntToBytes(this.srpN));
+    const hG = await subtleSha512(bigIntToBytes(this.srpG));
+    const xorBuf = new Uint8Array(hN.length);
+    for (let i = 0; i < hN.length; i++) xorBuf[i] = hN[i] ^ hG[i];
+    const m1 = await subtleSha512(
+      xorBuf,
+      bigIntToBytes(salt),
+      padBytes(this.clientA, width),
+      padBytes(serverB, width),
+      sessionHash
+    );
+    let m1Hex = "";
+    for (let i = 0; i < m1.length; i++) m1Hex += m1[i].toString(16).padStart(2, "0");
+    const pinLogonUrl = `${SBER_APP_ORIGIN}/${this.config.baseApiUrl}/api/v1/pin/logon`;
+    const logonRqUid = generateRqUid();
+    const logonCookieHeader = this.getCookieHeader();
+    const logonHeaders = __spreadValues(__spreadValues(__spreadValues({
+      Accept: "application/json, text/plain, */*",
+      "Content-Type": "application/json",
+      Origin: SBER_APP_ORIGIN,
+      Referer: SBER_AUTH_PAGE,
+      "Process-Id": this.config.processId,
+      "Rq-Uid": logonRqUid,
+      "X-TS-AJAX-Request": "true",
+      "Sec-Fetch-Dest": "empty",
+      "Sec-Fetch-Mode": "cors",
+      "Sec-Fetch-Site": "same-origin"
+    }, SBER_CHROME_HEADERS), logonCookieHeader ? { Cookie: logonCookieHeader } : {}), this.csrfToken ? { "X-CSRF-Token": this.csrfToken } : {});
+    const logonRes = await proxyFetch(pinLogonUrl, {
+      method: "POST",
+      headers: logonHeaders,
+      body: { srp_M: m1Hex, deviceprint: this.deviceprint },
+      impersonate: "chrome"
+    });
+    if (logonRes.error !== null) {
+      return err(new AggregateError([logonRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043E\u0442\u043F\u0440\u0430\u0432\u043A\u0438 PIN \u043A\u043E\u0434\u0430"));
+    }
+    this.updateCookies(logonRes.data.multiValueHeaders);
+    const csrf2 = getProxyHeader(logonRes.data, "x-csrf-token");
+    if (csrf2) this.csrfToken = csrf2;
+    const logonJson = await logonRes.data.json();
+    if (logonJson.error !== null) {
+      return err(new AggregateError([logonJson.error], "\u041D\u0435\u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 \u043E\u0442\u0432\u0435\u0442 \u043F\u0440\u043E\u0432\u0435\u0440\u043A\u0438 PIN"));
+    }
+    const logonData = logonJson.data;
+    if (logonData.error && logonData.error.code !== 200) {
+      return err(new Error("\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 PIN \u043A\u043E\u0434"));
+    }
+    const redirectUrl = logonData.redirect;
+    if (!redirectUrl) {
+      return err(new Error("\u0421\u0435\u0440\u0432\u0435\u0440 \u043D\u0435 \u0432\u0435\u0440\u043D\u0443\u043B URL \u043F\u0435\u0440\u0435\u043D\u0430\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u044F"));
+    }
+    const redirectCookieHeader = this.getCookieHeader();
+    const redirectRes = await proxyFetch(redirectUrl, {
+      method: "POST",
+      headers: __spreadValues(__spreadValues({
+        Accept: "*/*",
+        "Content-Type": "application/json; charset=utf-8",
+        Origin: SBER_APP_ORIGIN,
+        Referer: `${SBER_APP_ORIGIN}/`,
+        "Process-Id": this.config.processId,
+        "X-Seamless-Web": "true",
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-origin"
+      }, SBER_CHROME_HEADERS), redirectCookieHeader ? { Cookie: redirectCookieHeader } : {}),
+      body: null,
+      impersonate: "chrome"
+    });
+    if (redirectRes.error !== null) {
+      return err(new AggregateError([redirectRes.error], "\u041E\u0448\u0438\u0431\u043A\u0430 \u043F\u0435\u0440\u0435\u0445\u043E\u0434\u0430 \u043F\u043E \u0441\u0441\u044B\u043B\u043A\u0435 \u0441\u0435\u0441\u0441\u0438\u0438"));
+    }
+    this.updateCookies(redirectRes.data.multiValueHeaders);
+    let ufsSession = this.cookies["UFS-SESSION"];
+    let ufsToken = this.cookies["UFS-TOKEN"];
+    if (!ufsSession || !ufsToken) {
+      const parsed = parseSberCookies(redirectRes.data.body || "");
+      if (parsed.ufsSession && parsed.ufsToken) {
+        ufsSession = parsed.ufsSession;
+        ufsToken = parsed.ufsToken;
+      }
+    }
+    if (!ufsSession || !ufsToken) {
+      return err(new Error("\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043F\u043E\u043B\u0443\u0447\u0438\u0442\u044C UFS-SESSION / UFS-TOKEN \u0438\u0437 \u043E\u0442\u0432\u0435\u0442\u0430 \u0431\u0430\u043D\u043A\u0430"));
+    }
+    let apiBase = SBER_DEFAULT_API_BASE;
+    try {
+      const parsedUrl = new URL(redirectUrl);
+      if (parsedUrl.origin) {
+        apiBase = parsedUrl.origin;
+      }
+    } catch (e) {
+    }
+    await proxyFetch(`${apiBase}/api/front/ready`, {
+      method: "GET",
+      headers: __spreadValues({
+        Accept: "application/json, text/plain, */*",
+        Origin: SBER_APP_ORIGIN,
+        Referer: `${SBER_APP_ORIGIN}/`,
+        Cookie: this.getCookieHeader()
+      }, SBER_CHROME_HEADERS),
+      impersonate: "chrome"
+    });
+    const session = {
+      ufsSession,
+      ufsToken,
+      apiBase,
+      pin,
       deviceprint: this.deviceprint,
       lastUpdated: Date.now(),
       cookies: this.cookies
@@ -32111,7 +32395,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-10 11:37:45 +0300" : "dev"
+          true ? "2026-09-14 10:51:54 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32263,4 +32547,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-VAXDPBFN.js.map
+//# sourceMappingURL=app-4LORJMAB.js.map
