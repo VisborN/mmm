@@ -30781,9 +30781,27 @@ async function fetchSberProducts(session) {
 async function getSberAccounts() {
   const session = await getStoredSberSession();
   if (!session || !session.ufsSession || !session.ufsToken) {
+    if (session && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+      const authSession = new SberWebAuthSession();
+      const loginRes = await authSession.loginWithPin(session.pin, session.cookies);
+      if (loginRes.error === null) {
+        return await fetchSberProducts(loginRes.data);
+      }
+    }
     return err(new Error("\u041D\u0435 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u043E\u0432\u0430\u043D \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A\u0435"));
   }
-  return await fetchSberProducts(session);
+  const res = await fetchSberProducts(session);
+  if (res.error !== null) {
+    if ((res.error.message.includes("\u0438\u0441\u0442\u0435\u043A\u043B\u0430") || res.error.message.includes("401") || res.error.message.includes("403")) && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+      const authSession = new SberWebAuthSession();
+      const loginRes = await authSession.loginWithPin(session.pin, session.cookies);
+      if (loginRes.error === null) {
+        return await fetchSberProducts(loginRes.data);
+      }
+    }
+    return res;
+  }
+  return res;
 }
 var SberWebAuthSession = class {
   constructor() {
@@ -31018,7 +31036,7 @@ var SberWebAuthSession = class {
   /**
    * Step 2: Confirms SMS OTP code and sets PIN to complete session enrollment.
    */
-  async confirmOtp(smsCode) {
+  async confirmOtp(smsCode, userPin) {
     var _a3;
     if (!this.config || !this.token) {
       return err(new Error("\u0421\u0435\u0441\u0441\u0438\u044F \u0430\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u0438 \u043D\u0435 \u0438\u043D\u0438\u0446\u0438\u0430\u043B\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u0430"));
@@ -31074,8 +31092,9 @@ var SberWebAuthSession = class {
     if (pinInfo && pinInfo.publicKey && !pinInfo.webPinSkip) {
       this.pinPublicKey = pinInfo.publicKey;
     }
+    const pinToUse = userPin && /^\d{5}$/.test(userPin.trim()) ? userPin.trim() : SBER_DEFAULT_PIN;
     if (this.pinPublicKey) {
-      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, SBER_DEFAULT_PIN);
+      const encryptedPin = await rsaOaepEncrypt(this.pinPublicKey, pinToUse);
       const pinCookieHeader = this.getCookieHeader();
       const pinRqUid = generateRqUid();
       const pinHeaders = __spreadValues(__spreadValues(__spreadValues({
@@ -31190,7 +31209,7 @@ var SberWebAuthSession = class {
       ufsToken,
       apiBase,
       login: this.loginValue,
-      pin: SBER_DEFAULT_PIN,
+      pin: pinToUse,
       deviceprint: this.deviceprint,
       lastUpdated: Date.now(),
       cookies: this.cookies
@@ -31413,6 +31432,9 @@ var SberAuthStore = class {
     __publicField(this, "loginInput", "");
     __publicField(this, "passwordInput", "");
     __publicField(this, "smsInput", "");
+    __publicField(this, "pinInput", "42424");
+    __publicField(this, "hasSavedPinSession", false);
+    __publicField(this, "savedPin", null);
     __publicField(this, "isLoading", false);
     __publicField(this, "error", null);
     __publicField(this, "smsTimeout", null);
@@ -31442,6 +31464,9 @@ var SberAuthStore = class {
   setSmsInput(val) {
     this.smsInput = val;
   }
+  setPinInput(val) {
+    this.pinInput = val;
+  }
   /**
    * Resets the auth modal state and closes the dialog
    */
@@ -31458,34 +31483,55 @@ var SberAuthStore = class {
   /**
    * Starts the Sberbank login modal flow
    */
-  startLogin() {
+  async startLogin() {
     this.srpSession = new SberWebAuthSession();
-    this.loginMode = "cookie";
-    this.step = "COOKIE" /* COOKIE */;
-    this.cookieInput = "";
-    this.loginInput = "";
-    this.passwordInput = "";
-    this.smsInput = "";
-    this.error = null;
-    this.isLoading = false;
-    this.smsTimeout = null;
+    const session = await getStoredSberSession();
+    const hasPin = Boolean(
+      session && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])
+    );
+    runInAction(() => {
+      this.hasSavedPinSession = hasPin;
+      this.savedPin = (session == null ? void 0 : session.pin) || null;
+      this.pinInput = (session == null ? void 0 : session.pin) || "42424";
+      this.loginMode = hasPin ? "pin" : "cookie";
+      this.step = "COOKIE" /* COOKIE */;
+      this.cookieInput = "";
+      this.loginInput = "";
+      this.passwordInput = "";
+      this.smsInput = "";
+      this.error = null;
+      this.isLoading = false;
+      this.smsTimeout = null;
+    });
   }
   /**
    * Initializes auth state from stored session
    */
   async init() {
     const session = await getStoredSberSession();
-    if (session && session.ufsSession && session.ufsToken) {
-      runInAction(() => {
-        this.isAuthenticated = true;
-      });
-      await this.loadBalance();
-    } else {
-      runInAction(() => {
-        this.isAuthenticated = false;
-        this.accounts = [];
-        this.totalBalance = null;
-      });
+    if (session) {
+      if (session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+        runInAction(() => {
+          this.hasSavedPinSession = true;
+          this.savedPin = session.pin || null;
+          this.pinInput = session.pin || "42424";
+        });
+      }
+      if (session.ufsSession && session.ufsToken) {
+        runInAction(() => {
+          this.isAuthenticated = true;
+        });
+        await this.loadBalance();
+        return;
+      }
+    }
+    runInAction(() => {
+      this.isAuthenticated = false;
+      this.accounts = [];
+      this.totalBalance = null;
+    });
+    if (session && session.pin && session.cookies && (session.cookies.sb_user || session.cookies["sb_user"])) {
+      await this.submitPinLogin(session.pin);
     }
   }
   /**
@@ -31551,6 +31597,39 @@ var SberAuthStore = class {
     });
   }
   /**
+   * Authenticate using saved 5-digit PIN (without SMS)
+   */
+  async submitPinLogin(pinOverride) {
+    const session = await getStoredSberSession();
+    const pin = (pinOverride || this.pinInput || (session == null ? void 0 : session.pin) || "").trim();
+    if (!pin || pin.length !== 5) {
+      this.error = "PIN \u0434\u043E\u043B\u0436\u0435\u043D \u0441\u043E\u0441\u0442\u043E\u044F\u0442\u044C \u0438\u0437 5 \u0446\u0438\u0444\u0440";
+      return;
+    }
+    if (!(session == null ? void 0 : session.cookies) || !session.cookies.sb_user && !session.cookies["sb_user"]) {
+      this.error = "\u0414\u043B\u044F \u0432\u0445\u043E\u0434\u0430 \u043F\u043E PIN \u043D\u0435\u043E\u0431\u0445\u043E\u0434\u0438\u043C\u0430 \u043F\u0440\u0435\u0434\u0432\u0430\u0440\u0438\u0442\u0435\u043B\u044C\u043D\u0430\u044F \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435";
+      return;
+    }
+    this.isLoading = true;
+    this.error = null;
+    const res = await this.srpSession.loginWithPin(pin, session.cookies);
+    if (res.error !== null) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = res.error.message || "\u041E\u0448\u0438\u0431\u043A\u0430 \u0432\u0445\u043E\u0434\u0430 \u043F\u043E PIN-\u043A\u043E\u0434\u0443";
+      });
+      return;
+    }
+    runInAction(() => {
+      this.isAuthenticated = true;
+      this.step = "SUCCESS" /* SUCCESS */;
+      this.isLoading = false;
+      this.hasSavedPinSession = true;
+      this.savedPin = pin;
+    });
+    await this.loadBalance();
+  }
+  /**
    * Submits SMS OTP code to finish web login
    */
   async submitSmsCode() {
@@ -31559,9 +31638,14 @@ var SberAuthStore = class {
       this.error = "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043A\u043E\u0434 \u0438\u0437 \u0421\u041C\u0421";
       return;
     }
+    const pinToEnroll = (this.pinInput || "42424").trim();
+    if (pinToEnroll && pinToEnroll.length !== 5) {
+      this.error = "PIN \u0434\u043E\u043B\u0436\u0435\u043D \u0441\u043E\u0441\u0442\u043E\u044F\u0442\u044C \u0438\u0437 5 \u0446\u0438\u0444\u0440";
+      return;
+    }
     this.isLoading = true;
     this.error = null;
-    const res = await this.srpSession.confirmOtp(code);
+    const res = await this.srpSession.confirmOtp(code, pinToEnroll);
     if (res.error !== null) {
       runInAction(() => {
         this.isLoading = false;
@@ -31574,6 +31658,8 @@ var SberAuthStore = class {
       this.step = "SUCCESS" /* SUCCESS */;
       this.isLoading = false;
       this.smsInput = "";
+      this.hasSavedPinSession = true;
+      this.savedPin = pinToEnroll;
     });
     await this.loadBalance();
   }
@@ -31581,7 +31667,9 @@ var SberAuthStore = class {
    * General submit handler router
    */
   async submit() {
-    if (this.loginMode === "cookie") {
+    if (this.loginMode === "pin") {
+      await this.submitPinLogin();
+    } else if (this.loginMode === "cookie") {
       await this.submitCookieLogin();
     } else if (this.step === "LOGIN" /* LOGIN */ || this.step === "COOKIE" /* COOKIE */) {
       await this.submitSrpLogin();
@@ -32106,6 +32194,9 @@ var SberLoginDialog = observer(() => {
     loginInput,
     passwordInput,
     smsInput,
+    pinInput,
+    hasSavedPinSession,
+    savedPin,
     isLoading,
     error,
     smsTimeout
@@ -32171,6 +32262,24 @@ var SberLoginDialog = observer(() => {
                 }
               )
             ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", style: { marginTop: "12px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "5-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 PIN \u0434\u043B\u044F \u0432\u0445\u043E\u0434\u0430 \u0431\u0435\u0437 \u0421\u041C\u0421" }),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+                "input",
+                {
+                  className: "form-input",
+                  type: "password",
+                  inputMode: "numeric",
+                  maxLength: 5,
+                  placeholder: "42424",
+                  value: pinInput,
+                  disabled: isLoading,
+                  onChange: (e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, "").slice(0, 5)),
+                  required: true
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", lineHeight: 1.4 }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435. \u041F\u0440\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0438\u0445 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F\u0445 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u0432\u043E\u0439\u0434\u0451\u0442 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u0431\u0435\u0437 \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u0421\u041C\u0421." })
+            ] }),
             smsTimeout && /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "6px" }, children: [
               "\u0412\u0440\u0435\u043C\u044F \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u044F \u043A\u043E\u0434\u0430: ",
               /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("strong", { children: [
@@ -32183,7 +32292,7 @@ var SberLoginDialog = observer(() => {
               "button",
               {
                 type: "submit",
-                disabled: isLoading,
+                disabled: isLoading || pinInput.length !== 5,
                 className: "btn btn-primary",
                 style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
                 children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430..." : "\u041F\u043E\u0434\u0442\u0432\u0435\u0440\u0434\u0438\u0442\u044C \u0432\u0445\u043E\u0434"
@@ -32225,11 +32334,11 @@ var SberLoginDialog = observer(() => {
           marginBottom: "18px"
         },
         children: [
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+          hasSavedPinSession && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             "button",
             {
               type: "button",
-              onClick: () => sberAuthStore.setLoginMode("cookie"),
+              onClick: () => sberAuthStore.setLoginMode("pin"),
               style: {
                 flex: 1,
                 padding: "8px 12px",
@@ -32238,11 +32347,11 @@ var SberLoginDialog = observer(() => {
                 cursor: "pointer",
                 fontSize: "13px",
                 fontWeight: 500,
-                background: loginMode === "cookie" ? "var(--card-bg)" : "transparent",
-                color: loginMode === "cookie" ? "var(--text-primary)" : "var(--text-secondary)",
+                background: loginMode === "pin" ? "var(--card-bg)" : "transparent",
+                color: loginMode === "pin" ? "var(--text-primary)" : "var(--text-secondary)",
                 transition: "all 0.2s ease"
               },
-              children: "\u041F\u043E Cookie / \u0422\u043E\u043A\u0435\u043D\u0443"
+              children: "\u0412\u0445\u043E\u0434 \u043F\u043E PIN"
             }
           ),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
@@ -32264,11 +32373,71 @@ var SberLoginDialog = observer(() => {
               },
               children: "\u041B\u043E\u0433\u0438\u043D \u0438 \u041F\u0430\u0440\u043E\u043B\u044C"
             }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "button",
+              onClick: () => sberAuthStore.setLoginMode("cookie"),
+              style: {
+                flex: 1,
+                padding: "8px 12px",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "13px",
+                fontWeight: 500,
+                background: loginMode === "cookie" ? "var(--card-bg)" : "transparent",
+                color: loginMode === "cookie" ? "var(--text-primary)" : "var(--text-secondary)",
+                transition: "all 0.2s ease"
+              },
+              children: "\u041F\u043E Cookie"
+            }
           )
         ]
       }
     ),
-    loginMode === "cookie" ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+    loginMode === "pin" ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
+      "form",
+      {
+        onSubmit: (e) => {
+          e.preventDefault();
+          sberAuthStore.submit();
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("p", { style: { fontSize: "12px", color: "var(--text-secondary)", marginBottom: "14px", lineHeight: 1.5 }, children: "\u0412 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 \u0441\u043E\u0445\u0440\u0430\u043D\u0451\u043D \u043F\u0440\u043E\u0444\u0438\u043B\u044C \u0431\u0435\u0437\u043E\u043F\u0430\u0441\u043D\u043E\u0441\u0442\u0438. \u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u044F\u0435\u0442\u0441\u044F \u043D\u0430\u043F\u0440\u044F\u043C\u0443\u044E \u043F\u043E PIN-\u043A\u043E\u0434\u0443 \u0431\u0435\u0437 \u0437\u0430\u043F\u0440\u043E\u0441\u0430 \u0421\u041C\u0421." }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "5-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 PIN-\u043A\u043E\u0434" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "input",
+              {
+                className: "form-input",
+                type: "password",
+                inputMode: "numeric",
+                maxLength: 5,
+                placeholder: "42424",
+                value: pinInput,
+                disabled: isLoading,
+                onChange: (e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, "").slice(0, 5)),
+                required: true,
+                autoFocus: true
+              }
+            )
+          ] }),
+          error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+            "button",
+            {
+              type: "submit",
+              disabled: isLoading || pinInput.length !== 5,
+              className: "btn btn-primary",
+              style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
+              children: isLoading ? "\u0410\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044F..." : savedPin === pinInput ? "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E PIN \u0438\u0437 \u043F\u0430\u043C\u044F\u0442\u0438" : "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E PIN"
+            }
+          )
+        ]
+      }
+    ) : loginMode === "cookie" ? /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)(
       "form",
       {
         onSubmit: (e) => {
@@ -32395,7 +32564,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-14 10:51:54 +0300" : "dev"
+          true ? "2026-09-14 11:00:22 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32547,4 +32716,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-4LORJMAB.js.map
+//# sourceMappingURL=app-JP7U7CN6.js.map
