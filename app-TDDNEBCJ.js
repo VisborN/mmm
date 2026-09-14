@@ -30381,26 +30381,81 @@ async function setStoredSberSession(session) {
 }
 function parseSberCookies(raw) {
   const trimmed = raw.trim();
-  if (!trimmed) return {};
+  const cookies = {};
+  if (!trimmed) return { cookies };
   try {
     const obj = JSON.parse(trimmed);
     if (typeof obj === "object" && obj !== null) {
-      const ufsSession2 = obj.ufs_session || obj["UFS-SESSION"] || obj.ufsSession || obj["ufs-session"];
-      const ufsToken2 = obj.ufs_token || obj["UFS-TOKEN"] || obj.ufsToken || obj["ufs-token"];
-      if (ufsSession2 && ufsToken2) {
-        return {
-          ufsSession: String(ufsSession2).trim(),
-          ufsToken: String(ufsToken2).trim()
-        };
+      if (Array.isArray(obj)) {
+        for (const item of obj) {
+          if (item && typeof item === "object" && item.name && item.value !== void 0) {
+            cookies[String(item.name).trim()] = String(item.value).trim();
+          }
+        }
+      } else {
+        for (const [k, v] of Object.entries(obj)) {
+          if (v !== void 0 && v !== null) {
+            cookies[k.trim()] = String(v).trim();
+          }
+        }
       }
     }
   } catch (e) {
   }
-  const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
-  const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
-  const ufsSession = sessionMatch ? sessionMatch[1].trim() : void 0;
-  const ufsToken = tokenMatch ? tokenMatch[1].trim() : void 0;
-  return { ufsSession, ufsToken };
+  const textWithoutPrefix = trimmed.replace(/^cookie:\s*/i, "");
+  const parts = textWithoutPrefix.split(/[\r\n;]+/);
+  for (const part of parts) {
+    const item = part.trim();
+    if (!item) continue;
+    const tabParts = item.split("	").map((p) => p.trim()).filter(Boolean);
+    if (tabParts.length >= 2) {
+      const name = tabParts[0];
+      const val = tabParts[1];
+      if (name && val && !cookies[name]) {
+        cookies[name] = val;
+      }
+      continue;
+    }
+    const eqIdx = item.indexOf("=");
+    if (eqIdx !== -1) {
+      const name = item.slice(0, eqIdx).trim();
+      const val = item.slice(eqIdx + 1).trim();
+      if (name && !cookies[name]) {
+        cookies[name] = val;
+      }
+    }
+  }
+  let ufsSession = cookies["UFS-SESSION"] || cookies["ufs-session"] || cookies["ufs_session"] || cookies["ufsSession"];
+  let ufsToken = cookies["UFS-TOKEN"] || cookies["ufs-token"] || cookies["ufs_token"] || cookies["ufsToken"];
+  if (!ufsSession || !ufsToken) {
+    for (const [k, v] of Object.entries(cookies)) {
+      if (!ufsSession && /^ufs[-_]?session$/i.test(k)) ufsSession = v;
+      if (!ufsToken && /^ufs[-_]?token$/i.test(k)) ufsToken = v;
+    }
+  }
+  if (!ufsSession) {
+    const sessionMatch = trimmed.match(/(?:^|[;\s])UFS-SESSION=([^;\r\n\t\s]+)/i);
+    if (sessionMatch) {
+      ufsSession = sessionMatch[1].trim();
+      cookies["UFS-SESSION"] = ufsSession;
+    }
+  }
+  if (!ufsToken) {
+    const tokenMatch = trimmed.match(/(?:^|[;\s])UFS-TOKEN=([^;\r\n\t\s]+)/i);
+    if (tokenMatch) {
+      ufsToken = tokenMatch[1].trim();
+      cookies["UFS-TOKEN"] = ufsToken;
+    }
+  }
+  if (!cookies["sb_user"]) {
+    for (const [k, v] of Object.entries(cookies)) {
+      if (k.toLowerCase() === "sb_user") {
+        cookies["sb_user"] = v;
+        break;
+      }
+    }
+  }
+  return { ufsSession, ufsToken, cookies };
 }
 function parseSetCookieHeaders2(multiValueHeaders) {
   const cookies = {};
@@ -31563,22 +31618,36 @@ var SberAuthStore = class {
     }
   }
   /**
-   * Authenticate using direct cookie / token values
+   * Authenticate using direct full cookie string and 5-digit PIN for session persistence
    */
   async submitCookieLogin() {
+    const pin = (this.pinInput || "").trim();
+    if (!pin || pin.length !== 5) {
+      this.error = "PIN \u0434\u043E\u043B\u0436\u0435\u043D \u0441\u043E\u0441\u0442\u043E\u044F\u0442\u044C \u0438\u0437 5 \u0446\u0438\u0444\u0440";
+      return;
+    }
     this.isLoading = true;
     this.error = null;
-    const { ufsSession, ufsToken } = parseSberCookies(this.cookieInput);
+    const { ufsSession, ufsToken, cookies } = parseSberCookies(this.cookieInput);
     if (!ufsSession || !ufsToken) {
       runInAction(() => {
         this.isLoading = false;
-        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 UFS-SESSION \u0438 UFS-TOKEN. \u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044C, \u0447\u0442\u043E \u0432\u044B \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043B\u0438 cookies \u0438\u0437 DevTools \u0438\u043B\u0438 \u0432\u0432\u0435\u043B\u0438 \u0438\u0445 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 UFS-SESSION=...; UFS-TOKEN=...";
+        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 UFS-SESSION \u0438 UFS-TOKEN. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0442\u0440\u043E\u043A\u0443 Cookie \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u0438\u0437 DevTools (online.sberbank.ru).";
+      });
+      return;
+    }
+    if (!cookies.sb_user && !cookies["sb_user"]) {
+      runInAction(() => {
+        this.isLoading = false;
+        this.error = "\u0412 \u0441\u0442\u0440\u043E\u043A\u0435 cookies \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430 \u043A\u0443\u043A\u0430 sb_user (\u043D\u0435\u043E\u0431\u0445\u043E\u0434\u0438\u043C\u0430 \u0434\u043B\u044F \u0440\u0430\u0431\u043E\u0442\u044B PIN). \u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044C, \u0447\u0442\u043E \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043B\u0438 \u0441\u0442\u0440\u043E\u043A\u0443 Cookie \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u0438\u0437 \u0432\u043A\u043B\u0430\u0434\u043A\u0438 \u0421\u0435\u0442\u044C (Network) \u0432 DevTools online.sberbank.ru.";
       });
       return;
     }
     const testSession = {
       ufsSession,
       ufsToken,
+      cookies,
+      pin,
       apiBase: SBER_DEFAULT_API_BASE,
       lastUpdated: Date.now()
     };
@@ -31595,6 +31664,8 @@ var SberAuthStore = class {
       this.isAuthenticated = true;
       this.step = "SUCCESS" /* SUCCESS */;
       this.isLoading = false;
+      this.hasSavedPinSession = true;
+      this.savedPin = pin;
       this.accounts = res.data;
       this.calculateTotalBalance(res.data);
     });
@@ -32476,20 +32547,18 @@ var SberLoginDialog = observer(() => {
           /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("p", { style: { fontSize: "12px", color: "var(--text-secondary)", marginBottom: "12px", lineHeight: 1.5 }, children: [
             "\u0412\u043E\u0439\u0434\u0438\u0442\u0435 \u0432 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D \u0432 \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435 (\u043D\u0430 ",
             /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "online.sberbank.ru" }),
-            "), \u043E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 DevTools (F12) \u2192 \u0421\u0435\u0442\u044C \u0438\u043B\u0438 Application \u2192 Cookies \u0438 \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 ",
-            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "UFS-SESSION" }),
-            " \u0438 ",
-            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "UFS-TOKEN" }),
-            " (\u0438\u043B\u0438 \u0432\u0441\u044E \u0441\u0442\u0440\u043E\u043A\u0443 Cookie)."
+            "), \u043E\u0442\u043A\u0440\u043E\u0439\u0442\u0435 DevTools (F12) \u2192 \u0421\u0435\u0442\u044C (Network), \u0432\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u043B\u044E\u0431\u043E\u0439 \u0437\u0430\u043F\u0440\u043E\u0441 \u0438 \u0441\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0437\u0430\u0433\u043E\u043B\u043E\u0432\u043E\u043A ",
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "Cookie" }),
+            " \u0446\u0435\u043B\u0438\u043A\u043E\u043C."
           ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u0421\u0442\u0440\u043E\u043A\u0430 Cookie \u0438\u043B\u0438 \u0442\u043E\u043A\u0435\u043D\u044B" }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", style: { marginBottom: "12px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "\u0421\u0442\u0440\u043E\u043A\u0430 Cookie \u0446\u0435\u043B\u0438\u043A\u043E\u043C" }),
             /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               "textarea",
               {
                 className: "form-input",
                 style: { height: "90px", resize: "vertical", fontSize: "12px", fontFamily: "monospace" },
-                placeholder: "UFS-SESSION=...; UFS-TOKEN=...",
+                placeholder: "Cookie: UFS-SESSION=...; UFS-TOKEN=...; sb_user=...",
                 value: cookieInput,
                 disabled: isLoading,
                 onChange: (e) => sberAuthStore.setCookieInput(e.target.value),
@@ -32498,15 +32567,33 @@ var SberLoginDialog = observer(() => {
               }
             )
           ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "5-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 PIN-\u043A\u043E\u0434 \u043E\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
+              "input",
+              {
+                className: "form-input",
+                type: "password",
+                inputMode: "numeric",
+                maxLength: 5,
+                placeholder: "42424",
+                value: pinInput,
+                disabled: isLoading,
+                onChange: (e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, "").slice(0, 5)),
+                required: true
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", lineHeight: 1.4 }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435. \u041F\u0440\u0438 \u0438\u0441\u0442\u0435\u0447\u0435\u043D\u0438\u0438 \u0441\u0435\u0441\u0441\u0438\u0438 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u043F\u0440\u043E\u0434\u043B\u0438\u0442 \u0435\u0451 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u043F\u043E PIN-\u043A\u043E\u0434\u0443 \u0431\u0435\u0437 \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0433\u043E \u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F \u043A\u0443\u043A." })
+          ] }),
           error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             "button",
             {
               type: "submit",
-              disabled: isLoading,
+              disabled: isLoading || !cookieInput.trim() || pinInput.length !== 5,
               className: "btn btn-primary",
               style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
-              children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438..." : "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E \u0442\u043E\u043A\u0435\u043D\u0443"
+              children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438..." : "\u0412\u043E\u0439\u0442\u0438 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C PIN"
             }
           )
         ]
@@ -32592,7 +32679,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-14 11:21:53 +0300" : "dev"
+          true ? "2026-09-14 11:29:15 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32744,4 +32831,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-FXWXY4KV.js.map
+//# sourceMappingURL=app-TDDNEBCJ.js.map
