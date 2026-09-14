@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { authStore } from './auth_store';
+import { sberAuthStore } from './sber_auth_store';
 import {
     getProxyEndpoint,
     setProxyEndpoint,
@@ -269,6 +270,96 @@ export const SettingsView = observer(() => {
                                         <div style={{ fontWeight: 700, fontSize: '14px' }}>
                                             {acc.moneyAmount && typeof acc.moneyAmount.value === 'number'
                                                 ? `${acc.moneyAmount.value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${acc.moneyAmount.currency?.name === 'RUB' ? '₽' : acc.moneyAmount.currency?.name || ''}`
+                                                : '—'}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            <div className="settings-card">
+                <h3>СберБанк (Sberbank)</h3>
+                <div className="settings-text" style={{ marginBottom: '12px' }}>
+                    Статус: <strong style={{ color: sberAuthStore.isAuthenticated ? 'var(--success-color)' : 'var(--text-secondary)' }}>
+                        {sberAuthStore.isAuthenticated ? '✓ Авторизован' : 'Не авторизован'}
+                    </strong>
+                </div>
+
+                <div className="action-row" style={{ marginBottom: sberAuthStore.isAuthenticated ? '16px' : '0' }}>
+                    {!sberAuthStore.isAuthenticated ? (
+                        <button
+                            id="open-sber-auth"
+                            onClick={() => sberAuthStore.startLogin()}
+                            className="btn btn-primary"
+                            style={{ background: '#21a038', color: '#fff', fontWeight: 600 }}
+                        >
+                            Войти в СберБанк
+                        </button>
+                    ) : (
+                        <>
+                            <button
+                                onClick={() => sberAuthStore.loadBalance()}
+                                className="btn btn-primary"
+                                disabled={sberAuthStore.isLoadingBalance}
+                                style={{ background: '#21a038', color: '#fff', fontWeight: 600 }}
+                            >
+                                {sberAuthStore.isLoadingBalance ? 'Обновление...' : 'Обновить баланс'}
+                            </button>
+                            <button
+                                onClick={() => sberAuthStore.signOut()}
+                                className="btn btn-secondary"
+                            >
+                                Выйти
+                            </button>
+                        </>
+                    )}
+                </div>
+
+                {sberAuthStore.isAuthenticated && (
+                    <div className="sber-balance-section" style={{ marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '14px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                            Текущий баланс:
+                        </div>
+                        <div style={{ fontSize: '26px', fontWeight: 'bold', color: 'var(--text-primary)', marginBottom: '12px' }}>
+                            {sberAuthStore.totalBalance !== null
+                                ? `${sberAuthStore.totalBalance.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ₽`
+                                : sberAuthStore.isLoadingBalance ? 'Загрузка...' : '—'}
+                        </div>
+
+                        {sberAuthStore.balanceError && (
+                            <div className="error-banner" style={{ margin: '8px 0', fontSize: '13px' }}>
+                                {sberAuthStore.balanceError}
+                            </div>
+                        )}
+
+                        {sberAuthStore.accounts.length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
+                                {sberAuthStore.accounts.map((acc) => (
+                                    <div
+                                        key={acc.id}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '10px 14px',
+                                            background: 'rgba(255, 255, 255, 0.04)',
+                                            borderRadius: 'var(--radius-sm)',
+                                            fontSize: '13px',
+                                        }}
+                                    >
+                                        <div>
+                                            <div style={{ fontWeight: 600 }}>{acc.name}</div>
+                                            <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                                {acc.type === 'card' ? 'Карта' : acc.type === 'account' ? 'Счет' : 'Кредит'}
+                                                {acc.number ? ` • ${acc.number}` : ''}
+                                            </div>
+                                        </div>
+                                        <div style={{ fontWeight: 700, fontSize: '14px' }}>
+                                            {typeof acc.balance === 'number'
+                                                ? `${acc.balance.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${acc.currencyName || '₽'}`
                                                 : '—'}
                                         </div>
                                     </div>

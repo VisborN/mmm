@@ -1,5 +1,5 @@
 /server.exe
-/server
+/bin/
 /cmd/**/__*
 /server-app
 /node_modules

@@ -27,6 +27,7 @@ paths:
         function_id: d4eslh5jt69bp6fb8l9u
         tag: $latest
         service_account_id: aje9phq347gnhnqjetlu
+        timeout: 30
       requestBody:
         required: true
         content:

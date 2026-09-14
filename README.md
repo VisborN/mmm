@@ -11,6 +11,7 @@ A strict TypeScript Progressive Web App (PWA) for personal finance management wi
 - **Premium Design System**: Glassmorphism aesthetic, modern typography (Inter), and carefully chosen color palettes for an immersive user experience.
 - **Database Explorer**: Integrated view to inspect and debug local IndexedDB tables.
 - **T-Bank Integration**: Seamless integration with T-Bank (formerly Tinkoff) mobile API using OAuth 2.0 PKCE and SHA-512 anti-DDoS fingerprint proof via Yandex Serverless Proxy for authentication and account balance tracking.
+- **Sberbank Integration**: Integration with Sberbank Online web client supporting direct session input and interactive SRP-512 web authentication with cookie continuity and TLS impersonation via Yandex Serverless Proxy for card and account balance tracking.
 
 ## Tech Stack
 
@@ -24,5 +25,7 @@ A strict TypeScript Progressive Web App (PWA) for personal finance management wi
 
 - `yarn dev` - Start the development server (esbuild watch)
 - `yarn build` - Build the production bundle
+- `yarn serve` - Serve the built app locally on port 8080
+- `yarn proxy` - Start the local proxy server on port 8081 (`go run server/main.go`)
 - `yarn type-check` - Run TypeScript compiler check
 - `yarn lint` - Run ESLint

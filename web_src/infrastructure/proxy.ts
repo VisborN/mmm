@@ -17,6 +17,10 @@ export interface ProxyRequestInit {
    * Override the proxy endpoint URL (defaults to DEFAULT_PROXY_ENDPOINT or getProxyEndpoint()).
    */
   proxyEndpoint?: string;
+  /**
+   * Optional client impersonation (e.g. "chrome" for browser TLS and Client Hints impersonation).
+   */
+  impersonate?: string;
 }
 
 export interface ProxyResponse {
@@ -37,6 +41,7 @@ export interface ProxyRequestBody {
   body: string | null;
   isBase64Encoded?: boolean;
   multiValueHeaders?: Record<string, string[]>;
+  impersonate?: string;
 }
 
 export const DEFAULT_PROXY_ENDPOINT =
@@ -250,6 +255,7 @@ export async function proxyFetch(
     body: bodyStr,
     isBase64Encoded,
     multiValueHeaders: Object.keys(headers).length > 0 ? headers : undefined,
+    impersonate: init?.impersonate,
   };
 
   const response = await withResult(fetch)(endpoint, {
