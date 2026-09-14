@@ -31618,11 +31618,11 @@ var SberAuthStore = class {
     }
   }
   /**
-   * Authenticate using direct full cookie string and 5-digit PIN for session persistence
+   * Authenticate using direct cookie string and optional PIN for session persistence
    */
   async submitCookieLogin() {
     const pin = (this.pinInput || "").trim();
-    if (!pin || pin.length !== 5) {
+    if (pin && pin.length !== 5) {
       this.error = "PIN \u0434\u043E\u043B\u0436\u0435\u043D \u0441\u043E\u0441\u0442\u043E\u044F\u0442\u044C \u0438\u0437 5 \u0446\u0438\u0444\u0440";
       return;
     }
@@ -31632,25 +31632,19 @@ var SberAuthStore = class {
     if (!ufsSession || !ufsToken) {
       runInAction(() => {
         this.isLoading = false;
-        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 UFS-SESSION \u0438 UFS-TOKEN. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u0441\u0442\u0440\u043E\u043A\u0443 Cookie \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u0438\u0437 DevTools (online.sberbank.ru).";
+        this.error = "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u043D\u0430\u0439\u0442\u0438 UFS-SESSION \u0438 UFS-TOKEN. \u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 cookies \u0438\u0437 DevTools (online.sberbank.ru).";
       });
       return;
     }
-    if (!cookies.sb_user && !cookies["sb_user"]) {
-      runInAction(() => {
-        this.isLoading = false;
-        this.error = "\u0412 \u0441\u0442\u0440\u043E\u043A\u0435 cookies \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u0430 \u043A\u0443\u043A\u0430 sb_user (\u043D\u0435\u043E\u0431\u0445\u043E\u0434\u0438\u043C\u0430 \u0434\u043B\u044F \u0440\u0430\u0431\u043E\u0442\u044B PIN). \u0423\u0431\u0435\u0434\u0438\u0442\u0435\u0441\u044C, \u0447\u0442\u043E \u0441\u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043B\u0438 \u0441\u0442\u0440\u043E\u043A\u0443 Cookie \u0446\u0435\u043B\u0438\u043A\u043E\u043C \u0438\u0437 \u0432\u043A\u043B\u0430\u0434\u043A\u0438 \u0421\u0435\u0442\u044C (Network) \u0432 DevTools online.sberbank.ru.";
-      });
-      return;
-    }
-    const testSession = {
+    const hasPin = Boolean(pin.length === 5 && (cookies.sb_user || cookies["sb_user"]));
+    const testSession = __spreadProps(__spreadValues({
       ufsSession,
       ufsToken,
-      cookies,
-      pin,
+      cookies
+    }, hasPin ? { pin } : {}), {
       apiBase: SBER_DEFAULT_API_BASE,
       lastUpdated: Date.now()
-    };
+    });
     const res = await fetchSberProducts(testSession);
     if (res.error !== null) {
       runInAction(() => {
@@ -31664,8 +31658,8 @@ var SberAuthStore = class {
       this.isAuthenticated = true;
       this.step = "SUCCESS" /* SUCCESS */;
       this.isLoading = false;
-      this.hasSavedPinSession = true;
-      this.savedPin = pin;
+      this.hasSavedPinSession = hasPin;
+      this.savedPin = hasPin ? pin : null;
       this.accounts = res.data;
       this.calculateTotalBalance(res.data);
     });
@@ -32568,7 +32562,7 @@ var SberLoginDialog = observer(() => {
             )
           ] }),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "form-group", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "5-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 PIN-\u043A\u043E\u0434 \u043E\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D" }),
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("label", { className: "form-label", children: "5-\u0437\u043D\u0430\u0447\u043D\u044B\u0439 PIN-\u043A\u043E\u0434 \u043E\u0442 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u041E\u043D\u043B\u0430\u0439\u043D (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E)" }),
             /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
               "input",
               {
@@ -32579,21 +32573,24 @@ var SberLoginDialog = observer(() => {
                 placeholder: "42424",
                 value: pinInput,
                 disabled: isLoading,
-                onChange: (e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, "").slice(0, 5)),
-                required: true
+                onChange: (e) => sberAuthStore.setPinInput(e.target.value.replace(/\D/g, "").slice(0, 5))
               }
             ),
-            /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", lineHeight: 1.4 }, children: "\u0421\u043E\u0445\u0440\u0430\u043D\u044F\u0435\u0442\u0441\u044F \u0432 \u044D\u0442\u043E\u043C \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435. \u041F\u0440\u0438 \u0438\u0441\u0442\u0435\u0447\u0435\u043D\u0438\u0438 \u0441\u0435\u0441\u0441\u0438\u0438 \u0421\u0431\u0435\u0440\u0411\u0430\u043D\u043A \u043F\u0440\u043E\u0434\u043B\u0438\u0442 \u0435\u0451 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u043F\u043E PIN-\u043A\u043E\u0434\u0443 \u0431\u0435\u0437 \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0433\u043E \u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F \u043A\u0443\u043A." })
+            /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)", marginTop: "4px", lineHeight: 1.4 }, children: [
+              "\u0421\u043A\u043E\u043F\u0438\u0440\u0443\u0439\u0442\u0435 \u043A\u0443\u043A\u0438 \u0438\u0437 DevTools (\u0432\u043A\u043B\u0430\u0434\u043A\u0430 \u0421\u0435\u0442\u044C \u0438\u043B\u0438 Application \u2192 Cookies). \u0415\u0441\u043B\u0438 \u0441\u0442\u0440\u043E\u043A\u0430 \u0441\u043E\u0434\u0435\u0440\u0436\u0438\u0442 \u043A\u0443\u043A\u0443 ",
+              /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("code", { children: "sb_user" }),
+              " (\u0438\u0437 /CSAFront) \u0438 \u0443\u043A\u0430\u0437\u0430\u043D PIN, \u043F\u0440\u0438\u043B\u043E\u0436\u0435\u043D\u0438\u0435 \u0441\u043C\u043E\u0436\u0435\u0442 \u0430\u0432\u0442\u043E\u043C\u0430\u0442\u0438\u0447\u0435\u0441\u043A\u0438 \u043F\u0440\u043E\u0434\u043B\u0435\u0432\u0430\u0442\u044C \u0441\u0435\u0441\u0441\u0438\u044E \u0431\u0435\u0437 \u043F\u043E\u0432\u0442\u043E\u0440\u043D\u043E\u0433\u043E \u043A\u043E\u043F\u0438\u0440\u043E\u0432\u0430\u043D\u0438\u044F \u043A\u0443\u043A."
+            ] })
           ] }),
           error && /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("div", { className: "error-banner", style: { margin: "14px 0", padding: "10px 12px", fontSize: "13px" }, children: error }),
           /* @__PURE__ */ (0, import_jsx_runtime8.jsx)(
             "button",
             {
               type: "submit",
-              disabled: isLoading || !cookieInput.trim() || pinInput.length !== 5,
+              disabled: isLoading || !cookieInput.trim() || Boolean(pinInput.trim()) && pinInput.trim().length !== 5,
               className: "btn btn-primary",
               style: { width: "100%", marginTop: "16px", background: "#21a038", color: "#fff", fontWeight: 600 },
-              children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438..." : "\u0412\u043E\u0439\u0442\u0438 \u0438 \u0441\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C PIN"
+              children: isLoading ? "\u041F\u0440\u043E\u0432\u0435\u0440\u043A\u0430 \u0441\u0435\u0441\u0441\u0438\u0438..." : "\u0412\u043E\u0439\u0442\u0438 \u043F\u043E Cookie"
             }
           )
         ]
@@ -32679,7 +32676,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime9.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-14 11:29:15 +0300" : "dev"
+          true ? "2026-09-14 11:34:49 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime9.jsxs)("div", { className: "header-actions", children: [
@@ -32831,4 +32828,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-TDDNEBCJ.js.map
+//# sourceMappingURL=app-7SOS3ZKK.js.map
