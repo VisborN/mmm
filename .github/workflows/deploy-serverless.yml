@@ -21,6 +21,7 @@ jobs:
           runtime: 'golang123'
           network-id: 'enp0a07mf9e1o23ktfs9'
           memory: '128Mb'
+          execution-timeout: '30s'
           entrypoint: 'cmd/mmm/index.Handler'
           include: |
             ./cmd/mmm

@@ -24,5 +24,7 @@ A strict TypeScript Progressive Web App (PWA) for personal finance management wi
 
 - `yarn dev` - Start the development server (esbuild watch)
 - `yarn build` - Build the production bundle
+- `yarn serve` - Serve the built app locally on port 8080
+- `yarn proxy` - Start the local proxy server on port 8081 (`go run server/main.go`)
 - `yarn type-check` - Run TypeScript compiler check
 - `yarn lint` - Run ESLint
