@@ -4,6 +4,7 @@ import { indexedDBRepository } from "../infrastructure/repository";
 import { googleSyncService } from "./google_sync_service";
 import { get, set } from "idb-keyval";
 import { googleDriveService } from "../infrastructure/google_drive";
+import { uuidv7 } from "./uuidv7";
 
 declare const __WORKER_URL__: string;
 
@@ -279,6 +280,9 @@ export class AppStore {
     }
 
     async saveTransaction(transaction: Transaction): Promise<void> {
+        if (!transaction.uuid) {
+            transaction.uuid = uuidv7();
+        }
         const { error } = await indexedDBRepository.saveTransaction(transaction);
         if (error) {
             runInAction(() => {
@@ -309,16 +313,44 @@ export class AppStore {
     }
 
     async saveAccount(account: Account): Promise<void> {
-        const { error } = await indexedDBRepository.saveAccount(account);
-        if (error) {
-            runInAction(() => {
-                this.error = error;
-            });
-            return;
+        const isNew = !account.id || account.id === 0 || !this.accounts.some(a => a.id === account.id);
+        if (isNew) {
+            // New accounts are established via an initial balance_correct transaction
+            const initTx: Transaction = {
+                uuid: uuidv7(),
+                date: new Date().toISOString().split('T')[0],
+                amountRubles: parseFloat(account.balance || '0') || 0,
+                amountAccountCurrency: account.balance || '0',
+                accountName: account.name,
+                accountCurrency: account.currency || 'RUB',
+                category: 'баланс',
+                description: 'Начальный баланс',
+                type: 'balance_correct',
+                member: null,
+                exchangeRate: 1,
+                transferReceiveAccountName: null,
+                transferReceiveAmountAccountCurrency: null
+            };
+            const { error: txErr } = await indexedDBRepository.saveTransaction(initTx);
+            if (txErr) {
+                runInAction(() => {
+                    this.error = txErr;
+                });
+                return;
+            }
+        } else {
+            const { error } = await indexedDBRepository.saveAccount(account);
+            if (error) {
+                runInAction(() => {
+                    this.error = error;
+                });
+                return;
+            }
         }
 
         await this.loadData();
         this.closeAccountModal();
+        this.recalculateBalances();
     }
 
     async openFolderModal(): Promise<void> {

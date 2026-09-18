@@ -1,13 +1,14 @@
 
 import "ts-error-as-value/lib/globals";
 import { Account, Transaction } from "../domain/types";
+import { uuidv7 } from "../domain/uuidv7";
 import { withDB } from "./db_wrapper";
 
 export interface Repository {
     getTransactions(): Promise<Result<Transaction[], Error>>;
-    getTransaction(id: number): Promise<Result<Transaction | undefined, Error>>;
+    getTransaction(uuid: string): Promise<Result<Transaction | undefined, Error>>;
     saveTransaction(transaction: Transaction): Promise<Result<void, Error>>;
-    deleteTransaction(id: number): Promise<Result<void, Error>>;
+    deleteTransaction(uuid: string): Promise<Result<void, Error>>;
 
     getAccounts(): Promise<Result<Account[], Error>>;
     getAccount(id: number): Promise<Result<Account | undefined, Error>>;
@@ -22,19 +23,10 @@ export const indexedDBRepository: Repository = {
             const tx = db.transaction('transactions', 'readwrite');
             await tx.store.clear();
 
-            // Sort by date ascending, then by old ID ascending
-            // This ensures that when we insert them and they get new auto-incrementing IDs,
-            // the relative order within the same day is preserved.
-            const sorted = [...transactions].sort((a, b) => {
-                if (a.date !== b.date) return a.date.localeCompare(b.date);
-                return a.id - b.id;
-            });
-
-            for (const t of sorted) {
+            for (const t of transactions) {
                 const data = { ...t };
-                if (!data.uuid) data.uuid = crypto.randomUUID();
-                delete (data as { id?: number }).id;
-                await tx.store.add(data as unknown as Transaction);
+                if (!data.uuid) data.uuid = uuidv7();
+                await tx.store.put(data);
             }
             await tx.done;
         });
@@ -45,37 +37,30 @@ export const indexedDBRepository: Repository = {
         const result = await withDB<Transaction[]>(db => db.getAllFromIndex('transactions', 'by-date'));
         if (result.error) return result;
 
-        // Sort by date descending, then ID descending
+        // Sort by date descending, then UUIDv7 descending (UUIDv7 is chronological)
         result.data!.sort((a: Transaction, b: Transaction) => {
             if (a.date !== b.date) return b.date.localeCompare(a.date);
-            return b.id - a.id;
+            return b.uuid.localeCompare(a.uuid);
         });
         return ok(result.data);
     },
-    async getTransaction(id: number): Promise<Result<Transaction | undefined, Error>> {
-        return withDB<Transaction | undefined>(db => db.get('transactions', id));
+    async getTransaction(uuid: string): Promise<Result<Transaction | undefined, Error>> {
+        return withDB<Transaction | undefined>(db => db.get('transactions', uuid));
     },
     async saveTransaction(transaction: Transaction): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
             if (!transaction.uuid) {
-                transaction.uuid = crypto.randomUUID();
+                transaction.uuid = uuidv7();
             }
-            if (transaction.id === 0) {
-                // For new transactions, we let IndexedDB generate the ID.
-                const data = { ...transaction };
-                delete (data as { id?: number }).id;
-                await db.add('transactions', data as unknown as Transaction);
-            } else {
-                await db.put('transactions', transaction);
-            }
+            await db.put('transactions', transaction);
         });
         if (result.error) return result;
         return ok<void>(undefined);
     },
 
-    async deleteTransaction(id: number): Promise<Result<void, Error>> {
+    async deleteTransaction(uuid: string): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
-            await db.delete('transactions', id);
+            await db.delete('transactions', uuid);
         });
         if (result.error) return result;
         return ok<void>(undefined);
