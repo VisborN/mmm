@@ -22,6 +22,18 @@ var __spreadValues = (a, b) => {
   return a;
 };
 var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+var __objRest = (source, exclude) => {
+  var target = {};
+  for (var prop in source)
+    if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
+      target[prop] = source[prop];
+  if (source != null && __getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(source)) {
+      if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
+        target[prop] = source[prop];
+    }
+  return target;
+};
 var __commonJS = (cb, mod) => function __require() {
   return mod || (0, cb[__getOwnPropNames(cb)[0]])((mod = { exports: {} }).exports, mod), mod.exports;
 };
@@ -27440,6 +27452,30 @@ var clearTimers = (_a2 = observerFinalizationRegistry["finalizeAllImmediately"])
 // infrastructure/repository.ts
 var import_globals2 = __toESM(require_globals());
 
+// domain/uuidv7.ts
+var lastMs = 0;
+var seq = 0;
+function uuidv7() {
+  const cryptoObj = typeof globalThis !== "undefined" && globalThis.crypto ? globalThis.crypto : crypto;
+  let now = Date.now();
+  if (now <= lastMs) {
+    now = lastMs;
+    seq = seq + 1 & 4095;
+    if (seq === 0) {
+      now = lastMs + 1;
+    }
+  } else {
+    seq = Math.floor(Math.random() * 2048);
+  }
+  lastMs = now;
+  const timeMillisHex = now.toString(16).padStart(12, "0");
+  const timeHigh = timeMillisHex.substring(0, 8);
+  const timeLow = timeMillisHex.substring(8, 12);
+  const seqHex = seq.toString(16).padStart(3, "0");
+  const random = cryptoObj.randomUUID().substring(18, 36);
+  return `${timeHigh}-${timeLow}-7${seqHex}${random}`;
+}
+
 // infrastructure/db_wrapper.ts
 var import_globals = __toESM(require_globals());
 
@@ -27679,25 +27715,19 @@ replaceTraps((oldTraps) => __spreadProps(__spreadValues({}, oldTraps), {
 }));
 
 // infrastructure/db.ts
-var DB_VERSION = 3;
+var DB_VERSION = 4;
 var dbPromise = null;
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB("money-management-app", DB_VERSION, {
-      upgrade(db, oldVersion, newVersion, transaction2) {
-        if (oldVersion < 1) {
-          const txStore = db.createObjectStore("transactions", { keyPath: "id", autoIncrement: true });
+      upgrade(db, oldVersion) {
+        if (oldVersion < 4) {
+          if (db.objectStoreNames.contains("transactions")) {
+            db.deleteObjectStore("transactions");
+          }
+          const txStore = db.createObjectStore("transactions", { keyPath: "uuid" });
           txStore.createIndex("by-date", "date");
           txStore.createIndex("by-account", "accountName");
-        }
-        if (oldVersion === 1) {
-          const txStore = transaction2.objectStore("transactions");
-          txStore.deleteIndex("by-account");
-          txStore.createIndex("by-account", "accountName");
-        }
-        if (oldVersion < 3) {
-          const txStore = transaction2.objectStore("transactions");
-          txStore.createIndex("by-uuid", "uuid", { unique: true });
         }
         if (!db.objectStoreNames.contains("accounts")) {
           db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
@@ -27727,15 +27757,10 @@ var indexedDBRepository = {
     const result = await withDB(async (db) => {
       const tx = db.transaction("transactions", "readwrite");
       await tx.store.clear();
-      const sorted = [...transactions].sort((a, b) => {
-        if (a.date !== b.date) return a.date.localeCompare(b.date);
-        return a.id - b.id;
-      });
-      for (const t of sorted) {
+      for (const t of transactions) {
         const data = __spreadValues({}, t);
-        if (!data.uuid) data.uuid = crypto.randomUUID();
-        delete data.id;
-        await tx.store.add(data);
+        if (!data.uuid) data.uuid = uuidv7();
+        await tx.store.put(data);
       }
       await tx.done;
     });
@@ -27747,32 +27772,26 @@ var indexedDBRepository = {
     if (result.error) return result;
     result.data.sort((a, b) => {
       if (a.date !== b.date) return b.date.localeCompare(a.date);
-      return b.id - a.id;
+      return b.uuid.localeCompare(a.uuid);
     });
     return ok(result.data);
   },
-  async getTransaction(id) {
-    return withDB((db) => db.get("transactions", id));
+  async getTransaction(uuid) {
+    return withDB((db) => db.get("transactions", uuid));
   },
   async saveTransaction(transaction2) {
     const result = await withDB(async (db) => {
       if (!transaction2.uuid) {
-        transaction2.uuid = crypto.randomUUID();
+        transaction2.uuid = uuidv7();
       }
-      if (transaction2.id === 0) {
-        const data = __spreadValues({}, transaction2);
-        delete data.id;
-        await db.add("transactions", data);
-      } else {
-        await db.put("transactions", transaction2);
-      }
+      await db.put("transactions", transaction2);
     });
     if (result.error) return result;
     return ok(void 0);
   },
-  async deleteTransaction(id) {
+  async deleteTransaction(uuid) {
     const result = await withDB(async (db) => {
-      await db.delete("transactions", id);
+      await db.delete("transactions", uuid);
     });
     if (result.error) return result;
     return ok(void 0);
@@ -28284,7 +28303,11 @@ var GoogleSyncService = class {
           if (filesRes.data.length > 0) {
             fileId = filesRes.data[0].id;
           }
-          const csvContent = "\uFEFF" + import_papaparse.default.unparse(txs);
+          const txsToExport = txs.map((t) => {
+            const _a3 = t, { id } = _a3, rest = __objRest(_a3, ["id"]);
+            return rest;
+          });
+          const csvContent = "\uFEFF" + import_papaparse.default.unparse(txsToExport);
           const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
           if (uploadRes.error) return err(uploadRes.error);
           completed++;
@@ -28323,15 +28346,17 @@ var GoogleSyncService = class {
           if (contentRes.error) return err(contentRes.error);
           const parsed = import_papaparse.default.parse(contentRes.data, { header: true, dynamicTyping: true, skipEmptyLines: true });
           const fileTransactions = parsed.data.map((t) => ({
-            id: typeof t.id === "number" ? t.id : parseInt(t.id, 10) || 0,
-            uuid: t.uuid || "",
+            uuid: t.uuid || uuidv7(),
             date: t.date || "",
             amountRubles: typeof t.amountRubles === "number" ? t.amountRubles : parseFloat(t.amountRubles) || 0,
             amountAccountCurrency: String(t.amountAccountCurrency || "0"),
             accountName: t.accountName || "",
+            accountCurrency: t.accountCurrency || "RUB",
             category: t.category || "",
             description: t.description || "",
             type: t.type || "withdraw",
+            member: t.member || null,
+            exchangeRate: t.exchangeRate !== null && t.exchangeRate !== void 0 && t.exchangeRate !== "" ? parseFloat(t.exchangeRate) : null,
             transferReceiveAccountName: t.transferReceiveAccountName || null,
             transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
           }));
@@ -28538,7 +28563,7 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-KNJTZRHR.js" : "/domain/recalculate_worker.js";
+    const workerUrl = true ? "/domain/recalculate_worker-EURUZURC.js" : "/domain/recalculate_worker.js";
     const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
@@ -28613,6 +28638,9 @@ var AppStore = class {
     }
   }
   async saveTransaction(transaction2) {
+    if (!transaction2.uuid) {
+      transaction2.uuid = uuidv7();
+    }
     const { error } = await indexedDBRepository.saveTransaction(transaction2);
     if (error) {
       runInAction(() => {
@@ -28639,15 +28667,42 @@ var AppStore = class {
     }
   }
   async saveAccount(account) {
-    const { error } = await indexedDBRepository.saveAccount(account);
-    if (error) {
-      runInAction(() => {
-        this.error = error;
-      });
-      return;
+    const isNew = !account.id || account.id === 0 || !this.accounts.some((a) => a.id === account.id);
+    if (isNew) {
+      const initTx = {
+        uuid: uuidv7(),
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        amountRubles: parseFloat(account.balance || "0") || 0,
+        amountAccountCurrency: account.balance || "0",
+        accountName: account.name,
+        accountCurrency: account.currency || "RUB",
+        category: "\u0431\u0430\u043B\u0430\u043D\u0441",
+        description: "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441",
+        type: "balance_correct",
+        member: null,
+        exchangeRate: 1,
+        transferReceiveAccountName: null,
+        transferReceiveAmountAccountCurrency: null
+      };
+      const { error: txErr } = await indexedDBRepository.saveTransaction(initTx);
+      if (txErr) {
+        runInAction(() => {
+          this.error = txErr;
+        });
+        return;
+      }
+    } else {
+      const { error } = await indexedDBRepository.saveAccount(account);
+      if (error) {
+        runInAction(() => {
+          this.error = error;
+        });
+        return;
+      }
     }
     await this.loadData();
     this.closeAccountModal();
+    this.recalculateBalances();
   }
   async openFolderModal() {
     runInAction(() => {
@@ -28911,33 +28966,46 @@ var FolderSelectionModal = ({ onClose }) => {
 var import_react10 = __toESM(require_react());
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
 var TransactionModal = observer(() => {
+  var _a3;
   const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
-    id: 0,
+    uuid: uuidv7(),
     date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
     amountRubles: 0,
     amountAccountCurrency: "0",
     accountName: "",
+    accountCurrency: "RUB",
     category: "",
     description: "",
     type: "withdraw",
+    member: "\u041E\u0431\u0449\u0435\u0435",
+    exchangeRate: 1,
     transferReceiveAccountName: null,
     transferReceiveAmountAccountCurrency: null
   });
   const handleSubmit = async (e) => {
     e.preventDefault();
     const txToSave = __spreadValues({}, formData);
+    if (!txToSave.uuid) {
+      txToSave.uuid = uuidv7();
+    }
     if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === "0") {
       txToSave.amountAccountCurrency = String(txToSave.amountRubles);
     }
     if (txToSave.type === "transfer" && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === "0")) {
       txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
     }
+    if (txToSave.type === "balance_correct") {
+      if (!txToSave.category) txToSave.category = "\u0431\u0430\u043B\u0430\u043D\u0441";
+      if (!txToSave.description) txToSave.description = "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430";
+    } else {
+      if (!txToSave.category) txToSave.category = txToSave.description || "";
+    }
     await store.saveTransaction(txToSave);
   };
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => __spreadProps(__spreadValues({}, prev), {
-      [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : value
+      [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : name === "exchangeRate" ? value === "" ? null : parseFloat(value) : value
     }));
   };
   return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", children: [
@@ -28957,24 +29025,101 @@ var TransactionModal = observer(() => {
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
           /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" })
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430" })
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "accountName", value: formData.accountName || "", onChange: handleChange, required: true, className: "form-select", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
-          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
-            acc.name,
-            " (",
-            acc.currency,
-            ")"
-          ] }, acc.id))
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            list: "accounts-list",
+            name: "accountName",
+            value: formData.accountName || "",
+            onChange: handleChange,
+            required: true,
+            placeholder: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u043B\u0438 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0441\u0447\u0435\u0442",
+            className: "form-input"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "accounts-list", children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: acc.name, children: acc.currency }, acc.id)) })
+      ] }),
+      formData.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430 \u0441\u0447\u0435\u0442\u0430:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "input",
+            {
+              type: "text",
+              name: "accountCurrency",
+              value: formData.accountCurrency || "RUB",
+              onChange: handleChange,
+              placeholder: "RUB, USD, UZS...",
+              className: "form-input"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E):" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "input",
+            {
+              type: "number",
+              step: "0.0001",
+              name: "exchangeRate",
+              value: (_a3 = formData.exchangeRate) != null ? _a3 : "",
+              onChange: handleChange,
+              placeholder: "1.0",
+              className: "form-input"
+            }
+          )
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", gap: "8px", marginBottom: "6px" }, children: ["\u041E\u0431\u0449\u0435\u0435", "\u0412\u043B\u0430\u0434"].map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "btn btn-secondary",
+            style: {
+              padding: "4px 12px",
+              fontSize: "13px",
+              background: formData.member === m ? "var(--accent-color)" : void 0,
+              color: formData.member === m ? "#ffffff" : void 0,
+              borderColor: formData.member === m ? "var(--accent-color)" : void 0
+            },
+            onClick: () => setFormData((prev) => __spreadProps(__spreadValues({}, prev), { member: m })),
+            children: m
+          },
+          m
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            type: "text",
+            name: "member",
+            value: formData.member || "",
+            onChange: handleChange,
+            placeholder: "\u041E\u0431\u0449\u0435\u0435, \u0412\u043B\u0430\u0434...",
+            className: "form-input"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "text", name: "description", value: formData.description || "", onChange: handleChange, required: true, className: "form-input" })
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            type: "text",
+            name: "description",
+            value: formData.description || "",
+            onChange: handleChange,
+            required: formData.type !== "balance_correct",
+            placeholder: formData.type === "balance_correct" ? "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u0438\u043B\u0438 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" : "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435",
+            className: "form-input"
+          }
+        )
       ] }),
       formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
         /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
@@ -29036,7 +29181,10 @@ var TransactionsView = observer(() => {
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-icon-placeholder", children: initial }),
                 /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-details", children: [
                   /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-title", children: tx.description || tx.category }),
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-subtitle", children: tx.accountName })
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "item-subtitle", children: [
+                    tx.accountName,
+                    tx.member ? ` \u2022 ${tx.member}` : ""
+                  ] })
                 ] })
               ] }),
               /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: `item-amount ${amountClass}`, children: [
@@ -29045,7 +29193,7 @@ var TransactionsView = observer(() => {
               ] }) })
             ]
           },
-          tx.id
+          tx.uuid
         );
       }) })
     ] }, dateStr)),
@@ -30753,7 +30901,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-17 19:50:32 +0300" : "dev"
+          true ? "2026-09-18 17:47:52 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -30904,4 +31052,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-TMN6IU3F.js.map
+//# sourceMappingURL=app-VRM33D54.js.map

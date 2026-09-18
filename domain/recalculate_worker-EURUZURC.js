@@ -236,7 +236,7 @@
   }));
 
   // web_src/infrastructure/db.ts
-  var DB_VERSION = 3;
+  var DB_VERSION = 4;
 
   // node_modules/big.js/big.mjs
   var DP = 20;
@@ -756,16 +756,33 @@
         transactions.sort((a, b) => {
           const dateCompare = a.date.localeCompare(b.date);
           if (dateCompare !== 0) return dateCompare;
-          return a.id - b.id;
+          return a.uuid.localeCompare(b.uuid);
         });
+        const accountsByName = {};
+        let maxAccountId = 0;
+        for (const acc of accounts) {
+          accountsByName[acc.name] = acc;
+          if (acc.id > maxAccountId) maxAccountId = acc.id;
+        }
         const balancesByName = {};
         for (const acc of accounts) {
           balancesByName[acc.name] = "0";
         }
         for (const tx of transactions) {
           const amount = tx.amountAccountCurrency || "0";
-          if (tx.accountName && balancesByName[tx.accountName] === void 0) {
-            balancesByName[tx.accountName] = "0";
+          if (tx.accountName) {
+            if (balancesByName[tx.accountName] === void 0) {
+              balancesByName[tx.accountName] = "0";
+            }
+            if (!accountsByName[tx.accountName]) {
+              maxAccountId++;
+              accountsByName[tx.accountName] = {
+                id: maxAccountId,
+                name: tx.accountName,
+                currency: tx.accountCurrency || "RUB",
+                balance: "0"
+              };
+            }
           }
           if (tx.type === "deposit") {
             balancesByName[tx.accountName] = addStrings(balancesByName[tx.accountName], amount);
@@ -777,19 +794,29 @@
               if (balancesByName[tx.transferReceiveAccountName] === void 0) {
                 balancesByName[tx.transferReceiveAccountName] = "0";
               }
+              if (!accountsByName[tx.transferReceiveAccountName]) {
+                maxAccountId++;
+                accountsByName[tx.transferReceiveAccountName] = {
+                  id: maxAccountId,
+                  name: tx.transferReceiveAccountName,
+                  currency: "RUB",
+                  balance: "0"
+                };
+              }
               const receiveAmount = tx.transferReceiveAmountAccountCurrency || "0";
               balancesByName[tx.transferReceiveAccountName] = addStrings(balancesByName[tx.transferReceiveAccountName], receiveAmount);
             }
           } else if (tx.type === "balance_correct") {
             balancesByName[tx.accountName] = amount;
+            if (tx.accountCurrency && accountsByName[tx.accountName]) {
+              accountsByName[tx.accountName].currency = tx.accountCurrency;
+            }
           }
         }
         const txStore = db.transaction("accounts", "readwrite");
-        for (const acc of accounts) {
-          if (acc.balance !== balancesByName[acc.name]) {
-            acc.balance = balancesByName[acc.name];
-            txStore.store.put(acc);
-          }
+        for (const acc of Object.values(accountsByName)) {
+          acc.balance = balancesByName[acc.name] || "0";
+          await txStore.store.put(acc);
         }
         await txStore.done;
         self.postMessage({ status: "done" });
@@ -799,4 +826,4 @@
     }
   };
 })();
-//# sourceMappingURL=recalculate_worker-KNJTZRHR.js.map
+//# sourceMappingURL=recalculate_worker-EURUZURC.js.map
