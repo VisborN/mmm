@@ -37,7 +37,7 @@ export class GoogleSyncService {
                 const groups: Record<string, Transaction[]> = {};
                 for (const t of transactions) {
                     const month = t.date.substring(0, 7); // YYYY-MM
-                    const key = `MMM - ${t.accountName} - ${month}.csv`;
+                    const key = `MMM - ${month}.csv`;
                     if (!groups[key]) groups[key] = [];
                     groups[key].push(t);
                 }

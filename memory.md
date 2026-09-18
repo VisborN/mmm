@@ -26,7 +26,7 @@
 
 ## Google Drive Migration & Budget Data Structure
 - **Budget Spreadsheet (`финансы/budget`)**: Google Spreadsheet ID `1oKqzf5LaNDe8Adp-Ekc0HxNLQdyrGdt_xBG_JUCmd8w`. Sheet `транзакции` contains ~1288 historical rows (rows 4–1291).
-- **Target Location (`финансы/mmm`)**: Google Drive folder `15bNaUQXD3eblqSAvcIeYMsq4JR3d7Bih`. CSV format `MMM - {accountName} - {YYYY-MM}.csv`.
+- **Target Location (`финансы/mmm`)**: Google Drive folder `15bNaUQXD3eblqSAvcIeYMsq4JR3d7Bih`. CSV format `MMM - {YYYY-MM}.csv` (a single file per month containing all transactions across all accounts).
 - **Mapping Logic**:
   - `Col A` (Date) -> `date` (`YYYY-MM-DD`).
   - `Col B` (Amount in account currency) -> `amountAccountCurrency`.
@@ -34,11 +34,11 @@
   - `Col D` (Category):
     - `баланс` -> `type: 'balance_correct'`, `amountAccountCurrency` is the absolute balance, `exchangeRate` from Col G/H.
     - `перевод` -> `type: 'transfer'`, destination account in `Col G` (`transferReceiveAccountName`).
-    - Others: `B < 0` -> `type: 'withdraw'`, `B > 0` -> `type: 'income'`.
+    - Others: `B < 0` -> `type: 'withdraw'`, `B >= 0` -> `type: 'deposit'`.
   - `Col G` (Description) -> `description`.
   - `Col H` (Exchange Rate) -> `exchangeRate`.
   - `Col J` (Amount in Rubles) -> `amountRubles`.
   - `Col F` (Quantity) -> omitted.
   - Generates chronological UUIDv7 for each record.
-  - Concurrency lock file is not required for the one-time migration.
+  - Database schema version 5 wipes older IndexedDB stores on migration to guarantee a clean state.
 
