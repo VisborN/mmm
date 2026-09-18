@@ -280,6 +280,100 @@ export const SettingsView = observer(() => {
             </div>
 
             <div className="settings-card">
+                <h3>Управление данными</h3>
+                <div className="settings-text" style={{ marginBottom: '16px' }}>
+                    Очистка локальных таблиц и сброс состояния на этом устройстве. Данные на Google Диске затронуты не будут.
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Удалить транзакции</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                Очистить все локальные операции ({store.transactions.length} шт.)
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ color: 'var(--danger-color)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            onClick={() => {
+                                if (window.confirm('Удалить все локальные транзакции?')) {
+                                    store.clearTransactions();
+                                }
+                            }}
+                        >
+                            Удалить
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Удалить счета</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                Очистить все локальные счета ({store.accounts.length} шт.)
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ color: 'var(--danger-color)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+                            onClick={() => {
+                                if (window.confirm('Удалить все локальные счета?')) {
+                                    store.clearAccounts();
+                                }
+                            }}
+                        >
+                            Удалить
+                        </button>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)' }}>
+                        <div>
+                            <div style={{ fontWeight: 600, fontSize: '14px' }}>Удалить динамические данные</div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                Сбросить рассчитанные остатки счетов в 0 и кэш балансов банков
+                            </div>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            style={{ color: 'var(--text-secondary)' }}
+                            onClick={() => {
+                                if (window.confirm('Сбросить динамические данные (рассчитанные остатки и кэш балансов)?')) {
+                                    store.clearDynamicData();
+                                }
+                            }}
+                        >
+                            Сбросить
+                        </button>
+                    </div>
+
+                    <div style={{ marginTop: '8px', paddingTop: '12px', borderTop: '1px solid var(--border-color)' }}>
+                        <button
+                            type="button"
+                            className="btn"
+                            style={{
+                                width: '100%',
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                color: 'var(--danger-color)',
+                                border: '1px solid rgba(239, 68, 68, 0.4)',
+                                fontWeight: 600,
+                                padding: '10px'
+                            }}
+                            onClick={() => {
+                                if (window.confirm('ВНИМАНИЕ: Вы уверены, что хотите удалить ВСЕ локальные данные, включая авторизацию? Это действие необратимо.')) {
+                                    store.clearAllLocalData();
+                                }
+                            }}
+                        >
+                            Удалить все локальные данные (включая авторизацию)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="settings-card">
                 <h3>Дополнительно</h3>
                 <div className="action-row">
                     <button

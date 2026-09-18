@@ -9,12 +9,17 @@ export interface Repository {
     getTransaction(uuid: string): Promise<Result<Transaction | undefined, Error>>;
     saveTransaction(transaction: Transaction): Promise<Result<void, Error>>;
     deleteTransaction(uuid: string): Promise<Result<void, Error>>;
+    clearTransactions(): Promise<Result<void, Error>>;
 
     getAccounts(): Promise<Result<Account[], Error>>;
     getAccount(id: number): Promise<Result<Account | undefined, Error>>;
     saveAccount(account: Account): Promise<Result<void, Error>>;
     deleteAccount(id: number): Promise<Result<void, Error>>;
+    clearAccounts(): Promise<Result<void, Error>>;
+    resetAccountBalances(): Promise<Result<void, Error>>;
+
     replaceAllTransactions(transactions: Transaction[]): Promise<Result<void, Error>>;
+    clearAllData(): Promise<Result<void, Error>>;
 }
 
 export const indexedDBRepository: Repository = {
@@ -92,6 +97,47 @@ export const indexedDBRepository: Repository = {
     async deleteAccount(id: number): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
             await db.delete('accounts', id);
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async clearTransactions(): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            await db.clear('transactions');
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async clearAccounts(): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            await db.clear('accounts');
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async resetAccountBalances(): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            const tx = db.transaction('accounts', 'readwrite');
+            const accounts = await tx.store.getAll();
+            for (const acc of accounts) {
+                acc.balance = '0';
+                await tx.store.put(acc);
+            }
+            await tx.done;
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async clearAllData(): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            const tx = db.transaction(['transactions', 'accounts'], 'readwrite');
+            await tx.objectStore('transactions').clear();
+            await tx.objectStore('accounts').clear();
+            await tx.done;
         });
         if (result.error) return result;
         return ok<void>(undefined);
