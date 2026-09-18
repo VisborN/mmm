@@ -21525,7 +21525,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
           },
           [subscribe, value, getSnapshot]
         );
-        useEffect4(
+        useEffect6(
           function() {
             checkIfSnapshotChanged(inst) && forceUpdate({ inst });
             return subscribe(function() {
@@ -21551,7 +21551,7 @@ var require_use_sync_external_store_shim_development = __commonJS({
         return getSnapshot();
       }
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStart(Error());
-      var React8 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState10 = React8.useState, useEffect4 = React8.useEffect, useLayoutEffect = React8.useLayoutEffect, useDebugValue = React8.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
+      var React8 = require_react(), objectIs = "function" === typeof Object.is ? Object.is : is, useState10 = React8.useState, useEffect6 = React8.useEffect, useLayoutEffect = React8.useLayoutEffect, useDebugValue = React8.useDebugValue, didWarnOld18Alpha = false, didWarnUncachedGetSnapshot = false, shim = "undefined" === typeof window || "undefined" === typeof window.document || "undefined" === typeof window.document.createElement ? useSyncExternalStore$1 : useSyncExternalStore$2;
       exports.useSyncExternalStore = void 0 !== React8.useSyncExternalStore ? React8.useSyncExternalStore : shim;
       "undefined" !== typeof __REACT_DEVTOOLS_GLOBAL_HOOK__ && "function" === typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop && __REACT_DEVTOOLS_GLOBAL_HOOK__.registerInternalModuleStop(Error());
     })();
@@ -29984,11 +29984,29 @@ var AppStore = class {
       window.history.back();
     }
   }
-  async saveTransaction(transaction2) {
+  async saveTransaction(transaction2, keepOpen = false) {
     if (!transaction2.uuid) {
       transaction2.uuid = uuidv7();
     }
     const { error } = await indexedDBRepository.saveTransaction(transaction2);
+    if (error) {
+      runInAction(() => {
+        this.error = error;
+      });
+      return;
+    }
+    await this.loadData();
+    if (keepOpen) {
+      runInAction(() => {
+        this.currentTransaction = transaction2;
+      });
+    } else {
+      this.closeTransactionModal();
+    }
+    this.recalculateBalances();
+  }
+  async deleteTransaction(uuid) {
+    const { error } = await indexedDBRepository.deleteTransaction(uuid);
     if (error) {
       runInAction(() => {
         this.error = error;
@@ -30167,6 +30185,15 @@ var AccountModal = observer(() => {
     currency: "RUB",
     balance: "0"
   });
+  (0, import_react7.useEffect)(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        store.closeAccountModal();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
   const handleSubmit = async (e) => {
     e.preventDefault();
     await store.saveAccount(formData);
@@ -30175,27 +30202,50 @@ var AccountModal = observer(() => {
     const { name, value } = e.target;
     setFormData((prev) => __spreadProps(__spreadValues({}, prev), { [name]: value }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0411\u0430\u043B\u0430\u043D\u0441:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+    "div",
+    {
+      className: "modal-overlay",
+      onClick: (e) => {
+        if (e.target === e.currentTarget) {
+          store.closeAccountModal();
+        }
+      },
+      children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-content", onClick: (e) => e.stopPropagation(), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-header", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "modal-close-btn",
+              onClick: () => store.closeAccountModal(),
+              title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
+              children: "\u2715"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, className: "form-input" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, className: "form-input" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0411\u0430\u043B\u0430\u043D\u0441:" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, className: "form-input" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-actions", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+          ] })
+        ] })
       ] })
-    ] })
-  ] }) });
+    }
+  );
 });
 var AccountsView = observer(() => {
   return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
@@ -30576,67 +30626,127 @@ var FolderSelectionModal = ({ onClose }) => {
     await store.setSyncFolder(idToSave, nameToSave);
     onClose();
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-content", style: { display: "flex", flexDirection: "column", height: "80vh" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginBottom: "16px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        "span",
-        {
-          onClick: () => navigateUp(index),
-          style: {
-            cursor: index === path.length - 1 ? "default" : "pointer",
-            color: index === path.length - 1 ? "var(--text-primary)" : "var(--accent-color)",
-            fontWeight: index === path.length - 1 ? "600" : "normal",
-            transition: "color 0.2s"
-          },
-          children: folder.name
-        }
-      ),
-      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--text-secondary)" }, children: "/" })
-    ] }, folder.id)) }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "error-banner", children: [
-      "\u041E\u0448\u0438\u0431\u043A\u0430: ",
-      error
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
-      flex: 1,
-      overflowY: "auto",
-      border: "1px solid var(--border-color)",
-      borderRadius: "var(--radius-sm)",
-      background: "rgba(0,0,0,0.2)"
-    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "spinner", style: { margin: "0 auto 16px", width: "24px", height: "24px", borderWidth: "2px" } }),
-      "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."
-    ] }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      "button",
-      {
-        onClick: () => navigateTo(folder),
-        className: "list-item",
-        style: { width: "100%", background: "transparent", borderBottom: "1px solid var(--border-color)", borderRadius: 0 },
-        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "item-left", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "item-title", children: folder.name })
-        ] })
+  (0, import_react9.useEffect)(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        onClose();
       }
-    ) }, folder.id)) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, className: "btn btn-primary", children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
-    ] })
-  ] }) });
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+    "div",
+    {
+      className: "modal-overlay",
+      onClick: (e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      },
+      children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-content", style: { display: "flex", flexDirection: "column", height: "80vh" }, onClick: (e) => e.stopPropagation(), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-header", style: { marginBottom: "16px" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { margin: 0 }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "modal-close-btn",
+              onClick: onClose,
+              title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
+              children: "\u2715"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+            "span",
+            {
+              onClick: () => navigateUp(index),
+              style: {
+                cursor: index === path.length - 1 ? "default" : "pointer",
+                color: index === path.length - 1 ? "var(--text-primary)" : "var(--accent-color)",
+                fontWeight: index === path.length - 1 ? "600" : "normal",
+                transition: "color 0.2s"
+              },
+              children: folder.name
+            }
+          ),
+          index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--text-secondary)" }, children: "/" })
+        ] }, folder.id)) }),
+        error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "error-banner", children: [
+          "\u041E\u0448\u0438\u0431\u043A\u0430: ",
+          error
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+          flex: 1,
+          overflowY: "auto",
+          border: "1px solid var(--border-color)",
+          borderRadius: "var(--radius-sm)",
+          background: "rgba(0,0,0,0.2)"
+        }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "spinner", style: { margin: "0 auto 16px", width: "24px", height: "24px", borderWidth: "2px" } }),
+          "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."
+        ] }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+          "button",
+          {
+            onClick: () => navigateTo(folder),
+            className: "list-item",
+            style: { width: "100%", background: "transparent", borderBottom: "1px solid var(--border-color)", borderRadius: 0 },
+            children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "item-left", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
+              /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "item-title", children: folder.name })
+            ] })
+          }
+        ) }, folder.id)) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-actions", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, className: "btn btn-primary", children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
+        ] })
+      ] })
+    }
+  );
 };
 
 // transaction_modal.tsx
 var import_react10 = __toESM(require_react());
 var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var formatDateRu = (dateStr) => {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (!y || !m || !d) return dateStr;
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+};
+var formatAmountRub = (amount) => {
+  return amount.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + " \u20BD";
+};
+var TYPE_CONFIG = {
+  withdraw: { label: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435", icon: "\u{1F4B8}", color: "var(--text-primary)" },
+  deposit: { label: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435", icon: "\u{1F4B0}", color: "var(--success-color)" },
+  transfer: { label: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434", icon: "\u{1F504}", color: "var(--accent-color)" },
+  balance_correct: { label: "\u0411\u0430\u043B\u0430\u043D\u0441", icon: "\u2696\uFE0F", color: "#a78bfa" }
+};
 var TransactionModal = observer(() => {
-  var _a3;
-  const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
+  var _a3, _b2;
+  const currentTx = store.currentTransaction;
+  const isEditMode = !!currentTx;
+  const [editingField, setEditingField] = (0, import_react10.useState)(null);
+  const [isConfirmingDelete, setIsConfirmingDelete] = (0, import_react10.useState)(false);
+  const isSavingRef = (0, import_react10.useRef)(false);
+  const [createForm, setCreateForm] = (0, import_react10.useState)({
     uuid: uuidv7(),
     date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
     amountRubles: 0,
     amountAccountCurrency: "0",
-    accountName: "",
+    accountName: store.accounts.length > 0 ? store.accounts[0].name : "",
     accountCurrency: "RUB",
     category: "",
     description: "",
@@ -30646,9 +30756,68 @@ var TransactionModal = observer(() => {
     transferReceiveAccountName: null,
     transferReceiveAmountAccountCurrency: null
   });
-  const handleSubmit = async (e) => {
+  const uniqueCategories = (0, import_react10.useMemo)(() => {
+    const set5 = /* @__PURE__ */ new Set();
+    store.transactions.forEach((t) => {
+      if (t.category && t.category.trim()) set5.add(t.category.trim());
+    });
+    return Array.from(set5).sort();
+  }, [store.transactions]);
+  const uniqueMembers = (0, import_react10.useMemo)(() => {
+    const set5 = /* @__PURE__ */ new Set(["\u041E\u0431\u0449\u0435\u0435", "\u0412\u043B\u0430\u0434"]);
+    store.transactions.forEach((t) => {
+      if (t.member && t.member.trim()) set5.add(t.member.trim());
+    });
+    return Array.from(set5);
+  }, [store.transactions]);
+  (0, import_react10.useEffect)(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape") {
+        if (editingField) {
+          setEditingField(null);
+        } else if (isConfirmingDelete) {
+          setIsConfirmingDelete(false);
+        } else {
+          store.closeTransactionModal();
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [editingField, isConfirmingDelete]);
+  const handleSaveField = async (field, val) => {
+    if (!currentTx || isSavingRef.current) return;
+    isSavingRef.current = true;
+    try {
+      const updated = __spreadProps(__spreadValues({}, currentTx), { [field]: val });
+      if (field === "amountRubles") {
+        const num = typeof val === "number" ? val : parseFloat(String(val)) || 0;
+        updated.amountRubles = num;
+        if (!currentTx.accountCurrency || currentTx.accountCurrency === "RUB") {
+          updated.amountAccountCurrency = String(num);
+        }
+      }
+      if (field === "type" && val === "balance_correct") {
+        if (!updated.category) updated.category = "\u0431\u0430\u043B\u0430\u043D\u0441";
+        if (!updated.description) updated.description = "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430";
+      }
+      await store.saveTransaction(updated, true);
+    } finally {
+      isSavingRef.current = false;
+      setEditingField(null);
+    }
+  };
+  const handleInputKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    } else if (e.key === "Escape") {
+      e.stopPropagation();
+      setEditingField(null);
+    }
+  };
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    const txToSave = __spreadValues({}, formData);
+    const txToSave = __spreadValues({}, createForm);
     if (!txToSave.uuid) {
       txToSave.uuid = uuidv7();
     }
@@ -30666,143 +30835,607 @@ var TransactionModal = observer(() => {
     }
     await store.saveTransaction(txToSave);
   };
-  const handleChange = (e) => {
+  const handleCreateChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => __spreadProps(__spreadValues({}, prev), {
+    setCreateForm((prev) => __spreadProps(__spreadValues({}, prev), {
       [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : name === "exchangeRate" ? value === "" ? null : parseFloat(value) : value
     }));
   };
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0414\u0430\u0442\u0430:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0443\u043C\u043C\u0430 (\u20BD):" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0422\u0438\u043F:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, className: "form-select", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430" })
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            list: "accounts-list",
-            name: "accountName",
-            value: formData.accountName || "",
-            onChange: handleChange,
-            required: true,
-            placeholder: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u043B\u0438 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0441\u0447\u0435\u0442",
-            className: "form-input"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "accounts-list", children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: acc.name, children: acc.currency }, acc.id)) })
-      ] }),
-      formData.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430 \u0441\u0447\u0435\u0442\u0430:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            "input",
+  const setQuickDate = (daysAgo) => {
+    const d = /* @__PURE__ */ new Date();
+    d.setDate(d.getDate() - daysAgo);
+    setCreateForm((prev) => __spreadProps(__spreadValues({}, prev), { date: d.toISOString().split("T")[0] }));
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+    "div",
+    {
+      className: "modal-overlay",
+      onClick: (e) => {
+        if (e.target === e.currentTarget) {
+          store.closeTransactionModal();
+        }
+      },
+      children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", onClick: (e) => e.stopPropagation(), children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "categories-list", children: uniqueCategories.map((cat) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: cat }, cat)) }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "accounts-list", children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: acc.name, children: acc.currency }, acc.id)) }),
+        isEditMode && currentTx && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "badge", style: { borderColor: TYPE_CONFIG[currentTx.type].color, color: TYPE_CONFIG[currentTx.type].color }, children: [
+              TYPE_CONFIG[currentTx.type].icon,
+              " ",
+              TYPE_CONFIG[currentTx.type].label
+            ] }) }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "modal-close-btn",
+                onClick: () => store.closeTransactionModal(),
+                title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
+                children: "\u2715"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "segmented-control", children: Object.keys(TYPE_CONFIG).map((t) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+            "button",
             {
-              type: "text",
-              name: "accountCurrency",
-              value: formData.accountCurrency || "RUB",
-              onChange: handleChange,
-              placeholder: "RUB, USD, UZS...",
-              className: "form-input"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E):" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            "input",
-            {
-              type: "number",
-              step: "0.0001",
-              name: "exchangeRate",
-              value: (_a3 = formData.exchangeRate) != null ? _a3 : "",
-              onChange: handleChange,
-              placeholder: "1.0",
-              className: "form-input"
-            }
-          )
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", gap: "8px", marginBottom: "6px" }, children: ["\u041E\u0431\u0449\u0435\u0435", "\u0412\u043B\u0430\u0434"].map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "button",
-          {
-            type: "button",
-            className: "btn btn-secondary",
-            style: {
-              padding: "4px 12px",
-              fontSize: "13px",
-              background: formData.member === m ? "var(--accent-color)" : void 0,
-              color: formData.member === m ? "#ffffff" : void 0,
-              borderColor: formData.member === m ? "var(--accent-color)" : void 0
+              type: "button",
+              className: `segmented-btn ${currentTx.type === t ? "active" : ""}`,
+              onClick: () => handleSaveField("type", t),
+              children: [
+                TYPE_CONFIG[t].icon,
+                " ",
+                TYPE_CONFIG[t].label
+              ]
             },
-            onClick: () => setFormData((prev) => __spreadProps(__spreadValues({}, prev), { member: m })),
-            children: m
-          },
-          m
-        )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            type: "text",
-            name: "member",
-            value: formData.member || "",
-            onChange: handleChange,
-            placeholder: "\u041E\u0431\u0449\u0435\u0435, \u0412\u043B\u0430\u0434...",
-            className: "form-input"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            type: "text",
-            name: "description",
-            value: formData.description || "",
-            onChange: handleChange,
-            required: formData.type !== "balance_correct",
-            placeholder: formData.type === "balance_correct" ? "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u0438\u043B\u0438 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" : "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435",
-            className: "form-input"
-          }
-        )
-      ] }),
-      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, className: "form-select", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
-          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
-            acc.name,
-            " (",
-            acc.currency,
-            ")"
-          ] }, `recv-${acc.id}`))
+            t
+          )) }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "div",
+            {
+              className: `hero-amount-box ${editingField !== "amountRubles" ? "clickable" : ""}`,
+              onClick: () => {
+                if (editingField !== "amountRubles") setEditingField("amountRubles");
+              },
+              children: editingField === "amountRubles" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  type: "number",
+                  step: "0.01",
+                  autoFocus: true,
+                  className: "hero-amount-input",
+                  defaultValue: currentTx.amountRubles || "",
+                  onFocus: (e) => e.target.select(),
+                  onBlur: (e) => handleSaveField("amountRubles", e.target.value === "" ? 0 : parseFloat(e.target.value)),
+                  onKeyDown: handleInputKeyDown
+                }
+              ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+                  "div",
+                  {
+                    className: "hero-amount-value",
+                    style: { color: currentTx.type === "deposit" ? "var(--success-color)" : "var(--text-primary)" },
+                    children: [
+                      currentTx.type === "deposit" ? "+" : "",
+                      formatAmountRub(currentTx.amountRubles),
+                      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                    ]
+                  }
+                ),
+                currentTx.accountCurrency && currentTx.accountCurrency !== "RUB" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero-amount-sub", children: [
+                  currentTx.amountAccountCurrency,
+                  " ",
+                  currentTx.accountCurrency,
+                  currentTx.exchangeRate ? ` \u2022 \u043A\u0443\u0440\u0441: ${currentTx.exchangeRate} \u20BD` : ""
+                ] })
+              ] })
+            }
+          ),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "detail-card", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "accountName" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "accountName") setEditingField("accountName");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4B3} \u0421\u0447\u0435\u0442" }),
+                  editingField === "accountName" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                    "select",
+                    {
+                      className: "detail-input",
+                      autoFocus: true,
+                      defaultValue: currentTx.accountName || "",
+                      onChange: (e) => handleSaveField("accountName", e.target.value),
+                      onBlur: () => setEditingField(null),
+                      onKeyDown: handleInputKeyDown,
+                      children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
+                        acc.name,
+                        " (",
+                        acc.currency,
+                        ")"
+                      ] }, acc.id))
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    currentTx.accountName || "\u2014",
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            currentTx.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "transferReceiveAccountName" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "transferReceiveAccountName") setEditingField("transferReceiveAccountName");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4E5} \u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F" }),
+                  editingField === "transferReceiveAccountName" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+                    "select",
+                    {
+                      className: "detail-input",
+                      autoFocus: true,
+                      defaultValue: currentTx.transferReceiveAccountName || "",
+                      onChange: (e) => handleSaveField("transferReceiveAccountName", e.target.value),
+                      onBlur: () => setEditingField(null),
+                      onKeyDown: handleInputKeyDown,
+                      children: [
+                        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+                        store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
+                          acc.name,
+                          " (",
+                          acc.currency,
+                          ")"
+                        ] }, `recv-${acc.id}`))
+                      ]
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    currentTx.transferReceiveAccountName || "\u2014",
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "category" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "category") setEditingField("category");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4C1} \u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F" }),
+                  editingField === "category" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                    "input",
+                    {
+                      list: "categories-list",
+                      className: "detail-input",
+                      autoFocus: true,
+                      defaultValue: currentTx.category || "",
+                      onFocus: (e) => e.target.select(),
+                      onBlur: (e) => handleSaveField("category", e.target.value),
+                      onKeyDown: handleInputKeyDown
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    currentTx.category || "\u2014",
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "description" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "description") setEditingField("description");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4DD} \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
+                  editingField === "description" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                    "input",
+                    {
+                      type: "text",
+                      className: "detail-input",
+                      autoFocus: true,
+                      defaultValue: currentTx.description || "",
+                      onFocus: (e) => e.target.select(),
+                      onBlur: (e) => handleSaveField("description", e.target.value),
+                      onKeyDown: handleInputKeyDown
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    currentTx.description || "\u2014",
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "date" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "date") setEditingField("date");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4C5} \u0414\u0430\u0442\u0430" }),
+                  editingField === "date" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                    "input",
+                    {
+                      type: "date",
+                      className: "detail-input",
+                      autoFocus: true,
+                      defaultValue: currentTx.date || "",
+                      onBlur: (e) => {
+                        if (e.target.value) handleSaveField("date", e.target.value);
+                        else setEditingField(null);
+                      },
+                      onKeyDown: handleInputKeyDown
+                    }
+                  ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    formatDateRu(currentTx.date),
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "div",
+              {
+                className: `detail-row ${editingField === "member" ? "is-editing" : "clickable"}`,
+                onClick: () => {
+                  if (editingField !== "member") setEditingField("member");
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F464} \u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438" }),
+                  editingField === "member" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "6px", width: "100%" }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "chips-group", children: uniqueMembers.map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: `chip-item ${currentTx.member === m ? "active" : ""}`,
+                        onClick: (e) => {
+                          e.stopPropagation();
+                          handleSaveField("member", m);
+                        },
+                        children: m
+                      },
+                      m
+                    )) }),
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                      "input",
+                      {
+                        type: "text",
+                        className: "detail-input",
+                        autoFocus: true,
+                        defaultValue: currentTx.member || "",
+                        placeholder: "\u0414\u0440\u0443\u0433\u043E\u0435 \u0438\u043C\u044F...",
+                        onFocus: (e) => e.target.select(),
+                        onBlur: (e) => handleSaveField("member", e.target.value),
+                        onKeyDown: handleInputKeyDown
+                      }
+                    )
+                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                    currentTx.member || "\u041D\u0435 \u0443\u043A\u0430\u0437\u0430\u043D",
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                  ] })
+                ]
+              }
+            ),
+            currentTx.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+                "div",
+                {
+                  className: `detail-row ${editingField === "accountCurrency" ? "is-editing" : "clickable"}`,
+                  onClick: () => {
+                    if (editingField !== "accountCurrency") setEditingField("accountCurrency");
+                  },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4B1} \u0412\u0430\u043B\u044E\u0442\u0430" }),
+                    editingField === "accountCurrency" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                      "input",
+                      {
+                        type: "text",
+                        className: "detail-input",
+                        autoFocus: true,
+                        defaultValue: currentTx.accountCurrency || "RUB",
+                        onFocus: (e) => e.target.select(),
+                        onBlur: (e) => handleSaveField("accountCurrency", e.target.value),
+                        onKeyDown: handleInputKeyDown
+                      }
+                    ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                      currentTx.accountCurrency || "RUB",
+                      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                    ] })
+                  ]
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+                "div",
+                {
+                  className: `detail-row ${editingField === "exchangeRate" ? "is-editing" : "clickable"}`,
+                  onClick: () => {
+                    if (editingField !== "exchangeRate") setEditingField("exchangeRate");
+                  },
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4C8} \u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E" }),
+                    editingField === "exchangeRate" ? /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                      "input",
+                      {
+                        type: "number",
+                        step: "0.0001",
+                        className: "detail-input",
+                        autoFocus: true,
+                        defaultValue: (_a3 = currentTx.exchangeRate) != null ? _a3 : "",
+                        onFocus: (e) => e.target.select(),
+                        onBlur: (e) => handleSaveField("exchangeRate", e.target.value ? parseFloat(e.target.value) : null),
+                        onKeyDown: handleInputKeyDown
+                      }
+                    ) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("span", { className: "detail-value", children: [
+                      currentTx.exchangeRate ? `${currentTx.exchangeRate} \u20BD` : "\u2014",
+                      /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-edit-pencil", children: "\u270F\uFE0F" })
+                    ] })
+                  ]
+                }
+              )
+            ] })
+          ] }),
+          isConfirmingDelete ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "delete-confirm-box", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { style: { fontSize: "13px", color: "var(--danger-color)", fontWeight: 500 }, children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u044D\u0442\u0443 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044E?" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", gap: "8px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => setIsConfirmingDelete(false),
+                  className: "btn btn-secondary",
+                  style: { padding: "6px 12px", fontSize: "12px" },
+                  children: "\u041E\u0442\u043C\u0435\u043D\u0430"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => store.deleteTransaction(currentTx.uuid),
+                  className: "btn btn-danger",
+                  style: { padding: "6px 12px", fontSize: "12px" },
+                  children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
+                }
+              )
+            ] })
+          ] }) : /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", style: { justifyContent: "space-between", marginTop: "20px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              "button",
+              {
+                type: "button",
+                onClick: () => setIsConfirmingDelete(true),
+                className: "btn btn-danger",
+                style: { padding: "8px 14px", fontSize: "13px" },
+                children: "\u{1F5D1}\uFE0F \u0423\u0434\u0430\u043B\u0438\u0442\u044C"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              "button",
+              {
+                type: "button",
+                onClick: () => store.closeTransactionModal(),
+                className: "btn btn-secondary",
+                style: { padding: "8px 18px", fontSize: "13px" },
+                children: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C"
+              }
+            )
+          ] })
+        ] }),
+        !isEditMode && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-header", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "modal-close-btn",
+                onClick: () => store.closeTransactionModal(),
+                title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
+                children: "\u2715"
+              }
+            )
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleCreateSubmit, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "segmented-control", children: Object.keys(TYPE_CONFIG).map((t) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+              "button",
+              {
+                type: "button",
+                className: `segmented-btn ${createForm.type === t ? "active" : ""}`,
+                onClick: () => setCreateForm((prev) => __spreadProps(__spreadValues({}, prev), { type: t })),
+                children: [
+                  TYPE_CONFIG[t].icon,
+                  " ",
+                  TYPE_CONFIG[t].label
+                ]
+              },
+              t
+            )) }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "hero-amount-box", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  type: "number",
+                  step: "0.01",
+                  name: "amountRubles",
+                  autoFocus: true,
+                  placeholder: "0.00",
+                  value: createForm.amountRubles || "",
+                  onChange: handleCreateChange,
+                  required: true,
+                  className: "hero-amount-input",
+                  style: { color: createForm.type === "deposit" ? "var(--success-color)" : "var(--text-primary)" }
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "hero-amount-sub", children: "\u0421\u0443\u043C\u043C\u0430 \u0432 \u0440\u0443\u0431\u043B\u044F\u0445 (\u20BD)" })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }, children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", style: { margin: 0 }, children: "\u0414\u0430\u0442\u0430:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "chips-group", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "chip-item", onClick: () => setQuickDate(0), children: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F" }),
+                  /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", className: "chip-item", onClick: () => setQuickDate(1), children: "\u0412\u0447\u0435\u0440\u0430" })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  type: "date",
+                  name: "date",
+                  value: createForm.date || "",
+                  onChange: handleCreateChange,
+                  required: true,
+                  className: "form-input"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  list: "accounts-list",
+                  name: "accountName",
+                  value: createForm.accountName || "",
+                  onChange: handleCreateChange,
+                  required: true,
+                  placeholder: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u043B\u0438 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0441\u0447\u0435\u0442",
+                  className: "form-input"
+                }
+              )
+            ] }),
+            createForm.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(
+                "select",
+                {
+                  name: "transferReceiveAccountName",
+                  value: createForm.transferReceiveAccountName || "",
+                  onChange: handleCreateChange,
+                  required: true,
+                  className: "form-select",
+                  children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+                    store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
+                      acc.name,
+                      " (",
+                      acc.currency,
+                      ")"
+                    ] }, `recv-${acc.id}`))
+                  ]
+                }
+              )
+            ] }),
+            createForm.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430 \u0441\u0447\u0435\u0442\u0430:" }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                  "input",
+                  {
+                    type: "text",
+                    name: "accountCurrency",
+                    value: createForm.accountCurrency || "RUB",
+                    onChange: handleCreateChange,
+                    placeholder: "RUB, USD, UZS...",
+                    className: "form-input"
+                  }
+                )
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E):" }),
+                /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                  "input",
+                  {
+                    type: "number",
+                    step: "0.0001",
+                    name: "exchangeRate",
+                    value: (_b2 = createForm.exchangeRate) != null ? _b2 : "",
+                    onChange: handleCreateChange,
+                    placeholder: "1.0",
+                    className: "form-input"
+                  }
+                )
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  list: "categories-list",
+                  type: "text",
+                  name: "category",
+                  value: createForm.category || "",
+                  onChange: handleCreateChange,
+                  placeholder: "\u041F\u0440\u043E\u0434\u0443\u043A\u0442\u044B, \u041A\u0430\u0444\u0435, \u0417\u0430\u0440\u043F\u043B\u0430\u0442\u0430...",
+                  className: "form-input"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435 / \u0417\u0430\u043C\u0435\u0442\u043A\u0430:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  type: "text",
+                  name: "description",
+                  value: createForm.description || "",
+                  onChange: handleCreateChange,
+                  required: createForm.type !== "balance_correct",
+                  placeholder: createForm.type === "balance_correct" ? "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430" : "\u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435",
+                  className: "form-input"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "chips-group", style: { marginBottom: "8px" }, children: uniqueMembers.map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  type: "button",
+                  className: `chip-item ${createForm.member === m ? "active" : ""}`,
+                  onClick: () => setCreateForm((prev) => __spreadProps(__spreadValues({}, prev), { member: m })),
+                  children: m
+                },
+                m
+              )) }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "input",
+                {
+                  type: "text",
+                  name: "member",
+                  value: createForm.member || "",
+                  onChange: handleCreateChange,
+                  placeholder: "\u041E\u0431\u0449\u0435\u0435, \u0412\u043B\u0430\u0434...",
+                  className: "form-input"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => store.closeTransactionModal(),
+                  className: "btn btn-secondary",
+                  children: "\u041E\u0442\u043C\u0435\u043D\u0430"
+                }
+              ),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0437\u0434\u0430\u0442\u044C \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044E" })
+            ] })
+          ] })
         ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
       ] })
-    ] })
-  ] }) });
+    }
+  );
 });
 
 // transactions_view.tsx
@@ -31367,7 +32000,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-18 21:19:34 +0300" : "dev"
+          true ? "2026-09-18 22:48:51 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -31518,4 +32151,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-GSZKLU6M.js.map
+//# sourceMappingURL=app-LFRHN7JU.js.map
