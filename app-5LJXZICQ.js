@@ -30229,56 +30229,305 @@ var AccountsView = observer(() => {
 var import_react8 = __toESM(require_react());
 var import_globals9 = __toESM(require_globals());
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-var DatabaseExplorer = observer(() => {
-  const [dbData, setDbData] = (0, import_react8.useState)({});
-  const [loading, setLoading] = (0, import_react8.useState)(true);
-  (0, import_react8.useEffect)(() => {
-    const loadData = async () => {
-      const dbRes = await withResult(getDB)();
-      if (dbRes.error !== null) {
-        console.error("Failed to load database:", dbRes.error);
-        setLoading(false);
-        return;
-      }
-      const db = dbRes.data;
-      const storeNames = db.objectStoreNames;
-      const allData = {};
-      for (let i = 0; i < storeNames.length; i++) {
-        const storeName = storeNames[i];
-        const res = await withResult(db.getAll, db)(storeName);
-        if (!res.error) {
-          allData[storeName] = res.data;
+function formatKeyPath(keyPath) {
+  if (keyPath === null) return "out-of-line";
+  if (Array.isArray(keyPath)) return `[${keyPath.join(", ")}]`;
+  return String(keyPath);
+}
+function sortColumns(columns) {
+  const priority = ["_key", "uuid", "id", "name", "date", "amount", "currency", "accountCurrency", "exchangeRate", "type", "category", "member", "comment"];
+  return [...columns].sort((a, b) => {
+    const indexA = priority.indexOf(a);
+    const indexB = priority.indexOf(b);
+    if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+    if (indexA !== -1) return -1;
+    if (indexB !== -1) return 1;
+    return a.localeCompare(b);
+  });
+}
+function renderCellValue(val) {
+  if (val === null) return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "var(--text-secondary)", fontStyle: "italic" }, children: "null" });
+  if (val === void 0) return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "var(--text-secondary)", fontStyle: "italic" }, children: "undefined" });
+  if (typeof val === "boolean") return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("code", { children: String(val) });
+  if (typeof val === "number") return String(val);
+  if (typeof val === "object") {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("pre", { style: { margin: 0, fontSize: "12px", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "180px", overflowY: "auto" }, children: JSON.stringify(val, null, 2) });
+  }
+  const strVal = String(val);
+  if (strVal.startsWith("{") && strVal.endsWith("}") || strVal.startsWith("[") && strVal.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(strVal);
+      return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("pre", { style: { margin: 0, fontSize: "12px", whiteSpace: "pre-wrap", wordBreak: "break-word", maxHeight: "180px", overflowY: "auto" }, children: JSON.stringify(parsed, null, 2) });
+    } catch (e) {
+    }
+  }
+  return strVal;
+}
+async function loadAllDatabases() {
+  var _a3;
+  const dbTargets = [];
+  const seen = /* @__PURE__ */ new Set();
+  if (typeof indexedDB !== "undefined" && typeof indexedDB.databases === "function") {
+    const listRes = await withResult(indexedDB.databases, indexedDB)();
+    if (listRes.error === null && Array.isArray(listRes.data)) {
+      for (const info of listRes.data) {
+        if (info.name && !seen.has(info.name)) {
+          seen.add(info.name);
+          dbTargets.push({ name: info.name, version: info.version });
         }
       }
-      setDbData(allData);
-      setLoading(false);
-    };
-    loadData();
+    }
+  }
+  const defaultDbs = ["money-management-app", "keyval-store"];
+  if (dbTargets.length === 0) {
+    for (const name of defaultDbs) {
+      if (!seen.has(name)) {
+        seen.add(name);
+        dbTargets.push({ name });
+      }
+    }
+  }
+  const results = [];
+  for (const target of dbTargets) {
+    const dbRes = await withResult(openDB)(target.name);
+    if (dbRes.error !== null) {
+      console.error(`Failed to open database "${target.name}":`, dbRes.error);
+      results.push({
+        name: target.name,
+        version: (_a3 = target.version) != null ? _a3 : 0,
+        tables: [],
+        error: String(dbRes.error.message || dbRes.error)
+      });
+      continue;
+    }
+    const db = dbRes.data;
+    const storeNames = Array.from(db.objectStoreNames);
+    const tables = [];
+    for (const storeName of storeNames) {
+      const tx = db.transaction(storeName, "readonly");
+      const store2 = tx.objectStore(storeName);
+      const keyPath = store2.keyPath;
+      const autoIncrement = store2.autoIncrement;
+      const [keysRes, valuesRes] = await Promise.all([
+        withResult(store2.getAllKeys, store2)(),
+        withResult(store2.getAll, store2)()
+      ]);
+      await tx.done;
+      if (keysRes.error !== null || valuesRes.error !== null) {
+        console.error(`Failed to read store "${storeName}" in DB "${target.name}":`, keysRes.error || valuesRes.error);
+        continue;
+      }
+      const keys = keysRes.data;
+      const values = valuesRes.data;
+      const rows = [];
+      const columnSet = /* @__PURE__ */ new Set();
+      const hasOutOfLineKey = keyPath === null || Array.isArray(keyPath) && keyPath.length === 0;
+      if (hasOutOfLineKey) {
+        columnSet.add("_key");
+      } else if (typeof keyPath === "string") {
+        columnSet.add(keyPath);
+      } else if (Array.isArray(keyPath)) {
+        for (const kp of keyPath) columnSet.add(kp);
+      }
+      for (let i = 0; i < values.length; i++) {
+        const rawVal = values[i];
+        const key = keys[i];
+        let rowObj;
+        if (typeof rawVal === "object" && rawVal !== null && !Array.isArray(rawVal)) {
+          rowObj = __spreadValues({}, rawVal);
+          if (hasOutOfLineKey && key !== void 0) {
+            rowObj = __spreadValues({ _key: key }, rowObj);
+          }
+        } else {
+          rowObj = {
+            _key: key,
+            value: rawVal
+          };
+        }
+        for (const k of Object.keys(rowObj)) {
+          columnSet.add(k);
+        }
+        rows.push(rowObj);
+      }
+      tables.push({
+        storeName,
+        keyPath,
+        autoIncrement,
+        columns: sortColumns(Array.from(columnSet)),
+        rows
+      });
+    }
+    db.close();
+    results.push({
+      name: target.name,
+      version: db.version,
+      tables
+    });
+  }
+  return results;
+}
+var TableCard = ({ table }) => {
+  const [filter, setFilter] = (0, import_react8.useState)("");
+  const [isCollapsed, setIsCollapsed] = (0, import_react8.useState)(false);
+  const filteredRows = table.rows.filter((row) => {
+    if (!filter.trim()) return true;
+    const q = filter.toLowerCase();
+    return Object.values(row).some((val) => {
+      if (val === null || val === void 0) return false;
+      if (typeof val === "object") {
+        return JSON.stringify(val).toLowerCase().includes(q);
+      }
+      return String(val).toLowerCase().includes(q);
+    });
+  });
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "settings-card", style: { marginBottom: "20px" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px", borderBottom: "1px solid var(--border-color)", paddingBottom: "12px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { margin: 0, fontSize: "16px" }, children: [
+          "Table: ",
+          table.storeName
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: {
+          fontSize: "12px",
+          padding: "2px 8px",
+          borderRadius: "var(--radius-full)",
+          background: "rgba(255, 255, 255, 0.08)",
+          color: "var(--text-secondary)"
+        }, children: [
+          filteredRows.length,
+          filteredRows.length !== table.rows.length ? ` of ${table.rows.length}` : "",
+          " rows"
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: {
+          fontSize: "11px",
+          padding: "2px 8px",
+          borderRadius: "var(--radius-sm)",
+          background: "rgba(59, 130, 246, 0.15)",
+          color: "#93c5fd",
+          fontFamily: "monospace"
+        }, children: [
+          "keyPath: ",
+          formatKeyPath(table.keyPath),
+          table.autoIncrement ? " (autoIncrement)" : ""
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "input",
+          {
+            type: "text",
+            className: "form-input",
+            placeholder: "Filter rows...",
+            value: filter,
+            onChange: (e) => setFilter(e.target.value),
+            style: { padding: "6px 12px", fontSize: "13px", width: "160px" }
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "btn btn-secondary",
+            onClick: () => setIsCollapsed(!isCollapsed),
+            style: { padding: "6px 10px", fontSize: "12px", minWidth: "auto" },
+            title: isCollapsed ? "Expand table" : "Collapse table",
+            children: isCollapsed ? "Expand" : "Collapse"
+          }
+        )
+      ] })
+    ] }),
+    !isCollapsed && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { overflowX: "auto", maxHeight: "480px", overflowY: "auto", marginTop: "12px" }, children: filteredRows.length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "13px", textAlign: "left" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: table.columns.map((col) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "th",
+        {
+          style: {
+            position: "sticky",
+            top: 0,
+            background: "var(--bg-surface)",
+            borderBottom: "2px solid var(--border-color)",
+            padding: "10px 8px",
+            color: "var(--text-secondary)",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+            zIndex: 1
+          },
+          children: col
+        },
+        col
+      )) }) }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: filteredRows.map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { borderBottom: "1px solid var(--border-color)" }, children: table.columns.map((col) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { padding: "10px 8px", verticalAlign: "top" }, children: renderCellValue(row[col]) }, col)) }, idx)) })
+    ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)", marginTop: "16px", fontSize: "14px" }, children: table.rows.length === 0 ? "No rows found in this table." : "No rows match filter." }) })
+  ] });
+};
+var DatabaseExplorer = observer(() => {
+  const [databases, setDatabases] = (0, import_react8.useState)([]);
+  const [loading, setLoading] = (0, import_react8.useState)(true);
+  const refreshData = (0, import_react8.useCallback)(async () => {
+    setLoading(true);
+    const data = await loadAllDatabases();
+    setDatabases(data);
+    setLoading(false);
   }, []);
+  (0, import_react8.useEffect)(() => {
+    refreshData();
+  }, [refreshData]);
   if (loading) {
     return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "loading-container", children: [
       /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "spinner" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "var(--text-secondary)" }, children: "Loading DB Data..." })
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "var(--text-secondary)", marginTop: "16px" }, children: "Loading DB Data..." })
     ] });
   }
+  const totalTables = databases.reduce((acc, db) => acc + db.tables.length, 0);
   return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "24px" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginBottom: "24px", fontSize: "20px" }, children: "Database Explorer" }),
-    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "settings-card", style: { overflowX: "auto" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { borderBottom: "1px solid var(--border-color)", paddingBottom: "12px" }, children: [
-        "Table: ",
-        storeName,
-        " (",
-        dbData[storeName].length,
-        " rows)"
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "12px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { margin: 0, fontSize: "20px" }, children: "Database Explorer" }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { style: { margin: "4px 0 0 0", fontSize: "13px", color: "var(--text-secondary)" }, children: [
+          "Discovered ",
+          databases.length,
+          " database",
+          databases.length === 1 ? "" : "s",
+          " with ",
+          totalTables,
+          " table",
+          totalTables === 1 ? "" : "s"
+        ] })
       ] }),
-      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px", marginTop: "16px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { borderBottom: "2px solid var(--border-color)", padding: "12px 8px", textAlign: "left", color: "var(--text-secondary)" }, children: key }, key)) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { borderBottom: "1px solid var(--border-color)" }, children: Object.keys(dbData[storeName][0]).map((key) => {
-          const val = row[key];
-          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { padding: "12px 8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
-        }) }, idx)) })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)" }, children: "No rows found." })
-    ] }, storeName))
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(
+        "button",
+        {
+          type: "button",
+          className: "btn btn-secondary",
+          onClick: refreshData,
+          style: { padding: "8px 16px", fontSize: "14px" },
+          children: "\u21BB Refresh"
+        }
+      )
+    ] }),
+    databases.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "settings-card", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)", margin: 0 }, children: "No IndexedDB databases found on this origin." }) }) : databases.map((db) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { marginBottom: "32px" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { margin: 0, fontSize: "18px", color: "var(--text-primary)" }, children: [
+          "Database: ",
+          /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("span", { style: { color: "var(--accent-color)" }, children: db.name })
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("span", { style: {
+          fontSize: "12px",
+          padding: "2px 8px",
+          borderRadius: "var(--radius-sm)",
+          background: "rgba(255, 255, 255, 0.08)",
+          color: "var(--text-secondary)"
+        }, children: [
+          "version ",
+          db.version
+        ] })
+      ] }),
+      db.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "settings-card", style: { borderLeft: "4px solid var(--danger-color)", marginBottom: "16px" }, children: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("p", { style: { color: "var(--danger-color)", margin: 0 }, children: [
+        "Error accessing database: ",
+        db.error
+      ] }) }),
+      db.tables.length === 0 && !db.error && /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "settings-card", children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)", margin: 0 }, children: "No tables (object stores) found in this database." }) }),
+      db.tables.map((table) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)(TableCard, { table }, table.storeName))
+    ] }, db.name))
   ] });
 });
 
@@ -31115,7 +31364,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-18 19:58:21 +0300" : "dev"
+          true ? "2026-09-18 20:04:05 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -31266,4 +31515,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-O45PXILQ.js.map
+//# sourceMappingURL=app-5LJXZICQ.js.map
