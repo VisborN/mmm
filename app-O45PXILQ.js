@@ -66,7 +66,7 @@ var __asyncGenerator = (__this, __arguments, generator) => {
     } catch (e) {
       no(e);
     }
-  }, method = (k, call, wait, clear2) => it[k] = (x) => (call = new Promise((yes, no, run3) => (run3 = () => resume(k, x, yes, no), q ? q.then(run3) : run3())), clear2 = () => q === wait && (q = 0), q = wait = call.then(clear2, clear2), call), q, it = {};
+  }, method = (k, call, wait, clear3) => it[k] = (x) => (call = new Promise((yes, no, run3) => (run3 = () => resume(k, x, yes, no), q ? q.then(run3) : run3())), clear3 = () => q === wait && (q = 0), q = wait = call.then(clear3, clear3), call), q, it = {};
   return generator = generator.apply(__this, __arguments), it[__knownSymbol("asyncIterator")] = () => it, method("next"), method("throw"), method("return"), it;
 };
 
@@ -25891,7 +25891,7 @@ var ObservableMap = /* @__PURE__ */ (function() {
     });
     return this;
   };
-  _proto.clear = function clear2() {
+  _proto.clear = function clear3() {
     var _this6 = this;
     transaction(function() {
       untracked(function() {
@@ -26041,7 +26041,7 @@ var ObservableSet = /* @__PURE__ */ (function() {
     }
     return value;
   };
-  _proto.clear = function clear2() {
+  _proto.clear = function clear3() {
     var _this2 = this;
     transaction(function() {
       untracked(function() {
@@ -27821,6 +27821,43 @@ var indexedDBRepository = {
     });
     if (result.error) return result;
     return ok(void 0);
+  },
+  async clearTransactions() {
+    const result = await withDB(async (db) => {
+      await db.clear("transactions");
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
+  async clearAccounts() {
+    const result = await withDB(async (db) => {
+      await db.clear("accounts");
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
+  async resetAccountBalances() {
+    const result = await withDB(async (db) => {
+      const tx = db.transaction("accounts", "readwrite");
+      const accounts = await tx.store.getAll();
+      for (const acc of accounts) {
+        acc.balance = "0";
+        await tx.store.put(acc);
+      }
+      await tx.done;
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
+  async clearAllData() {
+    const result = await withDB(async (db) => {
+      const tx = db.transaction(["transactions", "accounts"], "readwrite");
+      await tx.objectStore("transactions").clear();
+      await tx.objectStore("accounts").clear();
+      await tx.done;
+    });
+    if (result.error) return result;
+    return ok(void 0);
   }
 };
 
@@ -28099,6 +28136,12 @@ function get3(key, customStore = defaultGetStore()) {
 function set4(key, value, customStore = defaultGetStore()) {
   return customStore("readwrite", (store2) => {
     store2.put(value, key);
+    return promisifyRequest2(store2.transaction);
+  });
+}
+function clear2(customStore = defaultGetStore()) {
+  return customStore("readwrite", (store2) => {
+    store2.clear();
     return promisifyRequest2(store2.transaction);
   });
 }
@@ -28389,826 +28432,11 @@ var GoogleSyncService = class {
 };
 var googleSyncService = new GoogleSyncService();
 
-// domain/store.ts
-var AppStore = class {
-  constructor() {
-    __publicField(this, "transactions", []);
-    __publicField(this, "accounts", []);
-    __publicField(this, "currentView", "transactions");
-    __publicField(this, "isTransactionModalOpen", false);
-    __publicField(this, "currentTransaction", null);
-    __publicField(this, "isAccountModalOpen", false);
-    __publicField(this, "currentAccount", null);
-    __publicField(this, "isFolderModalOpen", false);
-    __publicField(this, "isLoading", true);
-    __publicField(this, "syncProgress", "");
-    __publicField(this, "error", null);
-    __publicField(this, "isRecalculating", false);
-    __publicField(this, "syncFolderId", null);
-    __publicField(this, "syncFolderName", null);
-    __publicField(this, "googleAccountEmail", null);
-    makeAutoObservable(this);
-    if (typeof window !== "undefined") {
-      this.initRouting();
-    }
-  }
-  initRouting() {
-    window.addEventListener("hashchange", () => this.handleHashChange());
-    if (!window.location.hash) {
-      window.location.hash = "transactions";
-    } else {
-      this.handleHashChange();
-    }
-  }
-  handleHashChange() {
-    const hash = window.location.hash.replace("#", "");
-    runInAction(() => {
-      if (hash === "modal-tx") {
-        this.isTransactionModalOpen = true;
-      } else if (hash === "modal-account") {
-        this.isAccountModalOpen = true;
-      } else if (hash === "modal-folder") {
-        this.isFolderModalOpen = true;
-      } else {
-        this.isTransactionModalOpen = false;
-        this.isAccountModalOpen = false;
-        this.isFolderModalOpen = false;
-        if (["transactions", "accounts", "settings", "db_explorer"].includes(hash)) {
-          this.currentView = hash;
-        } else {
-          this.currentView = "transactions";
-        }
-      }
-    });
-  }
-  async loadGoogleAccountEmail() {
-    const emailRes = await googleSyncService.getUserEmail();
-    if (!emailRes.error && emailRes.data) {
-      runInAction(() => {
-        this.googleAccountEmail = emailRes.data;
-      });
-    } else {
-      runInAction(() => {
-        this.googleAccountEmail = null;
-      });
-    }
-  }
-  async setSyncFolder(id, name) {
-    this.syncFolderId = id;
-    this.syncFolderName = name;
-    await set4("syncFolderId", id);
-    await set4("syncFolderName", name);
-  }
-  async exportToGoogleDrive() {
-    runInAction(() => {
-      this.isLoading = true;
-      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
-    });
-    const authRes = await googleDriveService.ensureAuthenticated();
-    if (authRes.error) {
-      runInAction(() => {
-        this.error = authRes.error;
-        this.isLoading = false;
-        this.syncProgress = "";
-      });
-      return;
-    }
-    runInAction(() => {
-      this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
-    });
-    try {
-      const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0, (progress) => {
-        runInAction(() => {
-          this.syncProgress = progress;
-        });
-      });
-      this.loadGoogleAccountEmail();
-      runInAction(() => {
-        if (result.error) {
-          this.error = result.error;
-          alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430: ${result.error.message}`);
-        } else {
-          this.error = null;
-          alert("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D!");
-        }
-      });
-    } catch (e) {
-      runInAction(() => {
-        this.error = e instanceof Error ? e : new Error(String(e));
-        alert(`\u041D\u0435\u043F\u0440\u0435\u0434\u0432\u0438\u0434\u0435\u043D\u043D\u0430\u044F \u043E\u0448\u0438\u0431\u043A\u0430: ${this.error.message}`);
-      });
-    } finally {
-      runInAction(() => {
-        this.isLoading = false;
-        this.syncProgress = "";
-      });
-    }
-  }
-  async importFromGoogleDrive() {
-    runInAction(() => {
-      this.isLoading = true;
-      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
-    });
-    const authRes = await googleDriveService.ensureAuthenticated();
-    if (authRes.error) {
-      runInAction(() => {
-        this.error = authRes.error;
-        this.isLoading = false;
-        this.syncProgress = "";
-      });
-      return;
-    }
-    runInAction(() => {
-      this.syncProgress = "\u041F\u043E\u0438\u0441\u043A \u0444\u0430\u0439\u043B\u043E\u0432...";
-    });
-    try {
-      const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0, (progress) => {
-        runInAction(() => {
-          this.syncProgress = progress;
-        });
-      });
-      if (result.error) {
-        runInAction(() => {
-          this.error = result.error;
-        });
-        return;
-      }
-      runInAction(() => {
-        this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
-      });
-      const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
-      if (replaceRes.error) {
-        runInAction(() => {
-          this.error = replaceRes.error;
-        });
-        return;
-      }
-      await this.loadData();
-      this.loadGoogleAccountEmail();
-      runInAction(() => {
-        this.error = null;
-      });
-      this.recalculateBalances();
-    } catch (e) {
-      runInAction(() => {
-        this.error = e instanceof Error ? e : new Error(String(e));
-      });
-    } finally {
-      runInAction(() => {
-        this.isLoading = false;
-        this.syncProgress = "";
-      });
-    }
-  }
-  recalculateBalances() {
-    if (this.isRecalculating) return;
-    this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-EURUZURC.js" : "/domain/recalculate_worker.js";
-    const worker = new Worker(workerUrl);
-    worker.onmessage = (e) => {
-      if (e.data.status === "done") {
-        this.loadData().then(() => {
-          runInAction(() => {
-            this.isRecalculating = false;
-          });
-        });
-      } else if (e.data.status === "error") {
-        console.error("Error recalculating balances:", e.data.error);
-        runInAction(() => {
-          this.error = new Error(e.data.error);
-          this.isRecalculating = false;
-        });
-      }
-      worker.terminate();
-    };
-    worker.onerror = (e) => {
-      console.error("Worker error:", e);
-      runInAction(() => {
-        this.error = new Error("Worker error during recalculation");
-        this.isRecalculating = false;
-      });
-      worker.terminate();
-    };
-    worker.postMessage("recalculate");
-  }
-  async loadData() {
-    this.isLoading = true;
-    this.error = null;
-    const folderId = await get3("syncFolderId");
-    const folderName = await get3("syncFolderName");
-    runInAction(() => {
-      if (folderId !== void 0) this.syncFolderId = folderId;
-      if (folderName !== void 0) this.syncFolderName = folderName;
-    });
-    const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
-    if (accountsErr) {
-      runInAction(() => {
-        this.error = accountsErr;
-        this.isLoading = false;
-      });
-      return;
-    }
-    const { data: txData, error: txErr } = await indexedDBRepository.getTransactions();
-    if (txErr) {
-      runInAction(() => {
-        this.error = txErr;
-        this.isLoading = false;
-      });
-      return;
-    }
-    runInAction(() => {
-      this.accounts = accountsData;
-      this.transactions = txData;
-      this.isLoading = false;
-    });
-    this.loadGoogleAccountEmail();
-  }
-  openTransactionModal(transaction2) {
-    this.currentTransaction = transaction2 || null;
-    this.isTransactionModalOpen = true;
-    if (window.location.hash !== "#modal-tx") {
-      window.location.hash = "modal-tx";
-    }
-  }
-  closeTransactionModal() {
-    this.isTransactionModalOpen = false;
-    this.currentTransaction = null;
-    if (window.location.hash === "#modal-tx") {
-      window.history.back();
-    }
-  }
-  async saveTransaction(transaction2) {
-    if (!transaction2.uuid) {
-      transaction2.uuid = uuidv7();
-    }
-    const { error } = await indexedDBRepository.saveTransaction(transaction2);
-    if (error) {
-      runInAction(() => {
-        this.error = error;
-      });
-      return;
-    }
-    await this.loadData();
-    this.closeTransactionModal();
-    this.recalculateBalances();
-  }
-  openAccountModal(account) {
-    this.currentAccount = account || null;
-    this.isAccountModalOpen = true;
-    if (window.location.hash !== "#modal-account") {
-      window.location.hash = "modal-account";
-    }
-  }
-  closeAccountModal() {
-    this.isAccountModalOpen = false;
-    this.currentAccount = null;
-    if (window.location.hash === "#modal-account") {
-      window.history.back();
-    }
-  }
-  async saveAccount(account) {
-    const isNew = !account.id || account.id === 0 || !this.accounts.some((a) => a.id === account.id);
-    if (isNew) {
-      const initTx = {
-        uuid: uuidv7(),
-        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-        amountRubles: parseFloat(account.balance || "0") || 0,
-        amountAccountCurrency: account.balance || "0",
-        accountName: account.name,
-        accountCurrency: account.currency || "RUB",
-        category: "\u0431\u0430\u043B\u0430\u043D\u0441",
-        description: "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441",
-        type: "balance_correct",
-        member: null,
-        exchangeRate: 1,
-        transferReceiveAccountName: null,
-        transferReceiveAmountAccountCurrency: null
-      };
-      const { error: txErr } = await indexedDBRepository.saveTransaction(initTx);
-      if (txErr) {
-        runInAction(() => {
-          this.error = txErr;
-        });
-        return;
-      }
-    } else {
-      const { error } = await indexedDBRepository.saveAccount(account);
-      if (error) {
-        runInAction(() => {
-          this.error = error;
-        });
-        return;
-      }
-    }
-    await this.loadData();
-    this.closeAccountModal();
-    this.recalculateBalances();
-  }
-  async openFolderModal() {
-    runInAction(() => {
-      this.isLoading = true;
-    });
-    const authRes = await googleDriveService.ensureAuthenticated();
-    runInAction(() => {
-      this.isLoading = false;
-    });
-    if (authRes.error) {
-      runInAction(() => {
-        this.error = authRes.error;
-      });
-      alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438: ${authRes.error.message}`);
-      return;
-    }
-    window.location.hash = "modal-folder";
-  }
-  closeFolderModal() {
-    if (window.location.hash === "#modal-folder") {
-      window.history.back();
-    } else {
-      this.isFolderModalOpen = false;
-    }
-  }
-  setView(view) {
-    window.location.hash = view;
-  }
-};
-var store = new AppStore();
-
-// accounts_view.tsx
-var import_react7 = __toESM(require_react());
-var import_jsx_runtime = __toESM(require_jsx_runtime());
-var formatAmount = (amountStr) => {
-  const num = parseFloat(amountStr);
-  if (isNaN(num)) return amountStr;
-  return num.toLocaleString("ru-RU", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-};
-var AccountModal = observer(() => {
-  const [formData, setFormData] = (0, import_react7.useState)(store.currentAccount || {
-    id: 0,
-    name: "",
-    currency: "RUB",
-    balance: "0"
-  });
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await store.saveAccount(formData);
-  };
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => __spreadProps(__spreadValues({}, prev), { [name]: value }));
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
-    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0411\u0430\u043B\u0430\u043D\u0441:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
-      ] })
-    ] })
-  ] }) });
-});
-var AccountsView = observer(() => {
-  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
-    store.accounts.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u0441\u0447\u0435\u0442\u043E\u0432." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
-      "div",
-      {
-        onClick: () => store.openAccountModal(acc),
-        className: "list-item",
-        children: [
-          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-left", children: [
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-icon-placeholder", style: { background: "rgba(59, 130, 246, 0.1)", color: "var(--accent-color)", border: "none" }, children: acc.name.charAt(0).toUpperCase() }),
-            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-details", children: [
-              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "item-title", children: acc.name }),
-              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-subtitle", children: [
-                "\u0421\u0447\u0435\u0442 ID: ",
-                acc.id
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-amount", children: [
-            formatAmount(acc.balance),
-            " ",
-            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "13px", color: "var(--text-secondary)" }, children: acc.currency })
-          ] }) })
-        ]
-      },
-      acc.id
-    )) }),
-    store.isAccountModalOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, {})
-  ] });
-});
-
-// db_explorer_view.tsx
-var import_react8 = __toESM(require_react());
-var import_globals6 = __toESM(require_globals());
-var import_jsx_runtime2 = __toESM(require_jsx_runtime());
-var DatabaseExplorer = observer(() => {
-  const [dbData, setDbData] = (0, import_react8.useState)({});
-  const [loading, setLoading] = (0, import_react8.useState)(true);
-  (0, import_react8.useEffect)(() => {
-    const loadData = async () => {
-      const dbRes = await withResult(getDB)();
-      if (dbRes.error !== null) {
-        console.error("Failed to load database:", dbRes.error);
-        setLoading(false);
-        return;
-      }
-      const db = dbRes.data;
-      const storeNames = db.objectStoreNames;
-      const allData = {};
-      for (let i = 0; i < storeNames.length; i++) {
-        const storeName = storeNames[i];
-        const res = await withResult(db.getAll, db)(storeName);
-        if (!res.error) {
-          allData[storeName] = res.data;
-        }
-      }
-      setDbData(allData);
-      setLoading(false);
-    };
-    loadData();
-  }, []);
-  if (loading) {
-    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "loading-container", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "spinner" }),
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "var(--text-secondary)" }, children: "Loading DB Data..." })
-    ] });
-  }
-  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "24px" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginBottom: "24px", fontSize: "20px" }, children: "Database Explorer" }),
-    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "settings-card", style: { overflowX: "auto" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { borderBottom: "1px solid var(--border-color)", paddingBottom: "12px" }, children: [
-        "Table: ",
-        storeName,
-        " (",
-        dbData[storeName].length,
-        " rows)"
-      ] }),
-      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px", marginTop: "16px" }, children: [
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { borderBottom: "2px solid var(--border-color)", padding: "12px 8px", textAlign: "left", color: "var(--text-secondary)" }, children: key }, key)) }) }),
-        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { borderBottom: "1px solid var(--border-color)" }, children: Object.keys(dbData[storeName][0]).map((key) => {
-          const val = row[key];
-          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { padding: "12px 8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
-        }) }, idx)) })
-      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)" }, children: "No rows found." })
-    ] }, storeName))
-  ] });
-});
-
-// folder_selection_modal.tsx
-var import_react9 = __toESM(require_react());
-var import_jsx_runtime3 = __toESM(require_jsx_runtime());
-var FolderSelectionModal = ({ onClose }) => {
-  const [folders, setFolders] = (0, import_react9.useState)([]);
-  const [path, setPath] = (0, import_react9.useState)([{ id: "root", name: "\u041C\u043E\u0439 \u0434\u0438\u0441\u043A" }]);
-  const [isLoading, setIsLoading] = (0, import_react9.useState)(true);
-  const [error, setError] = (0, import_react9.useState)(null);
-  const currentFolderId = path[path.length - 1].id;
-  (0, import_react9.useEffect)(() => {
-    let isMounted = true;
-    const loadFolders = async () => {
-      setIsLoading(true);
-      setError(null);
-      const result = await googleDriveService.listFolders(currentFolderId === "root" ? void 0 : currentFolderId);
-      if (isMounted) {
-        if (result.error) {
-          setError(result.error.message);
-        } else {
-          setFolders(result.data);
-        }
-        setIsLoading(false);
-      }
-    };
-    loadFolders();
-    return () => {
-      isMounted = false;
-    };
-  }, [currentFolderId]);
-  const navigateTo = (folder) => {
-    setPath([...path, folder]);
-  };
-  const navigateUp = (index) => {
-    setPath(path.slice(0, index + 1));
-  };
-  const selectCurrentFolder = async () => {
-    const selected = path[path.length - 1];
-    const idToSave = selected.id === "root" ? null : selected.id;
-    const nameToSave = selected.id === "root" ? null : selected.name;
-    await store.setSyncFolder(idToSave, nameToSave);
-    onClose();
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-content", style: { display: "flex", flexDirection: "column", height: "80vh" }, children: [
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginBottom: "16px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-        "span",
-        {
-          onClick: () => navigateUp(index),
-          style: {
-            cursor: index === path.length - 1 ? "default" : "pointer",
-            color: index === path.length - 1 ? "var(--text-primary)" : "var(--accent-color)",
-            fontWeight: index === path.length - 1 ? "600" : "normal",
-            transition: "color 0.2s"
-          },
-          children: folder.name
-        }
-      ),
-      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--text-secondary)" }, children: "/" })
-    ] }, folder.id)) }),
-    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "error-banner", children: [
-      "\u041E\u0448\u0438\u0431\u043A\u0430: ",
-      error
-    ] }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
-      flex: 1,
-      overflowY: "auto",
-      border: "1px solid var(--border-color)",
-      borderRadius: "var(--radius-sm)",
-      background: "rgba(0,0,0,0.2)"
-    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "spinner", style: { margin: "0 auto 16px", width: "24px", height: "24px", borderWidth: "2px" } }),
-      "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."
-    ] }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
-      "button",
-      {
-        onClick: () => navigateTo(folder),
-        className: "list-item",
-        style: { width: "100%", background: "transparent", borderBottom: "1px solid var(--border-color)", borderRadius: 0 },
-        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "item-left", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
-          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "item-title", children: folder.name })
-        ] })
-      }
-    ) }, folder.id)) }) }),
-    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-actions", children: [
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, className: "btn btn-primary", children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
-    ] })
-  ] }) });
-};
-
-// transaction_modal.tsx
-var import_react10 = __toESM(require_react());
-var import_jsx_runtime4 = __toESM(require_jsx_runtime());
-var TransactionModal = observer(() => {
-  var _a3;
-  const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
-    uuid: uuidv7(),
-    date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
-    amountRubles: 0,
-    amountAccountCurrency: "0",
-    accountName: "",
-    accountCurrency: "RUB",
-    category: "",
-    description: "",
-    type: "withdraw",
-    member: "\u041E\u0431\u0449\u0435\u0435",
-    exchangeRate: 1,
-    transferReceiveAccountName: null,
-    transferReceiveAmountAccountCurrency: null
-  });
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const txToSave = __spreadValues({}, formData);
-    if (!txToSave.uuid) {
-      txToSave.uuid = uuidv7();
-    }
-    if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === "0") {
-      txToSave.amountAccountCurrency = String(txToSave.amountRubles);
-    }
-    if (txToSave.type === "transfer" && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === "0")) {
-      txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
-    }
-    if (txToSave.type === "balance_correct") {
-      if (!txToSave.category) txToSave.category = "\u0431\u0430\u043B\u0430\u043D\u0441";
-      if (!txToSave.description) txToSave.description = "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430";
-    } else {
-      if (!txToSave.category) txToSave.category = txToSave.description || "";
-    }
-    await store.saveTransaction(txToSave);
-  };
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => __spreadProps(__spreadValues({}, prev), {
-      [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : name === "exchangeRate" ? value === "" ? null : parseFloat(value) : value
-    }));
-  };
-  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", children: [
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
-    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, children: [
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0414\u0430\u0442\u0430:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0443\u043C\u043C\u0430 (\u20BD):" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, className: "form-input" })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0422\u0438\u043F:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, className: "form-select", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430" })
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            list: "accounts-list",
-            name: "accountName",
-            value: formData.accountName || "",
-            onChange: handleChange,
-            required: true,
-            placeholder: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u043B\u0438 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0441\u0447\u0435\u0442",
-            className: "form-input"
-          }
-        ),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "accounts-list", children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: acc.name, children: acc.currency }, acc.id)) })
-      ] }),
-      formData.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430 \u0441\u0447\u0435\u0442\u0430:" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            "input",
-            {
-              type: "text",
-              name: "accountCurrency",
-              value: formData.accountCurrency || "RUB",
-              onChange: handleChange,
-              placeholder: "RUB, USD, UZS...",
-              className: "form-input"
-            }
-          )
-        ] }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E):" }),
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-            "input",
-            {
-              type: "number",
-              step: "0.0001",
-              name: "exchangeRate",
-              value: (_a3 = formData.exchangeRate) != null ? _a3 : "",
-              onChange: handleChange,
-              placeholder: "1.0",
-              className: "form-input"
-            }
-          )
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", gap: "8px", marginBottom: "6px" }, children: ["\u041E\u0431\u0449\u0435\u0435", "\u0412\u043B\u0430\u0434"].map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "button",
-          {
-            type: "button",
-            className: "btn btn-secondary",
-            style: {
-              padding: "4px 12px",
-              fontSize: "13px",
-              background: formData.member === m ? "var(--accent-color)" : void 0,
-              color: formData.member === m ? "#ffffff" : void 0,
-              borderColor: formData.member === m ? "var(--accent-color)" : void 0
-            },
-            onClick: () => setFormData((prev) => __spreadProps(__spreadValues({}, prev), { member: m })),
-            children: m
-          },
-          m
-        )) }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            type: "text",
-            name: "member",
-            value: formData.member || "",
-            onChange: handleChange,
-            placeholder: "\u041E\u0431\u0449\u0435\u0435, \u0412\u043B\u0430\u0434...",
-            className: "form-input"
-          }
-        )
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
-          "input",
-          {
-            type: "text",
-            name: "description",
-            value: formData.description || "",
-            onChange: handleChange,
-            required: formData.type !== "balance_correct",
-            placeholder: formData.type === "balance_correct" ? "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u0438\u043B\u0438 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" : "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435",
-            className: "form-input"
-          }
-        )
-      ] }),
-      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, className: "form-select", children: [
-          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
-          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
-            acc.name,
-            " (",
-            acc.currency,
-            ")"
-          ] }, `recv-${acc.id}`))
-        ] })
-      ] }),
-      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
-        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
-      ] })
-    ] })
-  ] }) });
-});
-
-// transactions_view.tsx
-var import_jsx_runtime5 = __toESM(require_jsx_runtime());
-var formatDate = (dateStr) => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric"
-  });
-};
-var formatAmount2 = (amount) => {
-  return amount.toLocaleString("ru-RU", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }) + " \u20BD";
-};
-var TransactionsView = observer(() => {
-  const groupedTransactions = store.transactions.reduce((acc, tx) => {
-    if (!acc[tx.date]) acc[tx.date] = [];
-    acc[tx.date].push(tx);
-    return acc;
-  }, {});
-  const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
-  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { children: [
-    store.transactions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." }) : sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "date-header", children: formatDate(dateStr) }),
-      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { children: groupedTransactions[dateStr].map((tx) => {
-        const isPositive = tx.type === "deposit";
-        const amountClass = isPositive ? "amount-positive" : "amount-negative";
-        const initial = (tx.description || tx.category || "?").charAt(0).toUpperCase();
-        return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
-          "div",
-          {
-            onClick: () => store.openTransactionModal(tx),
-            className: "list-item",
-            children: [
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-left", children: [
-                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-icon-placeholder", children: initial }),
-                /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-details", children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-title", children: tx.description || tx.category }),
-                  /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "item-subtitle", children: [
-                    tx.accountName,
-                    tx.member ? ` \u2022 ${tx.member}` : ""
-                  ] })
-                ] })
-              ] }),
-              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: `item-amount ${amountClass}`, children: [
-                isPositive ? "+" : "",
-                formatAmount2(tx.amountRubles)
-              ] }) })
-            ]
-          },
-          tx.uuid
-        );
-      }) })
-    ] }, dateStr)),
-    store.isTransactionModalOpen && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(TransactionModal, {})
-  ] });
-});
-
-// settings_view.tsx
-var import_react11 = __toESM(require_react());
-
 // infrastructure/tbank.ts
-var import_globals9 = __toESM(require_globals());
+var import_globals8 = __toESM(require_globals());
 
 // infrastructure/proxy.ts
-var import_globals7 = __toESM(require_globals());
+var import_globals6 = __toESM(require_globals());
 var DEFAULT_PROXY_ENDPOINT = "https://d5dli0ro6bbf30tqr35v.lievo6ut.apigw.yandexcloud.net/proxy";
 var configuredProxyEndpoint = DEFAULT_PROXY_ENDPOINT;
 function getProxyEndpoint() {
@@ -29426,7 +28654,7 @@ async function proxyFetch(input, init) {
 }
 
 // infrastructure/json_store.ts
-var import_globals8 = __toESM(require_globals());
+var import_globals7 = __toESM(require_globals());
 var JsonStore = class {
   /**
    * Saves a value to IndexedDB.
@@ -30487,6 +29715,16 @@ var AuthStore = class {
     });
   }
   /**
+   * Clears dynamic cached data (balances, accounts) without signing out
+   */
+  clearDynamicData() {
+    runInAction(() => {
+      this.totalBalance = null;
+      this.balanceError = null;
+      this.accounts = [];
+    });
+  }
+  /**
    * Stub for legacy operations
    */
   async loadOperations() {
@@ -30495,7 +29733,888 @@ var AuthStore = class {
 };
 var authStore = new AuthStore();
 
+// domain/store.ts
+var AppStore = class {
+  constructor() {
+    __publicField(this, "transactions", []);
+    __publicField(this, "accounts", []);
+    __publicField(this, "currentView", "transactions");
+    __publicField(this, "isTransactionModalOpen", false);
+    __publicField(this, "currentTransaction", null);
+    __publicField(this, "isAccountModalOpen", false);
+    __publicField(this, "currentAccount", null);
+    __publicField(this, "isFolderModalOpen", false);
+    __publicField(this, "isLoading", true);
+    __publicField(this, "syncProgress", "");
+    __publicField(this, "error", null);
+    __publicField(this, "isRecalculating", false);
+    __publicField(this, "syncFolderId", null);
+    __publicField(this, "syncFolderName", null);
+    __publicField(this, "googleAccountEmail", null);
+    makeAutoObservable(this);
+    if (typeof window !== "undefined") {
+      this.initRouting();
+    }
+  }
+  initRouting() {
+    window.addEventListener("hashchange", () => this.handleHashChange());
+    if (!window.location.hash) {
+      window.location.hash = "transactions";
+    } else {
+      this.handleHashChange();
+    }
+  }
+  handleHashChange() {
+    const hash = window.location.hash.replace("#", "");
+    runInAction(() => {
+      if (hash === "modal-tx") {
+        this.isTransactionModalOpen = true;
+      } else if (hash === "modal-account") {
+        this.isAccountModalOpen = true;
+      } else if (hash === "modal-folder") {
+        this.isFolderModalOpen = true;
+      } else {
+        this.isTransactionModalOpen = false;
+        this.isAccountModalOpen = false;
+        this.isFolderModalOpen = false;
+        if (["transactions", "accounts", "settings", "db_explorer"].includes(hash)) {
+          this.currentView = hash;
+        } else {
+          this.currentView = "transactions";
+        }
+      }
+    });
+  }
+  async loadGoogleAccountEmail() {
+    const emailRes = await googleSyncService.getUserEmail();
+    if (!emailRes.error && emailRes.data) {
+      runInAction(() => {
+        this.googleAccountEmail = emailRes.data;
+      });
+    } else {
+      runInAction(() => {
+        this.googleAccountEmail = null;
+      });
+    }
+  }
+  async setSyncFolder(id, name) {
+    this.syncFolderId = id;
+    this.syncFolderName = name;
+    await set4("syncFolderId", id);
+    await set4("syncFolderName", name);
+  }
+  async exportToGoogleDrive() {
+    runInAction(() => {
+      this.isLoading = true;
+      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    });
+    const authRes = await googleDriveService.ensureAuthenticated();
+    if (authRes.error) {
+      runInAction(() => {
+        this.error = authRes.error;
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+      return;
+    }
+    runInAction(() => {
+      this.syncProgress = "\u041F\u043E\u0434\u0433\u043E\u0442\u043E\u0432\u043A\u0430 \u043A \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0443...";
+    });
+    try {
+      const result = await googleSyncService.exportToGoogleDrive(this.transactions, this.syncFolderId || void 0, (progress) => {
+        runInAction(() => {
+          this.syncProgress = progress;
+        });
+      });
+      this.loadGoogleAccountEmail();
+      runInAction(() => {
+        if (result.error) {
+          this.error = result.error;
+          alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u044D\u043A\u0441\u043F\u043E\u0440\u0442\u0430: ${result.error.message}`);
+        } else {
+          this.error = null;
+          alert("\u042D\u043A\u0441\u043F\u043E\u0440\u0442 \u0443\u0441\u043F\u0435\u0448\u043D\u043E \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D!");
+        }
+      });
+    } catch (e) {
+      runInAction(() => {
+        this.error = e instanceof Error ? e : new Error(String(e));
+        alert(`\u041D\u0435\u043F\u0440\u0435\u0434\u0432\u0438\u0434\u0435\u043D\u043D\u0430\u044F \u043E\u0448\u0438\u0431\u043A\u0430: ${this.error.message}`);
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+    }
+  }
+  async importFromGoogleDrive() {
+    runInAction(() => {
+      this.isLoading = true;
+      this.syncProgress = "\u0410\u0443\u0442\u0435\u043D\u0442\u0438\u0444\u0438\u043A\u0430\u0446\u0438\u044F...";
+    });
+    const authRes = await googleDriveService.ensureAuthenticated();
+    if (authRes.error) {
+      runInAction(() => {
+        this.error = authRes.error;
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+      return;
+    }
+    runInAction(() => {
+      this.syncProgress = "\u041F\u043E\u0438\u0441\u043A \u0444\u0430\u0439\u043B\u043E\u0432...";
+    });
+    try {
+      const result = await googleSyncService.importFromGoogleDrive(this.syncFolderId || void 0, (progress) => {
+        runInAction(() => {
+          this.syncProgress = progress;
+        });
+      });
+      if (result.error) {
+        runInAction(() => {
+          this.error = result.error;
+        });
+        return;
+      }
+      runInAction(() => {
+        this.syncProgress = "\u0421\u043E\u0445\u0440\u0430\u043D\u0435\u043D\u0438\u0435 \u0432 \u0431\u0430\u0437\u0443 \u0434\u0430\u043D\u043D\u044B\u0445...";
+      });
+      const replaceRes = await indexedDBRepository.replaceAllTransactions(result.data);
+      if (replaceRes.error) {
+        runInAction(() => {
+          this.error = replaceRes.error;
+        });
+        return;
+      }
+      await this.loadData();
+      this.loadGoogleAccountEmail();
+      runInAction(() => {
+        this.error = null;
+      });
+      this.recalculateBalances();
+    } catch (e) {
+      runInAction(() => {
+        this.error = e instanceof Error ? e : new Error(String(e));
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoading = false;
+        this.syncProgress = "";
+      });
+    }
+  }
+  recalculateBalances() {
+    if (this.isRecalculating) return;
+    this.isRecalculating = true;
+    const workerUrl = true ? "/domain/recalculate_worker-EURUZURC.js" : "/domain/recalculate_worker.js";
+    const worker = new Worker(workerUrl);
+    worker.onmessage = (e) => {
+      if (e.data.status === "done") {
+        this.loadData().then(() => {
+          runInAction(() => {
+            this.isRecalculating = false;
+          });
+        });
+      } else if (e.data.status === "error") {
+        console.error("Error recalculating balances:", e.data.error);
+        runInAction(() => {
+          this.error = new Error(e.data.error);
+          this.isRecalculating = false;
+        });
+      }
+      worker.terminate();
+    };
+    worker.onerror = (e) => {
+      console.error("Worker error:", e);
+      runInAction(() => {
+        this.error = new Error("Worker error during recalculation");
+        this.isRecalculating = false;
+      });
+      worker.terminate();
+    };
+    worker.postMessage("recalculate");
+  }
+  async loadData() {
+    this.isLoading = true;
+    this.error = null;
+    const folderId = await get3("syncFolderId");
+    const folderName = await get3("syncFolderName");
+    runInAction(() => {
+      if (folderId !== void 0) this.syncFolderId = folderId;
+      if (folderName !== void 0) this.syncFolderName = folderName;
+    });
+    const { data: accountsData, error: accountsErr } = await indexedDBRepository.getAccounts();
+    if (accountsErr) {
+      runInAction(() => {
+        this.error = accountsErr;
+        this.isLoading = false;
+      });
+      return;
+    }
+    const { data: txData, error: txErr } = await indexedDBRepository.getTransactions();
+    if (txErr) {
+      runInAction(() => {
+        this.error = txErr;
+        this.isLoading = false;
+      });
+      return;
+    }
+    runInAction(() => {
+      this.accounts = accountsData;
+      this.transactions = txData;
+      this.isLoading = false;
+    });
+    this.loadGoogleAccountEmail();
+  }
+  openTransactionModal(transaction2) {
+    this.currentTransaction = transaction2 || null;
+    this.isTransactionModalOpen = true;
+    if (window.location.hash !== "#modal-tx") {
+      window.location.hash = "modal-tx";
+    }
+  }
+  closeTransactionModal() {
+    this.isTransactionModalOpen = false;
+    this.currentTransaction = null;
+    if (window.location.hash === "#modal-tx") {
+      window.history.back();
+    }
+  }
+  async saveTransaction(transaction2) {
+    if (!transaction2.uuid) {
+      transaction2.uuid = uuidv7();
+    }
+    const { error } = await indexedDBRepository.saveTransaction(transaction2);
+    if (error) {
+      runInAction(() => {
+        this.error = error;
+      });
+      return;
+    }
+    await this.loadData();
+    this.closeTransactionModal();
+    this.recalculateBalances();
+  }
+  openAccountModal(account) {
+    this.currentAccount = account || null;
+    this.isAccountModalOpen = true;
+    if (window.location.hash !== "#modal-account") {
+      window.location.hash = "modal-account";
+    }
+  }
+  closeAccountModal() {
+    this.isAccountModalOpen = false;
+    this.currentAccount = null;
+    if (window.location.hash === "#modal-account") {
+      window.history.back();
+    }
+  }
+  async saveAccount(account) {
+    const isNew = !account.id || account.id === 0 || !this.accounts.some((a) => a.id === account.id);
+    if (isNew) {
+      const initTx = {
+        uuid: uuidv7(),
+        date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+        amountRubles: parseFloat(account.balance || "0") || 0,
+        amountAccountCurrency: account.balance || "0",
+        accountName: account.name,
+        accountCurrency: account.currency || "RUB",
+        category: "\u0431\u0430\u043B\u0430\u043D\u0441",
+        description: "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441",
+        type: "balance_correct",
+        member: null,
+        exchangeRate: 1,
+        transferReceiveAccountName: null,
+        transferReceiveAmountAccountCurrency: null
+      };
+      const { error: txErr } = await indexedDBRepository.saveTransaction(initTx);
+      if (txErr) {
+        runInAction(() => {
+          this.error = txErr;
+        });
+        return;
+      }
+    } else {
+      const { error } = await indexedDBRepository.saveAccount(account);
+      if (error) {
+        runInAction(() => {
+          this.error = error;
+        });
+        return;
+      }
+    }
+    await this.loadData();
+    this.closeAccountModal();
+    this.recalculateBalances();
+  }
+  async openFolderModal() {
+    runInAction(() => {
+      this.isLoading = true;
+    });
+    const authRes = await googleDriveService.ensureAuthenticated();
+    runInAction(() => {
+      this.isLoading = false;
+    });
+    if (authRes.error) {
+      runInAction(() => {
+        this.error = authRes.error;
+      });
+      alert(`\u041E\u0448\u0438\u0431\u043A\u0430 \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u0438: ${authRes.error.message}`);
+      return;
+    }
+    window.location.hash = "modal-folder";
+  }
+  closeFolderModal() {
+    if (window.location.hash === "#modal-folder") {
+      window.history.back();
+    } else {
+      this.isFolderModalOpen = false;
+    }
+  }
+  setView(view) {
+    window.location.hash = view;
+  }
+  async clearTransactions() {
+    this.isLoading = true;
+    const res = await indexedDBRepository.clearTransactions();
+    if (res.error) {
+      runInAction(() => {
+        this.error = res.error;
+        this.isLoading = false;
+      });
+      return;
+    }
+    await this.loadData();
+    this.recalculateBalances();
+  }
+  async clearAccounts() {
+    this.isLoading = true;
+    const res = await indexedDBRepository.clearAccounts();
+    if (res.error) {
+      runInAction(() => {
+        this.error = res.error;
+        this.isLoading = false;
+      });
+      return;
+    }
+    await this.loadData();
+  }
+  async clearDynamicData() {
+    this.isLoading = true;
+    const res = await indexedDBRepository.resetAccountBalances();
+    if (res.error) {
+      runInAction(() => {
+        this.error = res.error;
+        this.isLoading = false;
+      });
+      return;
+    }
+    authStore.clearDynamicData();
+    await this.loadData();
+  }
+  async clearAllLocalData() {
+    this.isLoading = true;
+    try {
+      await indexedDBRepository.clearAllData();
+      await clear2();
+      googleDriveService.clearAuth();
+      await authStore.signOut();
+      if (typeof window !== "undefined") {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+      }
+      runInAction(() => {
+        this.transactions = [];
+        this.accounts = [];
+        this.syncFolderId = null;
+        this.syncFolderName = null;
+        this.googleAccountEmail = null;
+        this.error = null;
+        this.syncProgress = "";
+      });
+    } catch (err3) {
+      runInAction(() => {
+        this.error = err3 instanceof Error ? err3 : new Error(String(err3));
+      });
+    } finally {
+      runInAction(() => {
+        this.isLoading = false;
+      });
+    }
+  }
+};
+var store = new AppStore();
+
+// accounts_view.tsx
+var import_react7 = __toESM(require_react());
+var import_jsx_runtime = __toESM(require_jsx_runtime());
+var formatAmount = (amountStr) => {
+  const num = parseFloat(amountStr);
+  if (isNaN(num)) return amountStr;
+  return num.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+var AccountModal = observer(() => {
+  const [formData, setFormData] = (0, import_react7.useState)(store.currentAccount || {
+    id: 0,
+    name: "",
+    currency: "RUB",
+    balance: "0"
+  });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await store.saveAccount(formData);
+  };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => __spreadProps(__spreadValues({}, prev), { [name]: value }));
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-content", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime.jsx)("h3", { children: store.currentAccount ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C \u0441\u0447\u0435\u0442" : "\u041D\u043E\u0432\u044B\u0439 \u0441\u0447\u0435\u0442" }),
+    /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", { onSubmit: handleSubmit, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "name", value: formData.name || "", onChange: handleChange, required: true, className: "form-input" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "currency", value: formData.currency || "", onChange: handleChange, required: true, className: "form-input" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", { className: "form-label", children: "\u0411\u0430\u043B\u0430\u043D\u0441:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", { type: "text", name: "balance", value: formData.balance || "", onChange: handleChange, required: true, className: "form-input" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "modal-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "button", onClick: () => store.closeAccountModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      ] })
+    ] })
+  ] }) });
+});
+var AccountsView = observer(() => {
+  return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { children: [
+    store.accounts.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u0441\u0447\u0435\u0442\u043E\u0432." }) : /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime.jsxs)(
+      "div",
+      {
+        onClick: () => store.openAccountModal(acc),
+        className: "list-item",
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-left", children: [
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-icon-placeholder", style: { background: "rgba(59, 130, 246, 0.1)", color: "var(--accent-color)", border: "none" }, children: acc.name.charAt(0).toUpperCase() }),
+            /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", { className: "item-details", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { className: "item-title", children: acc.name }),
+              /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-subtitle", children: [
+                "\u0421\u0447\u0435\u0442 ID: ",
+                acc.id
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("span", { className: "item-amount", children: [
+            formatAmount(acc.balance),
+            " ",
+            /* @__PURE__ */ (0, import_jsx_runtime.jsx)("span", { style: { fontSize: "13px", color: "var(--text-secondary)" }, children: acc.currency })
+          ] }) })
+        ]
+      },
+      acc.id
+    )) }),
+    store.isAccountModalOpen && /* @__PURE__ */ (0, import_jsx_runtime.jsx)(AccountModal, {})
+  ] });
+});
+
+// db_explorer_view.tsx
+var import_react8 = __toESM(require_react());
+var import_globals9 = __toESM(require_globals());
+var import_jsx_runtime2 = __toESM(require_jsx_runtime());
+var DatabaseExplorer = observer(() => {
+  const [dbData, setDbData] = (0, import_react8.useState)({});
+  const [loading, setLoading] = (0, import_react8.useState)(true);
+  (0, import_react8.useEffect)(() => {
+    const loadData = async () => {
+      const dbRes = await withResult(getDB)();
+      if (dbRes.error !== null) {
+        console.error("Failed to load database:", dbRes.error);
+        setLoading(false);
+        return;
+      }
+      const db = dbRes.data;
+      const storeNames = db.objectStoreNames;
+      const allData = {};
+      for (let i = 0; i < storeNames.length; i++) {
+        const storeName = storeNames[i];
+        const res = await withResult(db.getAll, db)(storeName);
+        if (!res.error) {
+          allData[storeName] = res.data;
+        }
+      }
+      setDbData(allData);
+      setLoading(false);
+    };
+    loadData();
+  }, []);
+  if (loading) {
+    return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "loading-container", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "spinner" }),
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { style: { color: "var(--text-secondary)" }, children: "Loading DB Data..." })
+    ] });
+  }
+  return /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { style: { padding: "24px" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("h2", { style: { marginBottom: "24px", fontSize: "20px" }, children: "Database Explorer" }),
+    Object.keys(dbData).map((storeName) => /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "settings-card", style: { overflowX: "auto" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("h3", { style: { borderBottom: "1px solid var(--border-color)", paddingBottom: "12px" }, children: [
+        "Table: ",
+        storeName,
+        " (",
+        dbData[storeName].length,
+        " rows)"
+      ] }),
+      dbData[storeName].length > 0 ? /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: "14px", marginTop: "16px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("thead", { children: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { children: Object.keys(dbData[storeName][0]).map((key) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("th", { style: { borderBottom: "2px solid var(--border-color)", padding: "12px 8px", textAlign: "left", color: "var(--text-secondary)" }, children: key }, key)) }) }),
+        /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tbody", { children: dbData[storeName].map((row, idx) => /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("tr", { style: { borderBottom: "1px solid var(--border-color)" }, children: Object.keys(dbData[storeName][0]).map((key) => {
+          const val = row[key];
+          return /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("td", { style: { padding: "12px 8px" }, children: typeof val === "object" && val !== null ? JSON.stringify(val) : String(val) }, key);
+        }) }, idx)) })
+      ] }) : /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("p", { style: { color: "var(--text-secondary)" }, children: "No rows found." })
+    ] }, storeName))
+  ] });
+});
+
+// folder_selection_modal.tsx
+var import_react9 = __toESM(require_react());
+var import_jsx_runtime3 = __toESM(require_jsx_runtime());
+var FolderSelectionModal = ({ onClose }) => {
+  const [folders, setFolders] = (0, import_react9.useState)([]);
+  const [path, setPath] = (0, import_react9.useState)([{ id: "root", name: "\u041C\u043E\u0439 \u0434\u0438\u0441\u043A" }]);
+  const [isLoading, setIsLoading] = (0, import_react9.useState)(true);
+  const [error, setError] = (0, import_react9.useState)(null);
+  const currentFolderId = path[path.length - 1].id;
+  (0, import_react9.useEffect)(() => {
+    let isMounted = true;
+    const loadFolders = async () => {
+      setIsLoading(true);
+      setError(null);
+      const result = await googleDriveService.listFolders(currentFolderId === "root" ? void 0 : currentFolderId);
+      if (isMounted) {
+        if (result.error) {
+          setError(result.error.message);
+        } else {
+          setFolders(result.data);
+        }
+        setIsLoading(false);
+      }
+    };
+    loadFolders();
+    return () => {
+      isMounted = false;
+    };
+  }, [currentFolderId]);
+  const navigateTo = (folder) => {
+    setPath([...path, folder]);
+  };
+  const navigateUp = (index) => {
+    setPath(path.slice(0, index + 1));
+  };
+  const selectCurrentFolder = async () => {
+    const selected = path[path.length - 1];
+    const idToSave = selected.id === "root" ? null : selected.id;
+    const nameToSave = selected.id === "root" ? null : selected.name;
+    await store.setSyncFolder(idToSave, nameToSave);
+    onClose();
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-content", style: { display: "flex", flexDirection: "column", height: "80vh" }, children: [
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("h3", { style: { marginBottom: "16px" }, children: "\u0412\u044B\u0431\u043E\u0440 \u043F\u0430\u043F\u043A\u0438 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438" }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { marginBottom: "16px", display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "14px" }, children: path.map((folder, index) => /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)(import_react9.default.Fragment, { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+        "span",
+        {
+          onClick: () => navigateUp(index),
+          style: {
+            cursor: index === path.length - 1 ? "default" : "pointer",
+            color: index === path.length - 1 ? "var(--text-primary)" : "var(--accent-color)",
+            fontWeight: index === path.length - 1 ? "600" : "normal",
+            transition: "color 0.2s"
+          },
+          children: folder.name
+        }
+      ),
+      index < path.length - 1 && /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { color: "var(--text-secondary)" }, children: "/" })
+    ] }, folder.id)) }),
+    error && /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "error-banner", children: [
+      "\u041E\u0448\u0438\u0431\u043A\u0430: ",
+      error
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: {
+      flex: 1,
+      overflowY: "auto",
+      border: "1px solid var(--border-color)",
+      borderRadius: "var(--radius-sm)",
+      background: "rgba(0,0,0,0.2)"
+    }, children: isLoading ? /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { className: "spinner", style: { margin: "0 auto 16px", width: "24px", height: "24px", borderWidth: "2px" } }),
+      "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..."
+    ] }) : folders.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("div", { style: { padding: "32px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041F\u0430\u043F\u043A\u0430 \u043F\u0443\u0441\u0442\u0430" }) : /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("ul", { style: { listStyle: "none", padding: 0, margin: 0 }, children: folders.map((folder) => /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("li", { children: /* @__PURE__ */ (0, import_jsx_runtime3.jsx)(
+      "button",
+      {
+        onClick: () => navigateTo(folder),
+        className: "list-item",
+        style: { width: "100%", background: "transparent", borderBottom: "1px solid var(--border-color)", borderRadius: 0 },
+        children: /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "item-left", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { style: { fontSize: "20px" }, children: "\u{1F4C1}" }),
+          /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("span", { className: "item-title", children: folder.name })
+        ] })
+      }
+    ) }, folder.id)) }) }),
+    /* @__PURE__ */ (0, import_jsx_runtime3.jsxs)("div", { className: "modal-actions", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: onClose, className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+      /* @__PURE__ */ (0, import_jsx_runtime3.jsx)("button", { onClick: selectCurrentFolder, className: "btn btn-primary", children: "\u0412\u044B\u0431\u0440\u0430\u0442\u044C \u044D\u0442\u0443 \u043F\u0430\u043F\u043A\u0443" })
+    ] })
+  ] }) });
+};
+
+// transaction_modal.tsx
+var import_react10 = __toESM(require_react());
+var import_jsx_runtime4 = __toESM(require_jsx_runtime());
+var TransactionModal = observer(() => {
+  var _a3;
+  const [formData, setFormData] = (0, import_react10.useState)(store.currentTransaction || {
+    uuid: uuidv7(),
+    date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+    amountRubles: 0,
+    amountAccountCurrency: "0",
+    accountName: "",
+    accountCurrency: "RUB",
+    category: "",
+    description: "",
+    type: "withdraw",
+    member: "\u041E\u0431\u0449\u0435\u0435",
+    exchangeRate: 1,
+    transferReceiveAccountName: null,
+    transferReceiveAmountAccountCurrency: null
+  });
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const txToSave = __spreadValues({}, formData);
+    if (!txToSave.uuid) {
+      txToSave.uuid = uuidv7();
+    }
+    if (!txToSave.amountAccountCurrency || txToSave.amountAccountCurrency === "0") {
+      txToSave.amountAccountCurrency = String(txToSave.amountRubles);
+    }
+    if (txToSave.type === "transfer" && (!txToSave.transferReceiveAmountAccountCurrency || txToSave.transferReceiveAmountAccountCurrency === "0")) {
+      txToSave.transferReceiveAmountAccountCurrency = String(txToSave.amountRubles);
+    }
+    if (txToSave.type === "balance_correct") {
+      if (!txToSave.category) txToSave.category = "\u0431\u0430\u043B\u0430\u043D\u0441";
+      if (!txToSave.description) txToSave.description = "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430";
+    } else {
+      if (!txToSave.category) txToSave.category = txToSave.description || "";
+    }
+    await store.saveTransaction(txToSave);
+  };
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => __spreadProps(__spreadValues({}, prev), {
+      [name]: name === "amountRubles" ? value === "" ? 0 : parseFloat(value) : name === "exchangeRate" ? value === "" ? null : parseFloat(value) : value
+    }));
+  };
+  return /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { className: "modal-overlay", children: /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-content", children: [
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("h3", { children: store.currentTransaction ? "\u0420\u0435\u0434\u0430\u043A\u0442\u0438\u0440\u043E\u0432\u0430\u0442\u044C" : "\u041D\u043E\u0432\u0430\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u044F" }),
+    /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("form", { onSubmit: handleSubmit, children: [
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0414\u0430\u0442\u0430:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "date", name: "date", value: formData.date || "", onChange: handleChange, required: true, className: "form-input" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0443\u043C\u043C\u0430 (\u20BD):" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("input", { type: "number", step: "0.01", name: "amountRubles", value: formData.amountRubles || "", onChange: handleChange, required: true, className: "form-input" })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0422\u0438\u043F:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "type", value: formData.type || "withdraw", onChange: handleChange, className: "form-select", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "withdraw", children: "\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "deposit", children: "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "transfer", children: "\u041F\u0435\u0440\u0435\u0432\u043E\u0434" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "balance_correct", children: "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430" })
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            list: "accounts-list",
+            name: "accountName",
+            value: formData.accountName || "",
+            onChange: handleChange,
+            required: true,
+            placeholder: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0438\u043B\u0438 \u0432\u0432\u0435\u0434\u0438\u0442\u0435 \u0441\u0447\u0435\u0442",
+            className: "form-input"
+          }
+        ),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("datalist", { id: "accounts-list", children: store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: acc.name, children: acc.currency }, acc.id)) })
+      ] }),
+      formData.type === "balance_correct" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)(import_jsx_runtime4.Fragment, { children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0412\u0430\u043B\u044E\u0442\u0430 \u0441\u0447\u0435\u0442\u0430:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "input",
+            {
+              type: "text",
+              name: "accountCurrency",
+              value: formData.accountCurrency || "RUB",
+              onChange: handleChange,
+              placeholder: "RUB, USD, UZS...",
+              className: "form-input"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0443\u0440\u0441 \u043A \u0440\u0443\u0431\u043B\u044E (\u043E\u043F\u0446\u0438\u043E\u043D\u0430\u043B\u044C\u043D\u043E):" }),
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+            "input",
+            {
+              type: "number",
+              step: "0.0001",
+              name: "exchangeRate",
+              value: (_a3 = formData.exchangeRate) != null ? _a3 : "",
+              onChange: handleChange,
+              placeholder: "1.0",
+              className: "form-input"
+            }
+          )
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0427\u043B\u0435\u043D \u0441\u0435\u043C\u044C\u0438:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("div", { style: { display: "flex", gap: "8px", marginBottom: "6px" }, children: ["\u041E\u0431\u0449\u0435\u0435", "\u0412\u043B\u0430\u0434"].map((m) => /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "btn btn-secondary",
+            style: {
+              padding: "4px 12px",
+              fontSize: "13px",
+              background: formData.member === m ? "var(--accent-color)" : void 0,
+              color: formData.member === m ? "#ffffff" : void 0,
+              borderColor: formData.member === m ? "var(--accent-color)" : void 0
+            },
+            onClick: () => setFormData((prev) => __spreadProps(__spreadValues({}, prev), { member: m })),
+            children: m
+          },
+          m
+        )) }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            type: "text",
+            name: "member",
+            value: formData.member || "",
+            onChange: handleChange,
+            placeholder: "\u041E\u0431\u0449\u0435\u0435, \u0412\u043B\u0430\u0434...",
+            className: "form-input"
+          }
+        )
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u041E\u043F\u0438\u0441\u0430\u043D\u0438\u0435:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)(
+          "input",
+          {
+            type: "text",
+            name: "description",
+            value: formData.description || "",
+            onChange: handleChange,
+            required: formData.type !== "balance_correct",
+            placeholder: formData.type === "balance_correct" ? "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 \u0438\u043B\u0438 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430" : "\u041A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u044F / \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435",
+            className: "form-input"
+          }
+        )
+      ] }),
+      formData.type === "transfer" && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "form-group", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("label", { className: "form-label", children: "\u0421\u0447\u0435\u0442 \u0437\u0430\u0447\u0438\u0441\u043B\u0435\u043D\u0438\u044F:" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("select", { name: "transferReceiveAccountName", value: formData.transferReceiveAccountName || "", onChange: handleChange, required: true, className: "form-select", children: [
+          /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("option", { value: "", disabled: true, children: "\u0412\u044B\u0431\u0435\u0440\u0438\u0442\u0435 \u0441\u0447\u0435\u0442" }),
+          store.accounts.map((acc) => /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("option", { value: acc.name, children: [
+            acc.name,
+            " (",
+            acc.currency,
+            ")"
+          ] }, `recv-${acc.id}`))
+        ] })
+      ] }),
+      /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "modal-actions", children: [
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "button", onClick: () => store.closeTransactionModal(), className: "btn btn-secondary", children: "\u041E\u0442\u043C\u0435\u043D\u0430" }),
+        /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("button", { type: "submit", className: "btn btn-primary", children: "\u0421\u043E\u0445\u0440\u0430\u043D\u0438\u0442\u044C" })
+      ] })
+    ] })
+  ] }) });
+});
+
+// transactions_view.tsx
+var import_jsx_runtime5 = __toESM(require_jsx_runtime());
+var formatDate = (dateStr) => {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+};
+var formatAmount2 = (amount) => {
+  return amount.toLocaleString("ru-RU", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }) + " \u20BD";
+};
+var TransactionsView = observer(() => {
+  const groupedTransactions = store.transactions.reduce((acc, tx) => {
+    if (!acc[tx.date]) acc[tx.date] = [];
+    acc[tx.date].push(tx);
+    return acc;
+  }, {});
+  const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
+  return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { children: [
+    store.transactions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." }) : sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "date-header", children: formatDate(dateStr) }),
+      /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { children: groupedTransactions[dateStr].map((tx) => {
+        const isPositive = tx.type === "deposit";
+        const amountClass = isPositive ? "amount-positive" : "amount-negative";
+        const initial = (tx.description || tx.category || "?").charAt(0).toUpperCase();
+        return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+          "div",
+          {
+            onClick: () => store.openTransactionModal(tx),
+            className: "list-item",
+            children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-left", children: [
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-icon-placeholder", children: initial }),
+                /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { className: "item-details", children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-title", children: tx.description || tx.category }),
+                  /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "item-subtitle", children: [
+                    tx.accountName,
+                    tx.member ? ` \u2022 ${tx.member}` : ""
+                  ] })
+                ] })
+              ] }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "item-right", children: /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: `item-amount ${amountClass}`, children: [
+                isPositive ? "+" : "",
+                formatAmount2(tx.amountRubles)
+              ] }) })
+            ]
+          },
+          tx.uuid
+        );
+      }) })
+    ] }, dateStr)),
+    store.isTransactionModalOpen && /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(TransactionModal, {})
+  ] });
+});
+
 // settings_view.tsx
+var import_react11 = __toESM(require_react());
 var import_jsx_runtime6 = __toESM(require_jsx_runtime());
 var SettingsView = observer(() => {
   const [proxyEndpoint, setProxyEndpointState] = (0, import_react11.useState)(getProxyEndpoint());
@@ -30726,6 +30845,101 @@ var SettingsView = observer(() => {
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0423\u043F\u0440\u0430\u0432\u043B\u0435\u043D\u0438\u0435 \u0434\u0430\u043D\u043D\u044B\u043C\u0438" }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "settings-text", style: { marginBottom: "16px" }, children: "\u041E\u0447\u0438\u0441\u0442\u043A\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0445 \u0442\u0430\u0431\u043B\u0438\u0446 \u0438 \u0441\u0431\u0440\u043E\u0441 \u0441\u043E\u0441\u0442\u043E\u044F\u043D\u0438\u044F \u043D\u0430 \u044D\u0442\u043E\u043C \u0443\u0441\u0442\u0440\u043E\u0439\u0441\u0442\u0432\u0435. \u0414\u0430\u043D\u043D\u044B\u0435 \u043D\u0430 Google \u0414\u0438\u0441\u043A\u0435 \u0437\u0430\u0442\u0440\u043E\u043D\u0443\u0442\u044B \u043D\u0435 \u0431\u0443\u0434\u0443\u0442." }),
+      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", flexDirection: "column", gap: "10px" }, children: [
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "var(--radius-sm)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600, fontSize: "14px" }, children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0442\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0438\u0438" }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)" }, children: [
+              "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 (",
+              store.transactions.length,
+              " \u0448\u0442.)"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "btn btn-secondary",
+              style: { color: "var(--danger-color)", borderColor: "rgba(239, 68, 68, 0.3)" },
+              onClick: () => {
+                if (window.confirm("\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0442\u0440\u0430\u043D\u0437\u0430\u043A\u0446\u0438\u0438?")) {
+                  store.clearTransactions();
+                }
+              },
+              children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "var(--radius-sm)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600, fontSize: "14px" }, children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0441\u0447\u0435\u0442\u0430" }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { fontSize: "12px", color: "var(--text-secondary)" }, children: [
+              "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0441\u0447\u0435\u0442\u0430 (",
+              store.accounts.length,
+              " \u0448\u0442.)"
+            ] })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "btn btn-secondary",
+              style: { color: "var(--danger-color)", borderColor: "rgba(239, 68, 68, 0.3)" },
+              onClick: () => {
+                if (window.confirm("\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0441\u0447\u0435\u0442\u0430?")) {
+                  store.clearAccounts();
+                }
+              },
+              children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "var(--radius-sm)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600, fontSize: "14px" }, children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0434\u0438\u043D\u0430\u043C\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0434\u0430\u043D\u043D\u044B\u0435" }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "12px", color: "var(--text-secondary)" }, children: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u0442\u043A\u0438 \u0441\u0447\u0435\u0442\u043E\u0432 \u0432 0 \u0438 \u043A\u044D\u0448 \u0431\u0430\u043B\u0430\u043D\u0441\u043E\u0432 \u0431\u0430\u043D\u043A\u043E\u0432" })
+          ] }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+            "button",
+            {
+              type: "button",
+              className: "btn btn-secondary",
+              style: { color: "var(--text-secondary)" },
+              onClick: () => {
+                if (window.confirm("\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C \u0434\u0438\u043D\u0430\u043C\u0438\u0447\u0435\u0441\u043A\u0438\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 (\u0440\u0430\u0441\u0441\u0447\u0438\u0442\u0430\u043D\u043D\u044B\u0435 \u043E\u0441\u0442\u0430\u0442\u043A\u0438 \u0438 \u043A\u044D\u0448 \u0431\u0430\u043B\u0430\u043D\u0441\u043E\u0432)?")) {
+                  store.clearDynamicData();
+                }
+              },
+              children: "\u0421\u0431\u0440\u043E\u0441\u0438\u0442\u044C"
+            }
+          )
+        ] }),
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { marginTop: "8px", paddingTop: "12px", borderTop: "1px solid var(--border-color)" }, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+          "button",
+          {
+            type: "button",
+            className: "btn",
+            style: {
+              width: "100%",
+              background: "rgba(239, 68, 68, 0.15)",
+              color: "var(--danger-color)",
+              border: "1px solid rgba(239, 68, 68, 0.4)",
+              fontWeight: 600,
+              padding: "10px"
+            },
+            onClick: () => {
+              if (window.confirm("\u0412\u041D\u0418\u041C\u0410\u041D\u0418\u0415: \u0412\u044B \u0443\u0432\u0435\u0440\u0435\u043D\u044B, \u0447\u0442\u043E \u0445\u043E\u0442\u0438\u0442\u0435 \u0443\u0434\u0430\u043B\u0438\u0442\u044C \u0412\u0421\u0415 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435, \u0432\u043A\u043B\u044E\u0447\u0430\u044F \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044E? \u042D\u0442\u043E \u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0435 \u043D\u0435\u043E\u0431\u0440\u0430\u0442\u0438\u043C\u043E.")) {
+                store.clearAllLocalData();
+              }
+            },
+            children: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u0434\u0430\u043D\u043D\u044B\u0435 (\u0432\u043A\u043B\u044E\u0447\u0430\u044F \u0430\u0432\u0442\u043E\u0440\u0438\u0437\u0430\u0446\u0438\u044E)"
+          }
+        ) })
+      ] })
+    ] }),
+    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("h3", { children: "\u0414\u043E\u043F\u043E\u043B\u043D\u0438\u0442\u0435\u043B\u044C\u043D\u043E" }),
       /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "action-row", children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
         "button",
@@ -30901,7 +31115,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-18 17:47:52 +0300" : "dev"
+          true ? "2026-09-18 19:58:21 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -31052,4 +31266,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-VRM33D54.js.map
+//# sourceMappingURL=app-O45PXILQ.js.map
