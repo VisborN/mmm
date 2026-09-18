@@ -27715,16 +27715,19 @@ replaceTraps((oldTraps) => __spreadProps(__spreadValues({}, oldTraps), {
 }));
 
 // infrastructure/db.ts
-var DB_VERSION = 4;
+var DB_VERSION = 5;
 var dbPromise = null;
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB("money-management-app", DB_VERSION, {
       upgrade(db, oldVersion) {
-        if (oldVersion < 4) {
-          if (db.objectStoreNames.contains("transactions")) {
-            db.deleteObjectStore("transactions");
+        if (oldVersion > 0 && oldVersion < DB_VERSION) {
+          const existingStores = Array.from(db.objectStoreNames);
+          for (const store2 of existingStores) {
+            db.deleteObjectStore(store2);
           }
+        }
+        if (!db.objectStoreNames.contains("transactions")) {
           const txStore = db.createObjectStore("transactions", { keyPath: "uuid" });
           txStore.createIndex("by-date", "date");
           txStore.createIndex("by-account", "accountName");
@@ -28328,7 +28331,7 @@ var GoogleSyncService = class {
         const groups = {};
         for (const t of transactions) {
           const month = t.date.substring(0, 7);
-          const key = `MMM - ${t.accountName} - ${month}.csv`;
+          const key = `MMM - ${month}.csv`;
           if (!groups[key]) groups[key] = [];
           groups[key].push(t);
         }
@@ -29907,7 +29910,7 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-EURUZURC.js" : "/domain/recalculate_worker.js";
+    const workerUrl = true ? "/domain/recalculate_worker-JDWYC74V.js" : "/domain/recalculate_worker.js";
     const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
@@ -31364,7 +31367,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-18 20:49:20 +0300" : "dev"
+          true ? "2026-09-18 20:54:33 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -31515,4 +31518,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-5FJEXDND.js.map
+//# sourceMappingURL=app-C7XCMJRZ.js.map

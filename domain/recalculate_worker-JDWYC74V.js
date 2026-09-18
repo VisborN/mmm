@@ -236,7 +236,7 @@
   }));
 
   // web_src/infrastructure/db.ts
-  var DB_VERSION = 4;
+  var DB_VERSION = 5;
 
   // node_modules/big.js/big.mjs
   var DP = 20;
@@ -826,4 +826,4 @@
     }
   };
 })();
-//# sourceMappingURL=recalculate_worker-EURUZURC.js.map
+//# sourceMappingURL=recalculate_worker-JDWYC74V.js.map
