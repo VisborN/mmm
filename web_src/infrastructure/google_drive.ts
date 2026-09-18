@@ -28,7 +28,7 @@ export class GoogleDriveService {
         }
     }
 
-    private clearAuth(): void {
+    clearAuth(): void {
         this.accessToken = null;
         localStorage.removeItem('gdrive_access_token');
         localStorage.removeItem('gdrive_token_expires_at');

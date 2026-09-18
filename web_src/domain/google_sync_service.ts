@@ -3,6 +3,7 @@ import { Transaction } from "./types";
 import { googleDriveService } from "../infrastructure/google_drive";
 import { acquireLock, releaseLock } from "../infrastructure/google_drive_lock";
 import Papa from "papaparse";
+import { uuidv7 } from "./uuidv7";
 
 async function withLocalLock<T>(fn: () => Promise<T>): Promise<T> {
     if (typeof navigator !== 'undefined' && navigator.locks) {
@@ -36,7 +37,7 @@ export class GoogleSyncService {
                 const groups: Record<string, Transaction[]> = {};
                 for (const t of transactions) {
                     const month = t.date.substring(0, 7); // YYYY-MM
-                    const key = `MMM - ${t.accountName} - ${month}.csv`;
+                    const key = `MMM - ${month}.csv`;
                     if (!groups[key]) groups[key] = [];
                     groups[key].push(t);
                 }
@@ -59,7 +60,13 @@ export class GoogleSyncService {
                         fileId = filesRes.data[0].id;
                     }
 
-                    const csvContent = "\uFEFF" + Papa.unparse(txs);
+                    // Do not write id field to disk
+                    const txsToExport = txs.map(t => {
+                        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                        const { id, ...rest } = t as unknown as { id?: number };
+                        return rest;
+                    });
+                    const csvContent = "\uFEFF" + Papa.unparse(txsToExport);
 
                     const uploadRes = await googleDriveService.uploadFile(name, csvContent, 'text/csv', folderId, fileId);
                     if (uploadRes.error) return err(uploadRes.error);
@@ -111,15 +118,17 @@ export class GoogleSyncService {
                     
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     const fileTransactions: Transaction[] = parsed.data.map((t: any) => ({
-                        id: typeof t.id === 'number' ? t.id : parseInt(t.id as unknown as string, 10) || 0,
-                        uuid: t.uuid || '',
+                        uuid: t.uuid || uuidv7(),
                         date: t.date || '',
                         amountRubles: typeof t.amountRubles === 'number' ? t.amountRubles : parseFloat(t.amountRubles as unknown as string) || 0,
                         amountAccountCurrency: String(t.amountAccountCurrency || '0'),
                         accountName: t.accountName || '',
+                        accountCurrency: t.accountCurrency || 'RUB',
                         category: t.category || '',
                         description: t.description || '',
                         type: t.type || 'withdraw',
+                        member: t.member || null,
+                        exchangeRate: t.exchangeRate !== null && t.exchangeRate !== undefined && t.exchangeRate !== '' ? parseFloat(t.exchangeRate) : null,
                         transferReceiveAccountName: t.transferReceiveAccountName || null,
                         transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== undefined ? String(t.transferReceiveAmountAccountCurrency) : null,
                     }));

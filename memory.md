@@ -19,4 +19,26 @@
 - **Anti-DDoS Proof & Fingerprint**: 64-field Android device fingerprint payload with byte-exact SHA-512 `ssoData` proof of possession calculated deterministically from `cid`, `client_id` (`tinkoff-mb-app`), and `tinkoffDeviceId`.
 - **Interactive Auth Flow**: Phone (`POST /auth/step?cid=...`) -> If `step: "totp"`, user enters 6-digit TOTP code (`step=totp&totpCode=...`), with optional fallback to SMS OTP via `step=totp&skipped=true` -> SMS OTP (`POST /auth/step?cid=...`) -> Auto-skip selfie (`camera_unavailable`) -> Password -> Authorization code exchange (`POST /auth/token`) -> Tokens (`access_token`, `refresh_token`).
 - **Account Balances**: Loaded via `GET /v1/accounts_light?withDigitalRub=false` with automatic token refresh (proactive when expiry < 60s, or reactive on 401 Unauthorized). Displayed in Settings view ([`web_src/settings_view.tsx`](file:///home/vdudko/documents/mmm/web_src/settings_view.tsx)).
+## Transaction & Account Architecture
+- **UUIDv7 Primary Key**: Transactions use UUIDv7 ([`web_src/domain/uuidv7.ts`](file:///home/vdudko/documents/mmm/web_src/domain/uuidv7.ts)) combining a 48-bit millisecond timestamp and a monotonic 12-bit sequence counter for chronological ordering. The legacy numeric `id` has been eliminated from the database schema and is excluded from Google Drive CSV exports.
+- **Account Synchronization via `balance_correct`**: Accounts are created and restored directly from transaction history. Creating an account generates a `type: 'balance_correct'` transaction with the initial balance and currency (`accountCurrency`). The background worker ([`web_src/domain/recalculate_worker.ts`](file:///home/vdudko/documents/mmm/web_src/domain/recalculate_worker.ts)) discovers all accounts mentioned in transactions, recalculates running balances, and populates the local `accounts` store in IndexedDB. This eliminates the need for a separate accounts synchronization protocol across devices.
+- **Family Member Attribution**: Transactions support an optional `member` field (`web_src/domain/types.ts`) to attribute expenses and incomes to family members (`Общее`, `Влад`, etc.).
+
+## Google Drive Migration & Budget Data Structure
+- **Budget Spreadsheet (`финансы/budget`)**: Google Spreadsheet ID `1oKqzf5LaNDe8Adp-Ekc0HxNLQdyrGdt_xBG_JUCmd8w`. Sheet `транзакции` contains ~1288 historical rows (rows 4–1291).
+- **Target Location (`финансы/mmm`)**: Google Drive folder `15bNaUQXD3eblqSAvcIeYMsq4JR3d7Bih`. CSV format `MMM - {YYYY-MM}.csv` (a single file per month containing all transactions across all accounts).
+- **Mapping Logic**:
+  - `Col A` (Date) -> `date` (`YYYY-MM-DD`).
+  - `Col B` (Amount in account currency) -> `amountAccountCurrency`.
+  - `Col C` (Account) -> `accountName` (`т`, `я`, `с`, etc.).
+  - `Col D` (Category):
+    - `баланс` -> `type: 'balance_correct'`, `amountAccountCurrency` is the absolute balance, `exchangeRate` from Col G/H.
+    - `перевод` -> `type: 'transfer'`, destination account in `Col G` (`transferReceiveAccountName`).
+    - Others: `B < 0` -> `type: 'withdraw'`, `B >= 0` -> `type: 'deposit'`.
+  - `Col G` (Description) -> `description`.
+  - `Col H` (Exchange Rate) -> `exchangeRate`.
+  - `Col J` (Amount in Rubles) -> `amountRubles`.
+  - `Col F` (Quantity) -> omitted.
+  - Generates chronological UUIDv7 for each record.
+  - Database schema version 5 wipes older IndexedDB stores on migration to guarantee a clean state.
 

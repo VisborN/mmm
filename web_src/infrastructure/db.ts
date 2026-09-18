@@ -2,13 +2,13 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import { Account, Transaction } from '../domain/types';
 
-export const DB_VERSION = 3;
+export const DB_VERSION = 5;
 
 export interface MoneyAppDB extends DBSchema {
     transactions: {
-        key: number;
+        key: string;
         value: Transaction;
-        indexes: { 'by-date': string, 'by-account': string, 'by-uuid': string };
+        indexes: { 'by-date': string, 'by-account': string };
     };
     accounts: {
         key: number;
@@ -21,20 +21,17 @@ let dbPromise: Promise<IDBPDatabase<MoneyAppDB>> | null = null;
 export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
     if (!dbPromise) {
         dbPromise = openDB<MoneyAppDB>('money-management-app', DB_VERSION, {
-            upgrade(db, oldVersion, newVersion, transaction) {
-                if (oldVersion < 1) {
-                    const txStore = db.createObjectStore('transactions', { keyPath: 'id', autoIncrement: true });
+            upgrade(db, oldVersion) {
+                if (oldVersion > 0 && oldVersion < DB_VERSION) {
+                    const existingStores = Array.from(db.objectStoreNames);
+                    for (const store of existingStores) {
+                        db.deleteObjectStore(store);
+                    }
+                }
+                if (!db.objectStoreNames.contains('transactions')) {
+                    const txStore = db.createObjectStore('transactions', { keyPath: 'uuid' });
                     txStore.createIndex('by-date', 'date');
                     txStore.createIndex('by-account', 'accountName');
-                }
-                if (oldVersion === 1) {
-                    const txStore = transaction.objectStore('transactions');
-                    txStore.deleteIndex('by-account');
-                    txStore.createIndex('by-account', 'accountName');
-                }
-                if (oldVersion < 3) {
-                    const txStore = transaction.objectStore('transactions');
-                    txStore.createIndex('by-uuid', 'uuid', { unique: true });
                 }
                 if (!db.objectStoreNames.contains('accounts')) {
                     db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });

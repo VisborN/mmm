@@ -52,7 +52,7 @@ export const TransactionsView = observer(() => {
 
                                 return (
                                     <div
-                                        key={tx.id}
+                                        key={tx.uuid}
                                         onClick={() => store.openTransactionModal(tx)}
                                         className="list-item"
                                     >
@@ -60,7 +60,7 @@ export const TransactionsView = observer(() => {
                                             <div className="item-icon-placeholder">{initial}</div>
                                             <div className="item-details">
                                                 <span className="item-title">{tx.description || tx.category}</span>
-                                                <span className="item-subtitle">{tx.accountName}</span>
+                                                <span className="item-subtitle">{tx.accountName}{tx.member ? ` • ${tx.member}` : ''}</span>
                                             </div>
                                         </div>
                                         <div className="item-right">

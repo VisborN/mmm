@@ -352,6 +352,17 @@ export class AuthStore {
   }
 
   /**
+   * Clears dynamic cached data (balances, accounts) without signing out
+   */
+  clearDynamicData() {
+    runInAction(() => {
+      this.totalBalance = null;
+      this.balanceError = null;
+      this.accounts = [];
+    });
+  }
+
+  /**
    * Stub for legacy operations
    */
   async loadOperations() {

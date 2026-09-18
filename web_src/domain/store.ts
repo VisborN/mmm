@@ -2,8 +2,10 @@ import { makeAutoObservable, runInAction } from "mobx";
 import { Account, Transaction } from "./types";
 import { indexedDBRepository } from "../infrastructure/repository";
 import { googleSyncService } from "./google_sync_service";
-import { get, set } from "idb-keyval";
+import { get, set, clear as clearKeyval } from "idb-keyval";
 import { googleDriveService } from "../infrastructure/google_drive";
+import { uuidv7 } from "./uuidv7";
+import { authStore } from "../auth_store";
 
 declare const __WORKER_URL__: string;
 
@@ -279,6 +281,9 @@ export class AppStore {
     }
 
     async saveTransaction(transaction: Transaction): Promise<void> {
+        if (!transaction.uuid) {
+            transaction.uuid = uuidv7();
+        }
         const { error } = await indexedDBRepository.saveTransaction(transaction);
         if (error) {
             runInAction(() => {
@@ -309,16 +314,44 @@ export class AppStore {
     }
 
     async saveAccount(account: Account): Promise<void> {
-        const { error } = await indexedDBRepository.saveAccount(account);
-        if (error) {
-            runInAction(() => {
-                this.error = error;
-            });
-            return;
+        const isNew = !account.id || account.id === 0 || !this.accounts.some(a => a.id === account.id);
+        if (isNew) {
+            // New accounts are established via an initial balance_correct transaction
+            const initTx: Transaction = {
+                uuid: uuidv7(),
+                date: new Date().toISOString().split('T')[0],
+                amountRubles: parseFloat(account.balance || '0') || 0,
+                amountAccountCurrency: account.balance || '0',
+                accountName: account.name,
+                accountCurrency: account.currency || 'RUB',
+                category: 'баланс',
+                description: 'Начальный баланс',
+                type: 'balance_correct',
+                member: null,
+                exchangeRate: 1,
+                transferReceiveAccountName: null,
+                transferReceiveAmountAccountCurrency: null
+            };
+            const { error: txErr } = await indexedDBRepository.saveTransaction(initTx);
+            if (txErr) {
+                runInAction(() => {
+                    this.error = txErr;
+                });
+                return;
+            }
+        } else {
+            const { error } = await indexedDBRepository.saveAccount(account);
+            if (error) {
+                runInAction(() => {
+                    this.error = error;
+                });
+                return;
+            }
         }
 
         await this.loadData();
         this.closeAccountModal();
+        this.recalculateBalances();
     }
 
     async openFolderModal(): Promise<void> {
@@ -345,6 +378,80 @@ export class AppStore {
 
     setView(view: 'transactions' | 'accounts' | 'settings' | 'db_explorer'): void {
         window.location.hash = view;
+    }
+
+    async clearTransactions(): Promise<void> {
+        this.isLoading = true;
+        const res = await indexedDBRepository.clearTransactions();
+        if (res.error) {
+            runInAction(() => {
+                this.error = res.error;
+                this.isLoading = false;
+            });
+            return;
+        }
+        await this.loadData();
+        this.recalculateBalances();
+    }
+
+    async clearAccounts(): Promise<void> {
+        this.isLoading = true;
+        const res = await indexedDBRepository.clearAccounts();
+        if (res.error) {
+            runInAction(() => {
+                this.error = res.error;
+                this.isLoading = false;
+            });
+            return;
+        }
+        await this.loadData();
+    }
+
+    async clearDynamicData(): Promise<void> {
+        this.isLoading = true;
+        const res = await indexedDBRepository.resetAccountBalances();
+        if (res.error) {
+            runInAction(() => {
+                this.error = res.error;
+                this.isLoading = false;
+            });
+            return;
+        }
+        authStore.clearDynamicData();
+        await this.loadData();
+    }
+
+    async clearAllLocalData(): Promise<void> {
+        this.isLoading = true;
+        try {
+            await indexedDBRepository.clearAllData();
+            await clearKeyval();
+            googleDriveService.clearAuth();
+            await authStore.signOut();
+
+            if (typeof window !== 'undefined') {
+                window.localStorage.clear();
+                window.sessionStorage.clear();
+            }
+
+            runInAction(() => {
+                this.transactions = [];
+                this.accounts = [];
+                this.syncFolderId = null;
+                this.syncFolderName = null;
+                this.googleAccountEmail = null;
+                this.error = null;
+                this.syncProgress = '';
+            });
+        } catch (err: unknown) {
+            runInAction(() => {
+                this.error = err instanceof Error ? err : new Error(String(err));
+            });
+        } finally {
+            runInAction(() => {
+                this.isLoading = false;
+            });
+        }
     }
 }
 
