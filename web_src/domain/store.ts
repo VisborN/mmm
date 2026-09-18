@@ -280,11 +280,31 @@ export class AppStore {
         }
     }
 
-    async saveTransaction(transaction: Transaction): Promise<void> {
+    async saveTransaction(transaction: Transaction, keepOpen = false): Promise<void> {
         if (!transaction.uuid) {
             transaction.uuid = uuidv7();
         }
         const { error } = await indexedDBRepository.saveTransaction(transaction);
+        if (error) {
+            runInAction(() => {
+                this.error = error;
+            });
+            return;
+        }
+
+        await this.loadData();
+        if (keepOpen) {
+            runInAction(() => {
+                this.currentTransaction = transaction;
+            });
+        } else {
+            this.closeTransactionModal();
+        }
+        this.recalculateBalances();
+    }
+
+    async deleteTransaction(uuid: string): Promise<void> {
+        const { error } = await indexedDBRepository.deleteTransaction(uuid);
         if (error) {
             runInAction(() => {
                 this.error = error;

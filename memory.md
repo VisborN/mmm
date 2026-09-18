@@ -42,3 +42,9 @@
   - Generates chronological UUIDv7 for each record.
   - Database schema version 5 wipes older IndexedDB stores on migration to guarantee a clean state.
 
+## Transaction Modal & UI Interactions
+- **ReadView ➔ EditView (Click-to-Edit)**: In [`web_src/transaction_modal.tsx`](file:///home/vdudko/documents/mmm/web_src/transaction_modal.tsx), viewing an existing transaction presents a clean summary card (large Hero amount, segmented transaction type control, and structured detail rows for account, transfer destination, category, description, date, family member, and exchange rate).
+- **In-Place Editing**: Clicking any field or the hero amount transforms it into an inline input/select with autofocus. Edits are auto-saved on `blur` or `Enter` via `store.saveTransaction(updated, true)`, while `Escape` cancels the active inline edit.
+- **Light-Dismiss & Keyboard Navigation**: All modals ([`TransactionModal`](file:///home/vdudko/documents/mmm/web_src/transaction_modal.tsx), [`AccountModal`](file:///home/vdudko/documents/mmm/web_src/accounts_view.tsx), [`FolderSelectionModal`](file:///home/vdudko/documents/mmm/web_src/folder_selection_modal.tsx)) close upon clicking outside on `.modal-overlay` or pressing `Escape`.
+- **Transaction Deletion**: Added `store.deleteTransaction(uuid)` and an inline deletion confirmation (`🗑️ Удалить`) to safely remove operations from IndexedDB.
+
