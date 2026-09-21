@@ -71,6 +71,11 @@ export const FolderSelectionModal: React.FC<{ onClose: () => void }> = ({ onClos
     return (
         <div 
             className="modal-overlay"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                }
+            }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) {
                     onClose();
@@ -83,6 +88,7 @@ export const FolderSelectionModal: React.FC<{ onClose: () => void }> = ({ onClos
                     <button 
                         type="button" 
                         className="modal-close-btn" 
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={onClose}
                         title="Закрыть (Esc)"
                     >

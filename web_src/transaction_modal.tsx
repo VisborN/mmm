@@ -94,17 +94,34 @@ export const TransactionModal = observer(() => {
     // In-place save handler for Edit Mode
     const handleSaveField = async (field: keyof Transaction, val: unknown) => {
         if (!currentTx || isSavingRef.current) return;
+
+        let normalizedVal = val;
+        if (field === 'amountRubles') {
+            normalizedVal = typeof val === 'number' ? val : (parseFloat(String(val)) || 0);
+        } else if (field === 'exchangeRate') {
+            normalizedVal = val === '' || val === null || val === undefined ? null : parseFloat(String(val));
+        } else if (typeof val === 'string') {
+            normalizedVal = val.trim();
+        }
+
+        // Avoid redundant saves if value didn't change
+        const currentVal = currentTx[field];
+        if (currentVal === normalizedVal) {
+            setEditingField(null);
+            return;
+        }
+
         isSavingRef.current = true;
         try {
-            const updated = { ...currentTx, [field]: val };
+            const updated = { ...currentTx, [field]: normalizedVal };
             if (field === 'amountRubles') {
-                const num = typeof val === 'number' ? val : (parseFloat(String(val)) || 0);
+                const num = normalizedVal as number;
                 updated.amountRubles = num;
                 if (!currentTx.accountCurrency || currentTx.accountCurrency === 'RUB') {
                     updated.amountAccountCurrency = String(num);
                 }
             }
-            if (field === 'type' && val === 'balance_correct') {
+            if (field === 'type' && normalizedVal === 'balance_correct') {
                 if (!updated.category) updated.category = 'баланс';
                 if (!updated.description) updated.description = 'Корректировка баланса';
             }
@@ -167,6 +184,11 @@ export const TransactionModal = observer(() => {
     return (
         <div 
             className="modal-overlay"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                }
+            }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) {
                     store.closeTransactionModal();
@@ -198,6 +220,7 @@ export const TransactionModal = observer(() => {
                             <button 
                                 type="button" 
                                 className="modal-close-btn" 
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => store.closeTransactionModal()}
                                 title="Закрыть (Esc)"
                             >
@@ -211,6 +234,7 @@ export const TransactionModal = observer(() => {
                                 <button
                                     key={t}
                                     type="button"
+                                    onMouseDown={(e) => e.preventDefault()}
                                     className={`segmented-btn ${currentTx.type === t ? 'active' : ''}`}
                                     onClick={() => handleSaveField('type', t)}
                                 >
@@ -402,6 +426,7 @@ export const TransactionModal = observer(() => {
                                                 <button
                                                     key={m}
                                                     type="button"
+                                                    onMouseDown={(e) => e.preventDefault()}
                                                     className={`chip-item ${currentTx.member === m ? 'active' : ''}`}
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -492,6 +517,7 @@ export const TransactionModal = observer(() => {
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button 
                                         type="button" 
+                                        onMouseDown={(e) => e.preventDefault()}
                                         onClick={() => setIsConfirmingDelete(false)} 
                                         className="btn btn-secondary" 
                                         style={{ padding: '6px 12px', fontSize: '12px' }}
@@ -500,6 +526,7 @@ export const TransactionModal = observer(() => {
                                     </button>
                                     <button 
                                         type="button" 
+                                        onMouseDown={(e) => e.preventDefault()}
                                         onClick={() => store.deleteTransaction(currentTx.uuid)} 
                                         className="btn btn-danger" 
                                         style={{ padding: '6px 12px', fontSize: '12px' }}
@@ -512,6 +539,7 @@ export const TransactionModal = observer(() => {
                             <div className="modal-actions" style={{ justifyContent: 'space-between', marginTop: '20px' }}>
                                 <button 
                                     type="button" 
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => setIsConfirmingDelete(true)} 
                                     className="btn btn-danger"
                                     style={{ padding: '8px 14px', fontSize: '13px' }}
@@ -520,6 +548,7 @@ export const TransactionModal = observer(() => {
                                 </button>
                                 <button 
                                     type="button" 
+                                    onMouseDown={(e) => e.preventDefault()}
                                     onClick={() => store.closeTransactionModal()} 
                                     className="btn btn-secondary"
                                     style={{ padding: '8px 18px', fontSize: '13px' }}
@@ -539,6 +568,7 @@ export const TransactionModal = observer(() => {
                             <button 
                                 type="button" 
                                 className="modal-close-btn" 
+                                onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => store.closeTransactionModal()}
                                 title="Закрыть (Esc)"
                             >

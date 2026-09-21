@@ -43,6 +43,11 @@ export const AccountModal = observer(() => {
     return (
         <div 
             className="modal-overlay"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                }
+            }}
             onClick={(e) => {
                 if (e.target === e.currentTarget) {
                     store.closeAccountModal();
@@ -55,6 +60,7 @@ export const AccountModal = observer(() => {
                     <button 
                         type="button" 
                         className="modal-close-btn" 
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={() => store.closeAccountModal()}
                         title="Закрыть (Esc)"
                     >
