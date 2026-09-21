@@ -29748,6 +29748,7 @@ var AppStore = class {
     __publicField(this, "currentAccount", null);
     __publicField(this, "isFolderModalOpen", false);
     __publicField(this, "isLoading", true);
+    __publicField(this, "isInitialized", false);
     __publicField(this, "syncProgress", "");
     __publicField(this, "error", null);
     __publicField(this, "isRecalculating", false);
@@ -29780,6 +29781,8 @@ var AppStore = class {
         this.isTransactionModalOpen = false;
         this.isAccountModalOpen = false;
         this.isFolderModalOpen = false;
+        this.currentTransaction = null;
+        this.currentAccount = null;
         if (["transactions", "accounts", "settings", "db_explorer"].includes(hash)) {
           this.currentView = hash;
         } else {
@@ -29938,9 +29941,15 @@ var AppStore = class {
     };
     worker.postMessage("recalculate");
   }
-  async loadData() {
-    this.isLoading = true;
-    this.error = null;
+  async loadData(isInitial = false) {
+    if (isInitial || !this.isInitialized) {
+      runInAction(() => {
+        this.isLoading = true;
+      });
+    }
+    runInAction(() => {
+      this.error = null;
+    });
     const folderId = await get3("syncFolderId");
     const folderName = await get3("syncFolderName");
     runInAction(() => {
@@ -29952,6 +29961,7 @@ var AppStore = class {
       runInAction(() => {
         this.error = accountsErr;
         this.isLoading = false;
+        this.isInitialized = true;
       });
       return;
     }
@@ -29960,6 +29970,7 @@ var AppStore = class {
       runInAction(() => {
         this.error = txErr;
         this.isLoading = false;
+        this.isInitialized = true;
       });
       return;
     }
@@ -29967,6 +29978,7 @@ var AppStore = class {
       this.accounts = accountsData;
       this.transactions = txData;
       this.isLoading = false;
+      this.isInitialized = true;
     });
     this.loadGoogleAccountEmail();
   }
@@ -29998,7 +30010,9 @@ var AppStore = class {
     await this.loadData();
     if (keepOpen) {
       runInAction(() => {
-        this.currentTransaction = transaction2;
+        if (this.isTransactionModalOpen) {
+          this.currentTransaction = transaction2;
+        }
       });
     } else {
       this.closeTransactionModal();
@@ -30206,6 +30220,11 @@ var AccountModal = observer(() => {
     "div",
     {
       className: "modal-overlay",
+      onMouseDown: (e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      },
       onClick: (e) => {
         if (e.target === e.currentTarget) {
           store.closeAccountModal();
@@ -30219,6 +30238,7 @@ var AccountModal = observer(() => {
             {
               type: "button",
               className: "modal-close-btn",
+              onMouseDown: (e) => e.preventDefault(),
               onClick: () => store.closeAccountModal(),
               title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
               children: "\u2715"
@@ -30639,6 +30659,11 @@ var FolderSelectionModal = ({ onClose }) => {
     "div",
     {
       className: "modal-overlay",
+      onMouseDown: (e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      },
       onClick: (e) => {
         if (e.target === e.currentTarget) {
           onClose();
@@ -30652,6 +30677,7 @@ var FolderSelectionModal = ({ onClose }) => {
             {
               type: "button",
               className: "modal-close-btn",
+              onMouseDown: (e) => e.preventDefault(),
               onClick: onClose,
               title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
               children: "\u2715"
@@ -30787,17 +30813,30 @@ var TransactionModal = observer(() => {
   }, [editingField, isConfirmingDelete]);
   const handleSaveField = async (field, val) => {
     if (!currentTx || isSavingRef.current) return;
+    let normalizedVal = val;
+    if (field === "amountRubles") {
+      normalizedVal = typeof val === "number" ? val : parseFloat(String(val)) || 0;
+    } else if (field === "exchangeRate") {
+      normalizedVal = val === "" || val === null || val === void 0 ? null : parseFloat(String(val));
+    } else if (typeof val === "string") {
+      normalizedVal = val.trim();
+    }
+    const currentVal = currentTx[field];
+    if (currentVal === normalizedVal) {
+      setEditingField(null);
+      return;
+    }
     isSavingRef.current = true;
     try {
-      const updated = __spreadProps(__spreadValues({}, currentTx), { [field]: val });
+      const updated = __spreadProps(__spreadValues({}, currentTx), { [field]: normalizedVal });
       if (field === "amountRubles") {
-        const num = typeof val === "number" ? val : parseFloat(String(val)) || 0;
+        const num = normalizedVal;
         updated.amountRubles = num;
         if (!currentTx.accountCurrency || currentTx.accountCurrency === "RUB") {
           updated.amountAccountCurrency = String(num);
         }
       }
-      if (field === "type" && val === "balance_correct") {
+      if (field === "type" && normalizedVal === "balance_correct") {
         if (!updated.category) updated.category = "\u0431\u0430\u043B\u0430\u043D\u0441";
         if (!updated.description) updated.description = "\u041A\u043E\u0440\u0440\u0435\u043A\u0442\u0438\u0440\u043E\u0432\u043A\u0430 \u0431\u0430\u043B\u0430\u043D\u0441\u0430";
       }
@@ -30850,6 +30889,11 @@ var TransactionModal = observer(() => {
     "div",
     {
       className: "modal-overlay",
+      onMouseDown: (e) => {
+        if (e.target === e.currentTarget) {
+          e.preventDefault();
+        }
+      },
       onClick: (e) => {
         if (e.target === e.currentTarget) {
           store.closeTransactionModal();
@@ -30870,6 +30914,7 @@ var TransactionModal = observer(() => {
               {
                 type: "button",
                 className: "modal-close-btn",
+                onMouseDown: (e) => e.preventDefault(),
                 onClick: () => store.closeTransactionModal(),
                 title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
                 children: "\u2715"
@@ -30880,6 +30925,7 @@ var TransactionModal = observer(() => {
             "button",
             {
               type: "button",
+              onMouseDown: (e) => e.preventDefault(),
               className: `segmented-btn ${currentTx.type === t ? "active" : ""}`,
               onClick: () => handleSaveField("type", t),
               children: [
@@ -31096,6 +31142,7 @@ var TransactionModal = observer(() => {
                       "button",
                       {
                         type: "button",
+                        onMouseDown: (e) => e.preventDefault(),
                         className: `chip-item ${currentTx.member === m ? "active" : ""}`,
                         onClick: (e) => {
                           e.stopPropagation();
@@ -31190,6 +31237,7 @@ var TransactionModal = observer(() => {
                 "button",
                 {
                   type: "button",
+                  onMouseDown: (e) => e.preventDefault(),
                   onClick: () => setIsConfirmingDelete(false),
                   className: "btn btn-secondary",
                   style: { padding: "6px 12px", fontSize: "12px" },
@@ -31200,6 +31248,7 @@ var TransactionModal = observer(() => {
                 "button",
                 {
                   type: "button",
+                  onMouseDown: (e) => e.preventDefault(),
                   onClick: () => store.deleteTransaction(currentTx.uuid),
                   className: "btn btn-danger",
                   style: { padding: "6px 12px", fontSize: "12px" },
@@ -31212,6 +31261,7 @@ var TransactionModal = observer(() => {
               "button",
               {
                 type: "button",
+                onMouseDown: (e) => e.preventDefault(),
                 onClick: () => setIsConfirmingDelete(true),
                 className: "btn btn-danger",
                 style: { padding: "8px 14px", fontSize: "13px" },
@@ -31222,6 +31272,7 @@ var TransactionModal = observer(() => {
               "button",
               {
                 type: "button",
+                onMouseDown: (e) => e.preventDefault(),
                 onClick: () => store.closeTransactionModal(),
                 className: "btn btn-secondary",
                 style: { padding: "8px 18px", fontSize: "13px" },
@@ -31238,6 +31289,7 @@ var TransactionModal = observer(() => {
               {
                 type: "button",
                 className: "modal-close-btn",
+                onMouseDown: (e) => e.preventDefault(),
                 onClick: () => store.closeTransactionModal(),
                 title: "\u0417\u0430\u043A\u0440\u044B\u0442\u044C (Esc)",
                 children: "\u2715"
@@ -32000,7 +32052,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-18 22:48:51 +0300" : "dev"
+          true ? "2026-09-21 14:44:02 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -32151,4 +32203,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-LFRHN7JU.js.map
+//# sourceMappingURL=app-QTYCZXDE.js.map
