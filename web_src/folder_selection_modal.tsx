@@ -58,10 +58,43 @@ export const FolderSelectionModal: React.FC<{ onClose: () => void }> = ({ onClos
         onClose();
     };
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [onClose]);
+
     return (
-        <div className="modal-overlay">
-            <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', height: '80vh' }}>
-                <h3 style={{ marginBottom: '16px' }}>Выбор папки для синхронизации</h3>
+        <div 
+            className="modal-overlay"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                }
+            }}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                    onClose();
+                }
+            }}
+        >
+            <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', height: '80vh' }} onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header" style={{ marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0 }}>Выбор папки для синхронизации</h3>
+                    <button 
+                        type="button" 
+                        className="modal-close-btn" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={onClose}
+                        title="Закрыть (Esc)"
+                    >
+                        ✕
+                    </button>
+                </div>
                 
                 <div style={{ marginBottom: '16px', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center', fontSize: '14px' }}>
                     {path.map((folder, index) => (

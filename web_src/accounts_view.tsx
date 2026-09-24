@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { observer } from 'mobx-react-lite';
 import { store } from './domain/store';
 import { Account } from './domain/types';
@@ -20,6 +20,16 @@ export const AccountModal = observer(() => {
         balance: '0'
     });
 
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                store.closeAccountModal();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         await store.saveAccount(formData as Account);
@@ -31,9 +41,32 @@ export const AccountModal = observer(() => {
     };
 
     return (
-        <div className="modal-overlay">
-            <div className="modal-content">
-                <h3>{store.currentAccount ? 'Редактировать счет' : 'Новый счет'}</h3>
+        <div 
+            className="modal-overlay"
+            onMouseDown={(e) => {
+                if (e.target === e.currentTarget) {
+                    e.preventDefault();
+                }
+            }}
+            onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                    store.closeAccountModal();
+                }
+            }}
+        >
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>{store.currentAccount ? 'Редактировать счет' : 'Новый счет'}</h3>
+                    <button 
+                        type="button" 
+                        className="modal-close-btn" 
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => store.closeAccountModal()}
+                        title="Закрыть (Esc)"
+                    >
+                        ✕
+                    </button>
+                </div>
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label className="form-label">Название:</label>

@@ -24,6 +24,7 @@ export class AppStore {
     isFolderModalOpen: boolean = false;
 
     isLoading: boolean = true;
+    isInitialized: boolean = false;
     syncProgress: string = '';
     error: Error | null = null;
 
@@ -61,6 +62,8 @@ export class AppStore {
                 this.isTransactionModalOpen = false;
                 this.isAccountModalOpen = false;
                 this.isFolderModalOpen = false;
+                this.currentTransaction = null;
+                this.currentAccount = null;
                 
                 if (['transactions', 'accounts', 'settings', 'db_explorer'].includes(hash)) {
                     this.currentView = hash as 'transactions' | 'accounts' | 'settings' | 'db_explorer';
@@ -226,9 +229,15 @@ export class AppStore {
         worker.postMessage('recalculate');
     }
 
-    async loadData(): Promise<void> {
-        this.isLoading = true;
-        this.error = null;
+    async loadData(isInitial = false): Promise<void> {
+        if (isInitial || !this.isInitialized) {
+            runInAction(() => {
+                this.isLoading = true;
+            });
+        }
+        runInAction(() => {
+            this.error = null;
+        });
 
         const folderId = await get('syncFolderId');
         const folderName = await get('syncFolderName');
@@ -242,6 +251,7 @@ export class AppStore {
             runInAction(() => {
                 this.error = accountsErr;
                 this.isLoading = false;
+                this.isInitialized = true;
             });
             return;
         }
@@ -251,6 +261,7 @@ export class AppStore {
             runInAction(() => {
                 this.error = txErr;
                 this.isLoading = false;
+                this.isInitialized = true;
             });
             return;
         }
@@ -259,6 +270,7 @@ export class AppStore {
             this.accounts = accountsData;
             this.transactions = txData;
             this.isLoading = false;
+            this.isInitialized = true;
         });
 
         this.loadGoogleAccountEmail();
@@ -280,11 +292,33 @@ export class AppStore {
         }
     }
 
-    async saveTransaction(transaction: Transaction): Promise<void> {
+    async saveTransaction(transaction: Transaction, keepOpen = false): Promise<void> {
         if (!transaction.uuid) {
             transaction.uuid = uuidv7();
         }
         const { error } = await indexedDBRepository.saveTransaction(transaction);
+        if (error) {
+            runInAction(() => {
+                this.error = error;
+            });
+            return;
+        }
+
+        await this.loadData();
+        if (keepOpen) {
+            runInAction(() => {
+                if (this.isTransactionModalOpen) {
+                    this.currentTransaction = transaction;
+                }
+            });
+        } else {
+            this.closeTransactionModal();
+        }
+        this.recalculateBalances();
+    }
+
+    async deleteTransaction(uuid: string): Promise<void> {
+        const { error } = await indexedDBRepository.deleteTransaction(uuid);
         if (error) {
             runInAction(() => {
                 this.error = error;
