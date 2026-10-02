@@ -29678,21 +29678,58 @@ function mergeBankOperations(incomingOps, existingTransactions, accountMapping) 
     if (!accountName) {
       continue;
     }
+    const amountAccountCurr = String((_b2 = bankOp.accountAmount) != null ? _b2 : bankOp.amount);
+    const amountRub = bankOp.currency === "RUB" ? bankOp.amount : bankOp.accountCurrency === "RUB" && bankOp.accountAmount !== void 0 ? bankOp.accountAmount : bankOp.amount;
     let opType = bankOp.type === "Credit" ? "deposit" : "withdraw";
     let transferReceiveAccount = null;
     let transferReceiveAmount = null;
     if (bankOp.isInner && bankOp.innerCounterpartId) {
       const counterpartName = accountMapping.get(bankOp.innerCounterpartId);
       if (counterpartName) {
+        const dateStr = new Date(bankOp.operationTime).toISOString().split("T")[0];
         if (bankOp.type === "Debit") {
           opType = "transfer";
           transferReceiveAccount = counterpartName;
-          transferReceiveAmount = String((_b2 = bankOp.accountAmount) != null ? _b2 : bankOp.amount);
+          transferReceiveAmount = String((_c = bankOp.accountAmount) != null ? _c : bankOp.amount);
+          const matchingCreditTx = createdTxs.find(
+            (t) => t.type === "deposit" && t.accountName === counterpartName && Math.abs(t.amountRubles - amountRub) < 0.01 && Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1e3
+          );
+          if (matchingCreditTx) {
+            matchingCreditTx.type = "transfer";
+            matchingCreditTx.accountName = accountName;
+            matchingCreditTx.transferReceiveAccountName = counterpartName;
+            matchingCreditTx.transferReceiveAmountAccountCurrency = matchingCreditTx.amountAccountCurrency;
+            matchingCreditTx.amountAccountCurrency = amountAccountCurr;
+            matchingCreditTx.amountRubles = amountRub;
+            const currentIds = matchingCreditTx.bankOperationIds ? [...matchingCreditTx.bankOperationIds] : [];
+            if (!currentIds.includes(bankOp.id)) {
+              currentIds.push(bankOp.id);
+              matchingCreditTx.bankOperationIds = currentIds;
+            }
+            txByBankOpId.set(bankOp.id, matchingCreditTx);
+            continue;
+          }
+        } else if (bankOp.type === "Credit") {
+          const matchingTransfer = createdTxs.find(
+            (t) => t.type === "transfer" && t.accountName === counterpartName && t.transferReceiveAccountName === accountName && Math.abs(t.amountRubles - amountRub) < 0.01 && Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1e3
+          ) || existingTransactions.find(
+            (t) => t.type === "transfer" && t.accountName === counterpartName && t.transferReceiveAccountName === accountName && Math.abs(t.amountRubles - amountRub) < 0.01 && Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1e3
+          );
+          if (matchingTransfer) {
+            const currentIds = matchingTransfer.bankOperationIds ? [...matchingTransfer.bankOperationIds] : [];
+            if (!currentIds.includes(bankOp.id)) {
+              currentIds.push(bankOp.id);
+              matchingTransfer.bankOperationIds = currentIds;
+              if (!createdTxs.includes(matchingTransfer) && !updatedTxs.includes(matchingTransfer)) {
+                updatedTxs.push(matchingTransfer);
+              }
+            }
+            txByBankOpId.set(bankOp.id, matchingTransfer);
+            continue;
+          }
         }
       }
     }
-    const amountAccountCurr = String((_c = bankOp.accountAmount) != null ? _c : bankOp.amount);
-    const amountRub = bankOp.currency === "RUB" ? bankOp.amount : bankOp.accountCurrency === "RUB" && bankOp.accountAmount !== void 0 ? bankOp.accountAmount : bankOp.amount;
     const newTx = {
       uuid: uuidv7(),
       date: new Date(bankOp.operationTime).toISOString().split("T")[0],
@@ -32866,7 +32903,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-10-02 13:06:12 +0300" : "dev"
+          true ? "2026-10-02 13:08:29 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -33017,4 +33054,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-5AOTWW7D.js.map
+//# sourceMappingURL=app-YNTA63CM.js.map
