@@ -506,6 +506,14 @@ export const TransactionModal = observer(() => {
                                     </div>
                                 </>
                             )}
+                            {currentTx.bankOperationIds && currentTx.bankOperationIds.length > 0 && (
+                                <div className="detail-row" style={{ opacity: 0.9 }}>
+                                    <span className="detail-label">💳 Источник</span>
+                                    <span className="detail-value" style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                                        {currentTx.bankOperationIds.join(', ')}
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer / Delete / Close Actions */}
