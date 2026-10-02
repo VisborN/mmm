@@ -27715,13 +27715,13 @@ replaceTraps((oldTraps) => __spreadProps(__spreadValues({}, oldTraps), {
 }));
 
 // infrastructure/db.ts
-var DB_VERSION = 5;
+var DB_VERSION = 6;
 var dbPromise = null;
 function getDB() {
   if (!dbPromise) {
     dbPromise = openDB("money-management-app", DB_VERSION, {
       upgrade(db, oldVersion) {
-        if (oldVersion > 0 && oldVersion < DB_VERSION) {
+        if (oldVersion > 0 && oldVersion < 5) {
           const existingStores = Array.from(db.objectStoreNames);
           for (const store2 of existingStores) {
             db.deleteObjectStore(store2);
@@ -27734,6 +27734,12 @@ function getDB() {
         }
         if (!db.objectStoreNames.contains("accounts")) {
           db.createObjectStore("accounts", { keyPath: "id", autoIncrement: true });
+        }
+        if (!db.objectStoreNames.contains("bank_operations")) {
+          const bankStore = db.createObjectStore("bank_operations", { keyPath: "id" });
+          bankStore.createIndex("by-bank", "bank");
+          bankStore.createIndex("by-time", "operationTime");
+          bankStore.createIndex("by-account", "bankAccountId");
         }
       }
     });
@@ -27852,11 +27858,57 @@ var indexedDBRepository = {
     if (result.error) return result;
     return ok(void 0);
   },
+  async getBankOperations(bank) {
+    const result = await withDB(async (db) => {
+      if (bank) {
+        return db.getAllFromIndex("bank_operations", "by-bank", bank);
+      }
+      return db.getAll("bank_operations");
+    });
+    if (result.error) return result;
+    result.data.sort((a, b) => b.operationTime - a.operationTime);
+    return ok(result.data);
+  },
+  async getBankOperation(id) {
+    return withDB((db) => db.get("bank_operations", id));
+  },
+  async saveBankOperations(operations) {
+    const result = await withDB(async (db) => {
+      const tx = db.transaction("bank_operations", "readwrite");
+      for (const op of operations) {
+        await tx.store.put(op);
+      }
+      await tx.done;
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
+  async deleteBankOperationsByBank(bank) {
+    const result = await withDB(async (db) => {
+      const tx = db.transaction("bank_operations", "readwrite");
+      let cursor = await tx.store.index("by-bank").openCursor(bank);
+      while (cursor) {
+        await cursor.delete();
+        cursor = await cursor.continue();
+      }
+      await tx.done;
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
+  async clearBankOperations() {
+    const result = await withDB(async (db) => {
+      await db.clear("bank_operations");
+    });
+    if (result.error) return result;
+    return ok(void 0);
+  },
   async clearAllData() {
     const result = await withDB(async (db) => {
-      const tx = db.transaction(["transactions", "accounts"], "readwrite");
+      const tx = db.transaction(["transactions", "accounts", "bank_operations"], "readwrite");
       await tx.objectStore("transactions").clear();
       await tx.objectStore("accounts").clear();
+      await tx.objectStore("bank_operations").clear();
       await tx.done;
     });
     if (result.error) return result;
@@ -28350,8 +28402,10 @@ var GoogleSyncService = class {
             fileId = filesRes.data[0].id;
           }
           const txsToExport = txs.map((t) => {
-            const _a3 = t, { id } = _a3, rest = __objRest(_a3, ["id"]);
-            return rest;
+            const _a3 = t, { id, bankOperationIds } = _a3, rest = __objRest(_a3, ["id", "bankOperationIds"]);
+            return __spreadProps(__spreadValues({}, rest), {
+              bankOperationIds: bankOperationIds && bankOperationIds.length > 0 ? bankOperationIds.join(";") : ""
+            });
           });
           const csvContent = "\uFEFF" + import_papaparse.default.unparse(txsToExport);
           const uploadRes = await googleDriveService.uploadFile(name, csvContent, "text/csv", folderId, fileId);
@@ -28404,7 +28458,8 @@ var GoogleSyncService = class {
             member: t.member || null,
             exchangeRate: t.exchangeRate !== null && t.exchangeRate !== void 0 && t.exchangeRate !== "" ? parseFloat(t.exchangeRate) : null,
             transferReceiveAccountName: t.transferReceiveAccountName || null,
-            transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null
+            transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== void 0 ? String(t.transferReceiveAmountAccountCurrency) : null,
+            bankOperationIds: typeof t.bankOperationIds === "string" && t.bankOperationIds.trim() !== "" ? t.bankOperationIds.split(";").map((s) => s.trim()).filter(Boolean) : Array.isArray(t.bankOperationIds) ? t.bankOperationIds : void 0
           }));
           completed++;
           if (onProgress) onProgress(`\u0421\u043A\u0430\u0447\u0430\u043D\u043E ${completed} \u0438\u0437 ${files.length} \u0444\u0430\u0439\u043B\u043E\u0432...`);
@@ -29425,6 +29480,396 @@ async function getTBankAccounts() {
   const payload = Array.isArray(data.payload) ? data.payload : [];
   return ok(payload);
 }
+async function getTBankOperations({
+  accountId,
+  start,
+  end
+}) {
+  var _a3, _b2;
+  const identity = await getOrCreateIdentity();
+  let tokens = await getStoredTokens();
+  if (!tokens) {
+    return err(new Error("Not authenticated in T-Bank"));
+  }
+  if (tokens.expiresAt - Date.now() < 6e4) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error === null) {
+      tokens = refRes.data;
+    }
+  }
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
+  const url = `${API_BASE_URL}v1/operations?accounts=${encodeURIComponent(accountId)}&start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`;
+  const doFetch = async (toks) => {
+    const headers = __spreadProps(__spreadValues({}, buildBaseHeaders(identity)), {
+      "X-MB-Authorized": "true",
+      Authorization: `${toks.tokenType} ${toks.accessToken}`
+    });
+    return await proxyFetch(url, {
+      method: "GET",
+      headers
+    });
+  };
+  let res = await doFetch(tokens);
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "Failed to fetch operations"));
+  }
+  if (res.data.status === 401) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error !== null) {
+      return err(new AggregateError([refRes.error], "Unauthorized and failed to refresh token"));
+    }
+    tokens = refRes.data;
+    res = await doFetch(tokens);
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to fetch operations after token refresh"));
+    }
+  }
+  const jsonRes = await res.data.json();
+  if (jsonRes.error !== null) {
+    return err(new AggregateError([jsonRes.error], "Failed to parse operations response"));
+  }
+  const data = jsonRes.data;
+  if (data.resultCode !== "OK") {
+    return err(new Error(`T-Bank API error: ${data.resultCode} - ${data.errorMessage || ""}`));
+  }
+  const payload = Array.isArray(data.payload) ? data.payload : [];
+  const operations = [];
+  for (const rawItem of payload) {
+    if (!rawItem || typeof rawItem !== "object") continue;
+    const raw = rawItem;
+    const actualId = String(raw.authorizationId || raw.id || "");
+    if (!actualId) continue;
+    const opTimeRaw = raw.operationTime;
+    const opTime = (opTimeRaw == null ? void 0 : opTimeRaw.milliseconds) ? Number(opTimeRaw.milliseconds) : Date.now();
+    const amountObj = raw.amount;
+    const accountAmountObj = raw.accountAmount;
+    const brandObj = raw.brand;
+    const merchantObj = raw.merchant;
+    const spendingCatObj = raw.spendingCategory;
+    const catObj = raw.category;
+    const op = {
+      id: `tbank:${actualId}`,
+      bank: "tbank",
+      bankAccountId: String(raw.account || accountId),
+      operationTime: opTime,
+      status: String(raw.status || "OK"),
+      type: String(raw.type || ""),
+      group: raw.group ? String(raw.group) : void 0,
+      amount: (amountObj == null ? void 0 : amountObj.value) !== void 0 ? Number(amountObj.value) : 0,
+      currency: ((_a3 = amountObj == null ? void 0 : amountObj.currency) == null ? void 0 : _a3.name) ? String(amountObj.currency.name) : "RUB",
+      accountAmount: (accountAmountObj == null ? void 0 : accountAmountObj.value) !== void 0 ? Number(accountAmountObj.value) : void 0,
+      accountCurrency: ((_b2 = accountAmountObj == null ? void 0 : accountAmountObj.currency) == null ? void 0 : _b2.name) ? String(accountAmountObj.currency.name) : void 0,
+      description: String(raw.description || (brandObj == null ? void 0 : brandObj.name) || (merchantObj == null ? void 0 : merchantObj.name) || ""),
+      category: (spendingCatObj == null ? void 0 : spendingCatObj.name) ? String(spendingCatObj.name) : (catObj == null ? void 0 : catObj.name) ? String(catObj.name) : void 0,
+      mcc: raw.mcc !== void 0 && raw.mcc !== null ? Number(raw.mcc) : null,
+      isInner: Boolean(raw.isInner),
+      innerCounterpartId: raw.senderAgreement ? String(raw.senderAgreement) : null,
+      source: JSON.stringify(raw)
+    };
+    operations.push(op);
+  }
+  return ok(operations);
+}
+
+// domain/bank_sync_service.ts
+var import_globals9 = __toESM(require_globals());
+function buildAccountMapping(transactions) {
+  const mapping = /* @__PURE__ */ new Map();
+  const balanceTxs = transactions.filter(
+    (t) => t.type === "balance_correct" && t.bankOperationIds && t.bankOperationIds.length > 0
+  );
+  balanceTxs.sort((a, b) => a.date.localeCompare(b.date));
+  for (const tx of balanceTxs) {
+    for (const rawId of tx.bankOperationIds) {
+      if (!rawId) continue;
+      mapping.set(rawId, tx.accountName);
+      if (rawId.startsWith("tbank:")) {
+        mapping.set(rawId.slice(6), tx.accountName);
+      }
+    }
+  }
+  return mapping;
+}
+async function linkBankAccountToMmmAccount(accountName, bankAccountId, transactions, initialBalance, initialCurrency) {
+  const bankOpId = `tbank:${bankAccountId}`;
+  const existingBalanceTxs = transactions.filter(
+    (t) => t.accountName === accountName && t.type === "balance_correct"
+  );
+  if (existingBalanceTxs.length > 0) {
+    existingBalanceTxs.sort((a, b) => a.date.localeCompare(b.date));
+    const earliest = existingBalanceTxs[0];
+    const currentIds = earliest.bankOperationIds ? [...earliest.bankOperationIds] : [];
+    if (!currentIds.includes(bankOpId) && !currentIds.includes(bankAccountId)) {
+      currentIds.push(bankOpId);
+      earliest.bankOperationIds = currentIds;
+      const saveRes2 = await indexedDBRepository.saveTransaction(earliest);
+      if (saveRes2.error) return err(saveRes2.error);
+    }
+    return ok(void 0);
+  }
+  const newTx = {
+    uuid: uuidv7(),
+    date: (/* @__PURE__ */ new Date()).toISOString().split("T")[0],
+    amountRubles: parseFloat(initialBalance || "0") || 0,
+    amountAccountCurrency: initialBalance || "0",
+    accountName,
+    accountCurrency: initialCurrency || "RUB",
+    category: "\u0431\u0430\u043B\u0430\u043D\u0441",
+    description: "\u041D\u0430\u0447\u0430\u043B\u044C\u043D\u044B\u0439 \u0431\u0430\u043B\u0430\u043D\u0441 (\u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430 \u0422-\u0411\u0430\u043D\u043A)",
+    type: "balance_correct",
+    member: null,
+    exchangeRate: 1,
+    transferReceiveAccountName: null,
+    transferReceiveAmountAccountCurrency: null,
+    bankOperationIds: [bankOpId]
+  };
+  const saveRes = await indexedDBRepository.saveTransaction(newTx);
+  if (saveRes.error) return err(saveRes.error);
+  return ok(void 0);
+}
+function mergeBankOperations(incomingOps, existingTransactions, accountMapping) {
+  var _a3, _b2, _c;
+  const savedBankOps = [];
+  const createdTxs = [];
+  const updatedTxs = [];
+  const deletedTxUuids = [];
+  const txByBankOpId = /* @__PURE__ */ new Map();
+  for (const tx of existingTransactions) {
+    if (tx.bankOperationIds) {
+      for (const bId of tx.bankOperationIds) {
+        txByBankOpId.set(bId, tx);
+      }
+    }
+  }
+  for (const bankOp of incomingOps) {
+    savedBankOps.push(bankOp);
+    const linkedTx = txByBankOpId.get(bankOp.id);
+    if (linkedTx) {
+      if (bankOp.status === "FAILED") {
+        if (!deletedTxUuids.includes(linkedTx.uuid)) {
+          deletedTxUuids.push(linkedTx.uuid);
+        }
+        txByBankOpId.delete(bankOp.id);
+        continue;
+      }
+      const newAmountStr = String((_a3 = bankOp.accountAmount) != null ? _a3 : bankOp.amount);
+      const newAmountRubles = bankOp.currency === "RUB" ? bankOp.amount : bankOp.accountCurrency === "RUB" && bankOp.accountAmount !== void 0 ? bankOp.accountAmount : bankOp.amount;
+      const newDate = new Date(bankOp.operationTime).toISOString().split("T")[0];
+      let isChanged = false;
+      if (linkedTx.amountAccountCurrency !== newAmountStr) isChanged = true;
+      if (linkedTx.amountRubles !== newAmountRubles) isChanged = true;
+      if (linkedTx.date !== newDate) isChanged = true;
+      if (isChanged) {
+        const updated = __spreadProps(__spreadValues({}, linkedTx), {
+          amountAccountCurrency: newAmountStr,
+          amountRubles: newAmountRubles,
+          date: newDate
+        });
+        updatedTxs.push(updated);
+        txByBankOpId.set(bankOp.id, updated);
+      }
+      continue;
+    }
+    if (bankOp.status === "FAILED") {
+      continue;
+    }
+    const accountName = accountMapping.get(bankOp.bankAccountId) || accountMapping.get(bankOp.id);
+    if (!accountName) {
+      continue;
+    }
+    let opType = bankOp.type === "Credit" ? "deposit" : "withdraw";
+    let transferReceiveAccount = null;
+    let transferReceiveAmount = null;
+    if (bankOp.isInner && bankOp.innerCounterpartId) {
+      const counterpartName = accountMapping.get(bankOp.innerCounterpartId);
+      if (counterpartName) {
+        if (bankOp.type === "Debit") {
+          opType = "transfer";
+          transferReceiveAccount = counterpartName;
+          transferReceiveAmount = String((_b2 = bankOp.accountAmount) != null ? _b2 : bankOp.amount);
+        }
+      }
+    }
+    const amountAccountCurr = String((_c = bankOp.accountAmount) != null ? _c : bankOp.amount);
+    const amountRub = bankOp.currency === "RUB" ? bankOp.amount : bankOp.accountCurrency === "RUB" && bankOp.accountAmount !== void 0 ? bankOp.accountAmount : bankOp.amount;
+    const newTx = {
+      uuid: uuidv7(),
+      date: new Date(bankOp.operationTime).toISOString().split("T")[0],
+      amountRubles: amountRub,
+      amountAccountCurrency: amountAccountCurr,
+      accountName,
+      accountCurrency: bankOp.accountCurrency || bankOp.currency || "RUB",
+      category: bankOp.category || (bankOp.type === "Credit" ? "\u041F\u043E\u043F\u043E\u043B\u043D\u0435\u043D\u0438\u0435" : "\u041F\u0440\u043E\u0447\u0435\u0435"),
+      description: bankOp.description || "",
+      type: opType,
+      member: null,
+      exchangeRate: bankOp.accountAmount && bankOp.amount && bankOp.amount !== 0 ? bankOp.accountAmount / bankOp.amount : 1,
+      transferReceiveAccountName: transferReceiveAccount,
+      transferReceiveAmountAccountCurrency: transferReceiveAmount,
+      bankOperationIds: [bankOp.id]
+    };
+    createdTxs.push(newTx);
+    txByBankOpId.set(bankOp.id, newTx);
+  }
+  return {
+    savedBankOps,
+    createdTxs,
+    updatedTxs,
+    deletedTxUuids
+  };
+}
+var BankSyncService = class {
+  /**
+   * Performs incremental sync for the specified accounts (typically last 35 days).
+   */
+  async syncIncremental(accountIds) {
+    const end = /* @__PURE__ */ new Date();
+    const start = new Date(end.getTime() - 35 * 24 * 60 * 60 * 1e3);
+    const allOps = [];
+    for (const accId of accountIds) {
+      const opsRes = await getTBankOperations({ accountId: accId, start, end });
+      if (opsRes.error !== null) {
+        return err(
+          new AggregateError([opsRes.error], `Failed to fetch operations for account ${accId}`)
+        );
+      }
+      allOps.push(...opsRes.data);
+    }
+    const txsRes = await indexedDBRepository.getTransactions();
+    if (txsRes.error !== null) return err(txsRes.error);
+    const existingTxs = txsRes.data || [];
+    const accountMapping = buildAccountMapping(existingTxs);
+    const mergeResult = mergeBankOperations(allOps, existingTxs, accountMapping);
+    const saveBankRes = await indexedDBRepository.saveBankOperations(mergeResult.savedBankOps);
+    if (saveBankRes.error !== null) return err(saveBankRes.error);
+    for (const uuid of mergeResult.deletedTxUuids) {
+      const delRes = await indexedDBRepository.deleteTransaction(uuid);
+      if (delRes.error !== null) return err(delRes.error);
+    }
+    for (const tx of mergeResult.updatedTxs) {
+      const saveRes = await indexedDBRepository.saveTransaction(tx);
+      if (saveRes.error !== null) return err(saveRes.error);
+    }
+    for (const tx of mergeResult.createdTxs) {
+      const saveRes = await indexedDBRepository.saveTransaction(tx);
+      if (saveRes.error !== null) return err(saveRes.error);
+    }
+    return ok({
+      syncedOpsCount: allOps.length,
+      createdTxCount: mergeResult.createdTxs.length,
+      updatedTxCount: mergeResult.updatedTxs.length,
+      deletedTxCount: mergeResult.deletedTxUuids.length
+    });
+  }
+  /**
+   * Performs full historical sync back to 2010 month by month with 1-second delay between requests.
+   */
+  async syncFullHistory(accountIds, options) {
+    const now = /* @__PURE__ */ new Date();
+    const currentYear = now.getUTCFullYear();
+    const currentMonth = now.getUTCMonth();
+    const startYear = 2010;
+    const startMonth = 0;
+    const totalMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth) + 1;
+    let completedMonths = 0;
+    let totalSyncedOps = 0;
+    let totalCreatedTxs = 0;
+    let totalUpdatedTxs = 0;
+    let totalDeletedTxs = 0;
+    const txsRes = await indexedDBRepository.getTransactions();
+    if (txsRes.error !== null) return err(txsRes.error);
+    let existingTxs = txsRes.data || [];
+    let consecutiveEmptyMonths = 0;
+    for (let y = currentYear; y >= startYear; y--) {
+      const mStart = y === currentYear ? currentMonth : 11;
+      const mEnd = y === startYear ? startMonth : 0;
+      for (let m = mStart; m >= mEnd; m--) {
+        if ((options == null ? void 0 : options.shouldAbort) && options.shouldAbort()) {
+          return err(new Error("\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u043E\u0442\u043C\u0435\u043D\u0435\u043D\u0430 \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0435\u043C"));
+        }
+        const monthStart = new Date(Date.UTC(y, m, 1, 0, 0, 0, 0));
+        const monthEnd = y === currentYear && m === currentMonth ? now : new Date(Date.UTC(y, m + 1, 1, 0, 0, 0, 0) - 1);
+        const monthLabel = monthStart.toLocaleString("ru-RU", { month: "long", year: "numeric" });
+        const percent = Math.round(completedMonths / totalMonths * 100);
+        if (options == null ? void 0 : options.onProgress) {
+          options.onProgress(
+            `\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0422-\u0411\u0430\u043D\u043A: ${monthLabel} (\u0437\u0430\u0433\u0440\u0443\u0436\u0435\u043D\u043E ${totalSyncedOps} \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439)...`,
+            percent
+          );
+        }
+        const batchOps = [];
+        for (const accId of accountIds) {
+          if ((options == null ? void 0 : options.shouldAbort) && options.shouldAbort()) {
+            return err(new Error("\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u043E\u0442\u043C\u0435\u043D\u0435\u043D\u0430 \u043F\u043E\u043B\u044C\u0437\u043E\u0432\u0430\u0442\u0435\u043B\u0435\u043C"));
+          }
+          const opsRes = await getTBankOperations({ accountId: accId, start: monthStart, end: monthEnd });
+          if (opsRes.error !== null) {
+            return err(
+              new AggregateError([opsRes.error], `Failed to fetch operations for ${monthLabel}`)
+            );
+          }
+          batchOps.push(...opsRes.data);
+          await new Promise((resolve) => setTimeout(resolve, 1e3));
+        }
+        if (batchOps.length === 0) {
+          consecutiveEmptyMonths++;
+          if (y < 2020 && consecutiveEmptyMonths >= 12) {
+            break;
+          }
+        } else {
+          consecutiveEmptyMonths = 0;
+          totalSyncedOps += batchOps.length;
+          const accountMapping = buildAccountMapping(existingTxs);
+          const mergeResult = mergeBankOperations(batchOps, existingTxs, accountMapping);
+          const saveBankRes = await indexedDBRepository.saveBankOperations(mergeResult.savedBankOps);
+          if (saveBankRes.error !== null) return err(saveBankRes.error);
+          for (const uuid of mergeResult.deletedTxUuids) {
+            const delRes = await indexedDBRepository.deleteTransaction(uuid);
+            if (delRes.error !== null) return err(delRes.error);
+            existingTxs = existingTxs.filter((t) => t.uuid !== uuid);
+            totalDeletedTxs++;
+          }
+          for (const tx of mergeResult.updatedTxs) {
+            const saveRes = await indexedDBRepository.saveTransaction(tx);
+            if (saveRes.error !== null) return err(saveRes.error);
+            const idx = existingTxs.findIndex((t) => t.uuid === tx.uuid);
+            if (idx !== -1) existingTxs[idx] = tx;
+            totalUpdatedTxs++;
+          }
+          for (const tx of mergeResult.createdTxs) {
+            const saveRes = await indexedDBRepository.saveTransaction(tx);
+            if (saveRes.error !== null) return err(saveRes.error);
+            existingTxs.push(tx);
+            totalCreatedTxs++;
+          }
+        }
+        completedMonths++;
+      }
+      if (y < 2020 && consecutiveEmptyMonths >= 12) {
+        break;
+      }
+    }
+    if (options == null ? void 0 : options.onProgress) {
+      options.onProgress(`\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430: \u043E\u0431\u0440\u0430\u0431\u043E\u0442\u0430\u043D\u043E ${totalSyncedOps} \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439`, 100);
+    }
+    return ok({
+      syncedOpsCount: totalSyncedOps,
+      createdTxCount: totalCreatedTxs,
+      updatedTxCount: totalUpdatedTxs,
+      deletedTxCount: totalDeletedTxs
+    });
+  }
+  /**
+   * Resets local bank operations for a specific bank.
+   */
+  async resetBankOperations(bank) {
+    const delRes = await indexedDBRepository.deleteBankOperationsByBank(bank);
+    if (delRes.error !== null) return err(delRes.error);
+    return ok(void 0);
+  }
+};
+var bankSyncService = new BankSyncService();
 
 // auth_store.ts
 var AuthStore = class {
@@ -29440,6 +29885,11 @@ var AuthStore = class {
     __publicField(this, "totalBalance", null);
     __publicField(this, "isLoadingBalance", false);
     __publicField(this, "balanceError", null);
+    __publicField(this, "isSyncing", false);
+    __publicField(this, "syncProgress", "");
+    __publicField(this, "syncPercent", 0);
+    __publicField(this, "syncError", null);
+    __publicField(this, "abortController", null);
     // Auth flow metadata
     __publicField(this, "maskedPhone", null);
     __publicField(this, "otpLength", 6);
@@ -29728,6 +30178,120 @@ var AuthStore = class {
     });
   }
   /**
+   * Syncs recent operations (last 35 days) for all accounts
+   */
+  async syncRecentOperations(onSuccess) {
+    if (this.isSyncing) return;
+    if (this.accounts.length === 0) {
+      await this.loadBalance();
+      if (this.accounts.length === 0) {
+        runInAction(() => {
+          this.syncError = "\u041D\u0435\u0442 \u0441\u0447\u0435\u0442\u043E\u0432 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438";
+        });
+        return;
+      }
+    }
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439...";
+      this.syncPercent = 10;
+      this.syncError = null;
+    });
+    const accountIds = this.accounts.map((a) => a.id);
+    const syncRes = await bankSyncService.syncIncremental(accountIds);
+    runInAction(() => {
+      this.isSyncing = false;
+      this.syncPercent = 100;
+      if (syncRes.error !== null) {
+        this.syncError = syncRes.error.message;
+      } else {
+        this.syncProgress = `\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0438\u0440\u043E\u0432\u0430\u043D\u043E: ${syncRes.data.syncedOpsCount} \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 (+${syncRes.data.createdTxCount} \u043D\u043E\u0432\u044B\u0445, ${syncRes.data.updatedTxCount} \u043E\u0431\u043D\u043E\u0432\u043B\u0435\u043D\u043E)`;
+      }
+    });
+    if (syncRes.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+  /**
+   * Starts full historical sync back to 2010 month by month
+   */
+  async syncFullHistory(onSuccess) {
+    if (this.isSyncing) return;
+    if (this.accounts.length === 0) {
+      await this.loadBalance();
+      if (this.accounts.length === 0) {
+        runInAction(() => {
+          this.syncError = "\u041D\u0435\u0442 \u0441\u0447\u0435\u0442\u043E\u0432 \u0434\u043B\u044F \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438";
+        });
+        return;
+      }
+    }
+    const abortSignal = { aborted: false };
+    this.abortController = abortSignal;
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "\u0417\u0430\u043F\u0443\u0441\u043A \u043F\u043E\u043B\u043D\u043E\u0439 \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0438 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439...";
+      this.syncPercent = 0;
+      this.syncError = null;
+    });
+    const accountIds = this.accounts.map((a) => a.id);
+    const syncRes = await bankSyncService.syncFullHistory(accountIds, {
+      onProgress: (msg, percent) => {
+        runInAction(() => {
+          this.syncProgress = msg;
+          if (percent !== void 0) this.syncPercent = percent;
+        });
+      },
+      shouldAbort: () => abortSignal.aborted
+    });
+    runInAction(() => {
+      this.isSyncing = false;
+      this.abortController = null;
+      if (syncRes.error !== null) {
+        this.syncError = syncRes.error.message;
+      } else {
+        this.syncPercent = 100;
+        this.syncProgress = `\u041F\u043E\u043B\u043D\u0430\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043D\u0430: ${syncRes.data.syncedOpsCount} \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439`;
+      }
+    });
+    if (syncRes.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+  /**
+   * Cancels in-progress sync
+   */
+  cancelSync() {
+    if (this.abortController) {
+      this.abortController.aborted = true;
+      runInAction(() => {
+        this.syncProgress = "\u041E\u0442\u043C\u0435\u043D\u0430 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438...";
+      });
+    }
+  }
+  /**
+   * Resets local bank operations for T-Bank
+   */
+  async resetBankOperations(onSuccess) {
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "\u041E\u0447\u0438\u0441\u0442\u043A\u0430 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0422-\u0411\u0430\u043D\u043A\u0430...";
+      this.syncError = null;
+    });
+    const res = await bankSyncService.resetBankOperations("tbank");
+    runInAction(() => {
+      this.isSyncing = false;
+      if (res.error !== null) {
+        this.syncError = res.error.message;
+      } else {
+        this.syncProgress = "\u041E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u0422-\u0411\u0430\u043D\u043A\u0430 \u043E\u0447\u0438\u0449\u0435\u043D\u044B \u0438\u0437 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u0431\u0430\u0437\u044B";
+      }
+    });
+    if (res.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+  /**
    * Stub for legacy operations
    */
   async loadOperations() {
@@ -29913,7 +30477,7 @@ var AppStore = class {
   recalculateBalances() {
     if (this.isRecalculating) return;
     this.isRecalculating = true;
-    const workerUrl = true ? "/domain/recalculate_worker-JDWYC74V.js" : "/domain/recalculate_worker.js";
+    const workerUrl = true ? "/domain/recalculate_worker-7S3ZLLU4.js" : "/domain/recalculate_worker.js";
     const worker = new Worker(workerUrl);
     worker.onmessage = (e) => {
       if (e.data.status === "done") {
@@ -30178,6 +30742,38 @@ var AppStore = class {
       });
     }
   }
+  get bankAccountMapping() {
+    return buildAccountMapping(this.transactions);
+  }
+  async linkBankAccount(accountName, bankAccountId, initialBalance, initialCurrency) {
+    const res = await linkBankAccountToMmmAccount(accountName, bankAccountId, this.transactions, initialBalance, initialCurrency);
+    if (res.error) {
+      runInAction(() => {
+        this.error = res.error;
+      });
+      return;
+    }
+    await this.loadData();
+    this.recalculateBalances();
+  }
+  async syncTBankRecent() {
+    await authStore.syncRecentOperations(async () => {
+      await this.loadData();
+      this.recalculateBalances();
+    });
+  }
+  async syncTBankFull() {
+    await authStore.syncFullHistory(async () => {
+      await this.loadData();
+      this.recalculateBalances();
+    });
+  }
+  async resetTBankOperations() {
+    await authStore.resetBankOperations(async () => {
+      await this.loadData();
+      this.recalculateBalances();
+    });
+  }
 };
 var store = new AppStore();
 
@@ -30300,7 +30896,7 @@ var AccountsView = observer(() => {
 
 // db_explorer_view.tsx
 var import_react8 = __toESM(require_react());
-var import_globals9 = __toESM(require_globals());
+var import_globals10 = __toESM(require_globals());
 var import_jsx_runtime2 = __toESM(require_jsx_runtime());
 function formatKeyPath(keyPath) {
   if (keyPath === null) return "out-of-line";
@@ -31228,6 +31824,10 @@ var TransactionModal = observer(() => {
                   ]
                 }
               )
+            ] }),
+            currentTx.bankOperationIds && currentTx.bankOperationIds.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "detail-row", style: { opacity: 0.9 }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-label", children: "\u{1F4B3} \u0418\u0441\u0442\u043E\u0447\u043D\u0438\u043A" }),
+              /* @__PURE__ */ (0, import_jsx_runtime4.jsx)("span", { className: "detail-value", style: { fontSize: "12px", color: "var(--text-secondary)" }, children: currentTx.bankOperationIds.join(", ") })
             ] })
           ] }),
           isConfirmingDelete ? /* @__PURE__ */ (0, import_jsx_runtime4.jsxs)("div", { className: "delete-confirm-box", children: [
@@ -31514,6 +32114,83 @@ var TransactionsView = observer(() => {
   }, {});
   const sortedDates = Object.keys(groupedTransactions).sort((a, b) => b.localeCompare(a));
   return /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("main", { children: [
+    authStore.isAuthenticated && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)(
+      "div",
+      {
+        style: {
+          padding: "10px 16px",
+          background: "rgba(255, 221, 45, 0.08)",
+          borderBottom: "1px solid rgba(255, 221, 45, 0.2)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px"
+        },
+        children: [
+          /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { fontSize: "13px", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: "6px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: "\u{1F4B3} \u0422-\u0411\u0430\u043D\u043A" }),
+              authStore.totalBalance !== null && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { style: { color: "var(--text-secondary)", fontSize: "12px" }, children: [
+                "(",
+                authStore.totalBalance.toLocaleString("ru-RU", { minimumFractionDigits: 2 }),
+                " \u20BD)"
+              ] })
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              "button",
+              {
+                type: "button",
+                className: "btn btn-secondary",
+                disabled: authStore.isSyncing,
+                onClick: () => store.syncTBankRecent(),
+                style: {
+                  padding: "4px 10px",
+                  fontSize: "12px",
+                  background: "#ffdd2d",
+                  color: "#1e293b",
+                  fontWeight: 600,
+                  border: "none"
+                },
+                title: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0435 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u0438\u0437 \u0422-\u0411\u0430\u043D\u043A\u0430 (\u0437\u0430 35 \u0434\u043D\u0435\u0439)",
+                children: authStore.isSyncing ? "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F..." : "\u{1F504} \u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C"
+              }
+            )
+          ] }),
+          authStore.isSyncing && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--text-secondary)", marginBottom: "4px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { children: authStore.syncProgress }),
+              /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+                "button",
+                {
+                  type: "button",
+                  onClick: () => authStore.cancelSync(),
+                  style: { background: "none", border: "none", color: "var(--danger-color)", cursor: "pointer", padding: 0, fontSize: "11px" },
+                  children: "\u041E\u0442\u043C\u0435\u043D\u0430"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { height: "4px", width: "100%", background: "rgba(255, 255, 255, 0.1)", borderRadius: "2px", overflow: "hidden" }, children: /* @__PURE__ */ (0, import_jsx_runtime5.jsx)(
+              "div",
+              {
+                style: {
+                  height: "100%",
+                  width: `${Math.max(5, authStore.syncPercent)}%`,
+                  background: "#ffdd2d",
+                  transition: "width 0.3s ease"
+                }
+              }
+            ) })
+          ] }),
+          !authStore.isSyncing && authStore.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { fontSize: "11px", color: "var(--success-color)" }, children: [
+            "\u2713 ",
+            authStore.syncProgress
+          ] }),
+          authStore.syncError && /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { style: { fontSize: "11px", color: "var(--danger-color)" }, children: [
+            "\u2717 ",
+            authStore.syncError
+          ] })
+        ]
+      }
+    ),
     store.transactions.length === 0 ? /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { style: { padding: "24px", textAlign: "center", color: "var(--text-secondary)" }, children: "\u041D\u0435\u0442 \u0434\u043E\u0431\u0430\u0432\u043B\u0435\u043D\u043D\u044B\u0445 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439." }) : sortedDates.map((dateStr) => /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("div", { children: [
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { className: "date-header", children: formatDate(dateStr) }),
       /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("div", { children: groupedTransactions[dateStr].map((tx) => {
@@ -31532,7 +32209,8 @@ var TransactionsView = observer(() => {
                   /* @__PURE__ */ (0, import_jsx_runtime5.jsx)("span", { className: "item-title", children: tx.description || tx.category }),
                   /* @__PURE__ */ (0, import_jsx_runtime5.jsxs)("span", { className: "item-subtitle", children: [
                     tx.accountName,
-                    tx.member ? ` \u2022 ${tx.member}` : ""
+                    tx.member ? ` \u2022 ${tx.member}` : "",
+                    tx.bankOperationIds && tx.bankOperationIds.length > 0 ? " \u2022 \u{1F4B3} \u0422-\u0411\u0430\u043D\u043A" : ""
                   ] })
                 ] })
               ] }),
@@ -31754,31 +32432,167 @@ var SettingsView = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "13px", color: "var(--text-secondary)", marginBottom: "4px" }, children: "\u0422\u0435\u043A\u0443\u0449\u0438\u0439 \u0431\u0430\u043B\u0430\u043D\u0441:" }),
         /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "26px", fontWeight: "bold", color: "var(--text-primary)", marginBottom: "12px" }, children: authStore.totalBalance !== null ? `${authStore.totalBalance.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} \u20BD` : authStore.isLoadingBalance ? "\u0417\u0430\u0433\u0440\u0443\u0437\u043A\u0430..." : "\u2014" }),
         authStore.balanceError && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { className: "error-banner", style: { margin: "8px 0", fontSize: "13px" }, children: authStore.balanceError }),
-        authStore.accounts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { display: "flex", flexDirection: "column", gap: "8px", marginTop: "12px" }, children: authStore.accounts.map((acc) => {
-          var _a3, _b2;
-          return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
-            "div",
-            {
-              style: {
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                padding: "10px 14px",
-                background: "rgba(255, 255, 255, 0.04)",
-                borderRadius: "var(--radius-sm)",
-                fontSize: "13px"
+        /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { marginTop: "14px", marginBottom: "14px", padding: "12px", background: "rgba(255, 255, 255, 0.03)", borderRadius: "var(--radius-sm)", border: "1px solid var(--border-color)" }, children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600, fontSize: "13px", marginBottom: "8px" }, children: "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: authStore.isSyncing || authStore.syncProgress ? "10px" : "0" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              "button",
+              {
+                className: "btn btn-primary",
+                disabled: authStore.isSyncing || authStore.isLoadingBalance,
+                onClick: () => store.syncTBankRecent(),
+                style: { fontSize: "12px", padding: "6px 12px", background: "#ffdd2d", color: "#333", fontWeight: 600 },
+                title: "\u0417\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u0437\u0430 \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u0438\u0439 \u043C\u0435\u0441\u044F\u0446 (35 \u0434\u043D\u0435\u0439) \u0438 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0442\u0430\u0442\u0443\u0441\u044B",
+                children: authStore.isSyncing ? "\u0421\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044F..." : "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              "button",
+              {
+                className: "btn btn-secondary",
+                disabled: authStore.isSyncing || authStore.isLoadingBalance,
+                onClick: () => {
+                  if (window.confirm("\u0417\u0430\u043F\u0443\u0441\u0442\u0438\u0442\u044C \u043F\u043E\u043B\u043D\u0443\u044E \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0443 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0439 \u0432\u043E \u0432\u0441\u044E \u0433\u043B\u0443\u0431\u0438\u043D\u0443 \u0434\u043E 2010 \u0433\u043E\u0434\u0430? \u0417\u0430\u043F\u0440\u043E\u0441\u044B \u0431\u0443\u0434\u0443\u0442 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u044F\u0442\u044C\u0441\u044F \u0441 \u0438\u043D\u0442\u0435\u0440\u0432\u0430\u043B\u043E\u043C \u0432 1 \u0441\u0435\u043A.")) {
+                    store.syncTBankFull();
+                  }
+                },
+                style: { fontSize: "12px", padding: "6px 12px" },
+                title: "\u041F\u043E\u043C\u0435\u0441\u044F\u0447\u043D\u0430\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 \u0438\u0441\u0442\u043E\u0440\u0438\u0438 \u0432 \u043F\u0440\u043E\u0448\u043B\u043E\u0435 \u0434\u043E 2010 \u0433\u043E\u0434\u0430 \u0441 \u0437\u0430\u0434\u0435\u0440\u0436\u043A\u043E\u0439 1 \u0441\u0435\u043A",
+                children: "\u041F\u043E\u043B\u043D\u0430\u044F \u0437\u0430\u0433\u0440\u0443\u0437\u043A\u0430 (\u0434\u043E 2010)"
+              }
+            ),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              "button",
+              {
+                className: "btn btn-secondary",
+                disabled: authStore.isSyncing,
+                onClick: () => {
+                  if (window.confirm("\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u0432\u0441\u0435 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u044B\u0435 \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u0422-\u0411\u0430\u043D\u043A\u0430 \u0438\u0437 \u0442\u0430\u0431\u043B\u0438\u0446\u044B bank_operations?")) {
+                    store.resetTBankOperations();
+                  }
+                },
+                style: { fontSize: "12px", padding: "6px 12px", color: "var(--danger-color)" },
+                title: "\u0423\u0434\u0430\u043B\u0438\u0442\u044C \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438 \u044D\u0442\u043E\u0433\u043E \u0431\u0430\u043D\u043A\u0430 \u0438\u0437 \u043B\u043E\u043A\u0430\u043B\u044C\u043D\u043E\u0439 \u0442\u0430\u0431\u043B\u0438\u0446\u044B",
+                children: "\u041E\u0447\u0438\u0441\u0442\u0438\u0442\u044C \u043E\u043F\u0435\u0440\u0430\u0446\u0438\u0438"
+              }
+            )
+          ] }),
+          authStore.isSyncing && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { marginTop: "10px" }, children: [
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "12px", marginBottom: "4px" }, children: [
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { style: { color: "var(--text-secondary)" }, children: authStore.syncProgress }),
+              /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+                "button",
+                {
+                  type: "button",
+                  className: "btn btn-secondary",
+                  style: { padding: "2px 8px", fontSize: "11px", color: "var(--danger-color)" },
+                  onClick: () => authStore.cancelSync(),
+                  children: "\u041E\u0442\u043C\u0435\u043D\u0430"
+                }
+              )
+            ] }),
+            /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { height: "6px", width: "100%", background: "rgba(255, 255, 255, 0.1)", borderRadius: "3px", overflow: "hidden" }, children: /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+              "div",
+              {
+                style: {
+                  height: "100%",
+                  width: `${Math.max(5, authStore.syncPercent)}%`,
+                  background: "#ffdd2d",
+                  transition: "width 0.3s ease"
+                }
+              }
+            ) })
+          ] }),
+          !authStore.isSyncing && authStore.syncProgress && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { marginTop: "8px", fontSize: "12px", color: "var(--success-color)" }, children: [
+            "\u2713 ",
+            authStore.syncProgress
+          ] }),
+          authStore.syncError && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { marginTop: "8px", fontSize: "12px", color: "var(--danger-color)" }, children: [
+            "\u2717 \u041E\u0448\u0438\u0431\u043A\u0430 \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u0438: ",
+            authStore.syncError
+          ] })
+        ] }),
+        authStore.accounts.length > 0 && /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "13px", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "8px" }, children: "\u0421\u0447\u0435\u0442\u0430 \u0422-\u0411\u0430\u043D\u043A\u0430 \u0438 \u043F\u0440\u0438\u0432\u044F\u0437\u043A\u0430:" }),
+          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { display: "flex", flexDirection: "column", gap: "8px" }, children: authStore.accounts.map((acc) => {
+            var _a3, _b2;
+            const mappedName = store.bankAccountMapping.get(acc.id) || store.bankAccountMapping.get(`tbank:${acc.id}`);
+            return /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+              "div",
+              {
+                style: {
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                  padding: "10px 14px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  borderRadius: "var(--radius-sm)",
+                  fontSize: "13px"
+                },
+                children: [
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600 }, children: acc.name || acc.accountType }),
+                      /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }, children: [
+                        "ID: ",
+                        acc.id,
+                        " ",
+                        acc.accountType ? `\u2022 ${acc.accountType}` : ""
+                      ] })
+                    ] }),
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 700, fontSize: "14px" }, children: acc.moneyAmount && typeof acc.moneyAmount.value === "number" ? `${acc.moneyAmount.value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${((_a3 = acc.moneyAmount.currency) == null ? void 0 : _a3.name) === "RUB" ? "\u20BD" : ((_b2 = acc.moneyAmount.currency) == null ? void 0 : _b2.name) || ""}` : "\u2014" })
+                  ] }),
+                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "6px", marginTop: "2px" }, children: mappedName ? /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("span", { style: { fontSize: "12px", color: "var(--success-color)" }, children: [
+                    "\u2713 \u0421\u0432\u044F\u0437\u0430\u043D \u0441\u043E \u0441\u0447\u0451\u0442\u043E\u043C: ",
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("strong", { children: mappedName })
+                  ] }) : /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { style: { display: "flex", gap: "6px", alignItems: "center", width: "100%", flexWrap: "wrap" }, children: [
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("span", { style: { fontSize: "11px", color: "var(--text-secondary)" }, children: "\u041D\u0435 \u043F\u0440\u0438\u0432\u044F\u0437\u0430\u043D \u043A \u0441\u0447\u0451\u0442\u0443" }),
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)(
+                      "select",
+                      {
+                        className: "form-input",
+                        style: { fontSize: "11px", padding: "2px 6px", height: "24px", flex: 1, minWidth: "120px" },
+                        defaultValue: "",
+                        onChange: (e) => {
+                          const val = e.target.value;
+                          if (val) {
+                            store.linkBankAccount(val, acc.id);
+                          }
+                        },
+                        children: [
+                          /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: "", disabled: true, children: "\u041F\u0440\u0438\u0432\u044F\u0437\u0430\u0442\u044C \u043A \u0441\u0447\u0451\u0442\u0443..." }),
+                          store.accounts.map((a) => /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("option", { value: a.name, children: a.name }, a.id))
+                        ]
+                      }
+                    ),
+                    /* @__PURE__ */ (0, import_jsx_runtime6.jsx)(
+                      "button",
+                      {
+                        type: "button",
+                        className: "btn btn-secondary",
+                        style: { padding: "2px 8px", fontSize: "11px", whiteSpace: "nowrap" },
+                        onClick: () => {
+                          var _a4, _b3, _c;
+                          const accName = prompt("\u041D\u0430\u0437\u0432\u0430\u043D\u0438\u0435 \u043D\u043E\u0432\u043E\u0433\u043E \u0441\u0447\u0451\u0442\u0430 \u0432 MMM:", acc.name || "\u0422-\u0411\u0430\u043D\u043A");
+                          if (accName) {
+                            store.linkBankAccount(
+                              accName,
+                              acc.id,
+                              String(((_a4 = acc.moneyAmount) == null ? void 0 : _a4.value) || "0"),
+                              ((_c = (_b3 = acc.moneyAmount) == null ? void 0 : _b3.currency) == null ? void 0 : _c.name) || "RUB"
+                            );
+                          }
+                        },
+                        children: "+ \u0421\u043E\u0437\u0434\u0430\u0442\u044C \u0441\u0447\u0451\u0442"
+                      }
+                    )
+                  ] }) })
+                ]
               },
-              children: [
-                /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { children: [
-                  /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 600 }, children: acc.name || acc.accountType }),
-                  acc.accountType && /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontSize: "11px", color: "var(--text-secondary)", marginTop: "2px" }, children: acc.accountType })
-                ] }),
-                /* @__PURE__ */ (0, import_jsx_runtime6.jsx)("div", { style: { fontWeight: 700, fontSize: "14px" }, children: acc.moneyAmount && typeof acc.moneyAmount.value === "number" ? `${acc.moneyAmount.value.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${((_a3 = acc.moneyAmount.currency) == null ? void 0 : _a3.name) === "RUB" ? "\u20BD" : ((_b2 = acc.moneyAmount.currency) == null ? void 0 : _b2.name) || ""}` : "\u2014" })
-              ]
-            },
-            acc.id
-          );
-        }) })
+              acc.id
+            );
+          }) })
+        ] })
       ] })
     ] }),
     /* @__PURE__ */ (0, import_jsx_runtime6.jsxs)("div", { className: "settings-card", children: [
@@ -32052,7 +32866,7 @@ var AppMain = observer(() => {
         /* @__PURE__ */ (0, import_jsx_runtime8.jsx)("h1", { className: "app-title", children: "\u043C\u043E\u043D\u0435\u0439 \u0444\u043B\u043E\u0432" }),
         /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "app-version", children: [
           "v. ",
-          true ? "2026-09-24 18:50:52 +0300" : "dev"
+          true ? "2026-10-02 13:06:12 +0300" : "dev"
         ] })
       ] }),
       /* @__PURE__ */ (0, import_jsx_runtime8.jsxs)("div", { className: "header-actions", children: [
@@ -32203,4 +33017,4 @@ react/cjs/react-jsx-runtime.development.js:
    * LICENSE file in the root directory of this source tree.
    *)
 */
-//# sourceMappingURL=app-VMAT7WZB.js.map
+//# sourceMappingURL=app-5AOTWW7D.js.map

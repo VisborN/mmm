@@ -2,7 +2,7 @@
 (() => {
   // sw.ts
   var sw_default = null;
-  var CACHE_NAME = `mmm-pwa-${"2026-09-24 18:50:52 +0300" ? "2026-09-24 18:50:52 +0300".replace(/\s+/g, "-") : "v1"}`;
+  var CACHE_NAME = `mmm-pwa-${"2026-10-02 13:06:12 +0300" ? "2026-10-02 13:06:12 +0300".replace(/\s+/g, "-") : "v1"}`;
   var PRECACHE_ASSETS = [
     "./",
     "./index.html",
@@ -18,8 +18,8 @@
       (async () => {
         const cache = await caches.open(CACHE_NAME);
         const toCache = [...PRECACHE_ASSETS];
-        if ("/domain/recalculate_worker-JDWYC74V.js") {
-          toCache.push("/domain/recalculate_worker-JDWYC74V.js");
+        if ("/domain/recalculate_worker-7S3ZLLU4.js") {
+          toCache.push("/domain/recalculate_worker-7S3ZLLU4.js");
         }
         await cache.addAll(toCache).catch((err) => {
           console.warn("Service Worker: Error pre-caching static assets", err);
