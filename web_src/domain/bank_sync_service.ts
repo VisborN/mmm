@@ -177,22 +177,6 @@ export function mergeBankOperations(
     }
 
     // Determine transaction type
-    let opType: TransactionType = bankOp.type === "Credit" ? "deposit" : "withdraw";
-    let transferReceiveAccount: string | null = null;
-    let transferReceiveAmount: string | null = null;
-
-    if (bankOp.isInner && bankOp.innerCounterpartId) {
-      const counterpartName = accountMapping.get(bankOp.innerCounterpartId);
-      if (counterpartName) {
-        // Internal transfer between known accounts
-        if (bankOp.type === "Debit") {
-          opType = "transfer";
-          transferReceiveAccount = counterpartName;
-          transferReceiveAmount = String(bankOp.accountAmount ?? bankOp.amount);
-        }
-      }
-    }
-
     const amountAccountCurr = String(bankOp.accountAmount ?? bankOp.amount);
     const amountRub =
       bankOp.currency === "RUB"
@@ -200,6 +184,79 @@ export function mergeBankOperations(
         : bankOp.accountCurrency === "RUB" && bankOp.accountAmount !== undefined
           ? bankOp.accountAmount
           : bankOp.amount;
+
+    let opType: TransactionType = bankOp.type === "Credit" ? "deposit" : "withdraw";
+    let transferReceiveAccount: string | null = null;
+    let transferReceiveAmount: string | null = null;
+
+    if (bankOp.isInner && bankOp.innerCounterpartId) {
+      const counterpartName = accountMapping.get(bankOp.innerCounterpartId);
+      if (counterpartName) {
+        const dateStr = new Date(bankOp.operationTime).toISOString().split("T")[0];
+
+        if (bankOp.type === "Debit") {
+          opType = "transfer";
+          transferReceiveAccount = counterpartName;
+          transferReceiveAmount = String(bankOp.accountAmount ?? bankOp.amount);
+
+          // Check if credit leg already created a deposit transaction
+          const matchingCreditTx = createdTxs.find(
+            (t) =>
+              t.type === "deposit" &&
+              t.accountName === counterpartName &&
+              Math.abs(t.amountRubles - amountRub) < 0.01 &&
+              Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1000
+          );
+          if (matchingCreditTx) {
+            matchingCreditTx.type = "transfer";
+            matchingCreditTx.accountName = accountName;
+            matchingCreditTx.transferReceiveAccountName = counterpartName;
+            matchingCreditTx.transferReceiveAmountAccountCurrency = matchingCreditTx.amountAccountCurrency;
+            matchingCreditTx.amountAccountCurrency = amountAccountCurr;
+            matchingCreditTx.amountRubles = amountRub;
+            const currentIds = matchingCreditTx.bankOperationIds ? [...matchingCreditTx.bankOperationIds] : [];
+            if (!currentIds.includes(bankOp.id)) {
+              currentIds.push(bankOp.id);
+              matchingCreditTx.bankOperationIds = currentIds;
+            }
+            txByBankOpId.set(bankOp.id, matchingCreditTx);
+            continue;
+          }
+        } else if (bankOp.type === "Credit") {
+          // Check if debit leg already created a transfer transaction
+          const matchingTransfer =
+            createdTxs.find(
+              (t) =>
+                t.type === "transfer" &&
+                t.accountName === counterpartName &&
+                t.transferReceiveAccountName === accountName &&
+                Math.abs(t.amountRubles - amountRub) < 0.01 &&
+                Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1000
+            ) ||
+            existingTransactions.find(
+              (t) =>
+                t.type === "transfer" &&
+                t.accountName === counterpartName &&
+                t.transferReceiveAccountName === accountName &&
+                Math.abs(t.amountRubles - amountRub) < 0.01 &&
+                Math.abs(new Date(t.date).getTime() - new Date(dateStr).getTime()) <= 2 * 24 * 3600 * 1000
+            );
+
+          if (matchingTransfer) {
+            const currentIds = matchingTransfer.bankOperationIds ? [...matchingTransfer.bankOperationIds] : [];
+            if (!currentIds.includes(bankOp.id)) {
+              currentIds.push(bankOp.id);
+              matchingTransfer.bankOperationIds = currentIds;
+              if (!createdTxs.includes(matchingTransfer) && !updatedTxs.includes(matchingTransfer)) {
+                updatedTxs.push(matchingTransfer);
+              }
+            }
+            txByBankOpId.set(bankOp.id, matchingTransfer);
+            continue;
+          }
+        }
+      }
+    }
 
     const newTx: Transaction = {
       uuid: uuidv7(),
