@@ -49,3 +49,14 @@
 - **Light-Dismiss & Keyboard Navigation**: All modals ([`TransactionModal`](file:///home/vdudko/documents/mmm/web_src/transaction_modal.tsx), [`AccountModal`](file:///home/vdudko/documents/mmm/web_src/accounts_view.tsx), [`FolderSelectionModal`](file:///home/vdudko/documents/mmm/web_src/folder_selection_modal.tsx)) close upon clicking outside on `.modal-overlay` or pressing `Escape`. Close and dismiss buttons use `onMouseDown={(e) => e.preventDefault()}` to prevent blur-triggered saves from interfering with closing.
 - **Transaction Deletion**: Added `store.deleteTransaction(uuid)` and an inline deletion confirmation (`🗑️ Удалить`) to safely remove operations from IndexedDB.
 
+## Bank Operations Synchronization & Many-to-Many Architecture
+- **Bank Operations Store (`bank_operations`)**: Dedicated IndexedDB store (schema `DB_VERSION = 6`) with `keyPath: 'id'`, indexed by `by-bank`, `by-time`, `by-account`. Stores minimal structured fields (`id`, `bank`, `bankAccountId`, `operationTime`, `status`, `type`, `amount`, `currency`, `description`, etc.) and the original unformatted JSON string in `source`.
+- **Bank Operation IDs**: Prefixed format `${bank}:${actualId}` (e.g. `tbank:${actualId}` where `actualId = authorizationId ?? id`).
+- **Account Mapping via Initial Balance**: Mapping of `bankAccountId` -> `accountName` is declared in the initial `balance_correct` transaction that establishes the account, storing `bankOperationIds = ['tbank:' + bankAccountId]`.
+- **Many-to-Many Linking**: `Transaction` has `bankOperationIds?: string[]`. Semicolon-delimited in Google Drive CSV export/import (`google_sync_service.ts`).
+- **Merge & Sync Logic (`bankSyncService`)**:
+  - `syncIncremental`: Syncs last 35 days for all accounts.
+  - `syncFullHistory`: Syncs month-by-month backwards to 2010 with a 1-second delay between bank requests and a live visual progress bar.
+  - Automatically creates new transactions for non-FAILED operations, updates amount/date on existing transactions, and removes transactions if an operation becomes `FAILED`.
+  - Settings View provides full sync, incremental update, reset of bank operations, and visual account mapping with inline account linking and creation.
+

@@ -1,6 +1,6 @@
 
 import "ts-error-as-value/lib/globals";
-import { Account, Transaction } from "../domain/types";
+import { Account, BankOperation, Transaction } from "../domain/types";
 import { uuidv7 } from "../domain/uuidv7";
 import { withDB } from "./db_wrapper";
 
@@ -17,6 +17,12 @@ export interface Repository {
     deleteAccount(id: number): Promise<Result<void, Error>>;
     clearAccounts(): Promise<Result<void, Error>>;
     resetAccountBalances(): Promise<Result<void, Error>>;
+
+    getBankOperations(bank?: string): Promise<Result<BankOperation[], Error>>;
+    getBankOperation(id: string): Promise<Result<BankOperation | undefined, Error>>;
+    saveBankOperations(operations: BankOperation[]): Promise<Result<void, Error>>;
+    deleteBankOperationsByBank(bank: string): Promise<Result<void, Error>>;
+    clearBankOperations(): Promise<Result<void, Error>>;
 
     replaceAllTransactions(transactions: Transaction[]): Promise<Result<void, Error>>;
     clearAllData(): Promise<Result<void, Error>>;
@@ -132,11 +138,62 @@ export const indexedDBRepository: Repository = {
         return ok<void>(undefined);
     },
 
+    async getBankOperations(bank?: string): Promise<Result<BankOperation[], Error>> {
+        const result = await withDB<BankOperation[]>(async db => {
+            if (bank) {
+                return db.getAllFromIndex('bank_operations', 'by-bank', bank);
+            }
+            return db.getAll('bank_operations');
+        });
+        if (result.error) return result;
+        result.data!.sort((a, b) => b.operationTime - a.operationTime);
+        return ok(result.data);
+    },
+
+    async getBankOperation(id: string): Promise<Result<BankOperation | undefined, Error>> {
+        return withDB<BankOperation | undefined>(db => db.get('bank_operations', id));
+    },
+
+    async saveBankOperations(operations: BankOperation[]): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            const tx = db.transaction('bank_operations', 'readwrite');
+            for (const op of operations) {
+                await tx.store.put(op);
+            }
+            await tx.done;
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async deleteBankOperationsByBank(bank: string): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            const tx = db.transaction('bank_operations', 'readwrite');
+            let cursor = await tx.store.index('by-bank').openCursor(bank);
+            while (cursor) {
+                await cursor.delete();
+                cursor = await cursor.continue();
+            }
+            await tx.done;
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
+    async clearBankOperations(): Promise<Result<void, Error>> {
+        const result = await withDB(async db => {
+            await db.clear('bank_operations');
+        });
+        if (result.error) return result;
+        return ok<void>(undefined);
+    },
+
     async clearAllData(): Promise<Result<void, Error>> {
         const result = await withDB(async db => {
-            const tx = db.transaction(['transactions', 'accounts'], 'readwrite');
+            const tx = db.transaction(['transactions', 'accounts', 'bank_operations'], 'readwrite');
             await tx.objectStore('transactions').clear();
             await tx.objectStore('accounts').clear();
+            await tx.objectStore('bank_operations').clear();
             await tx.done;
         });
         if (result.error) return result;

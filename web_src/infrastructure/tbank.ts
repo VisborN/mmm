@@ -1,6 +1,7 @@
 import "ts-error-as-value/lib/globals";
 import { proxyFetch, ProxyResponse } from "./proxy";
 import { JsonStore } from "./json_store";
+import { BankOperation } from "../domain/types";
 
 // -----------------------------------------------------------------------------
 // Constants matching decompiled Android app and tbank-mobile-api
@@ -1001,4 +1002,122 @@ export async function getTBankAccounts(): Promise<Result<TBankAccount[], Error>>
 
   const payload = Array.isArray(data.payload) ? (data.payload as TBankAccount[]) : [];
   return ok(payload);
+}
+
+/**
+ * Fetches operations for a specific account and date range from GET /v1/operations.
+ */
+export async function getTBankOperations({
+  accountId,
+  start,
+  end,
+}: {
+  accountId: string;
+  start: Date;
+  end: Date;
+}): Promise<Result<BankOperation[], Error>> {
+  const identity = await getOrCreateIdentity();
+  let tokens = await getStoredTokens();
+  if (!tokens) {
+    return err(new Error("Not authenticated in T-Bank"));
+  }
+
+  // Proactive refresh if token expires in less than 60 seconds
+  if (tokens.expiresAt - Date.now() < 60_000) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error === null) {
+      tokens = refRes.data;
+    }
+  }
+
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
+  const url = `${API_BASE_URL}v1/operations?accounts=${encodeURIComponent(accountId)}&start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}`;
+
+  const doFetch = async (
+    toks: TBankTokens
+  ): Promise<Result<ProxyResponse, Error>> => {
+    const headers: Record<string, string> = {
+      ...buildBaseHeaders(identity),
+      "X-MB-Authorized": "true",
+      Authorization: `${toks.tokenType} ${toks.accessToken}`,
+    };
+    return await proxyFetch(url, {
+      method: "GET",
+      headers,
+    });
+  };
+
+  let res = await doFetch(tokens);
+  if (res.error !== null) {
+    return err(new AggregateError([res.error], "Failed to fetch operations"));
+  }
+
+  // If 401 Unauthorized, attempt refresh once
+  if (res.data.status === 401) {
+    const refRes = await refreshTBankTokens(identity, tokens.refreshToken);
+    if (refRes.error !== null) {
+      return err(new AggregateError([refRes.error], "Unauthorized and failed to refresh token"));
+    }
+    tokens = refRes.data;
+    res = await doFetch(tokens);
+    if (res.error !== null) {
+      return err(new AggregateError([res.error], "Failed to fetch operations after token refresh"));
+    }
+  }
+
+  const jsonRes = await res.data.json<Record<string, unknown>>();
+  if (jsonRes.error !== null) {
+    return err(new AggregateError([jsonRes.error], "Failed to parse operations response"));
+  }
+
+  const data = jsonRes.data;
+  if (data.resultCode !== "OK") {
+    return err(new Error(`T-Bank API error: ${data.resultCode} - ${data.errorMessage || ""}`));
+  }
+
+  const payload = Array.isArray(data.payload) ? data.payload : [];
+  const operations: BankOperation[] = [];
+
+  for (const rawItem of payload) {
+    if (!rawItem || typeof rawItem !== "object") continue;
+    const raw = rawItem as Record<string, unknown>;
+
+    const actualId = String(raw.authorizationId || raw.id || "");
+    if (!actualId) continue;
+
+    const opTimeRaw = raw.operationTime as { milliseconds?: number } | undefined;
+    const opTime = opTimeRaw?.milliseconds ? Number(opTimeRaw.milliseconds) : Date.now();
+
+    const amountObj = raw.amount as { value?: number; currency?: { name?: string } } | undefined;
+    const accountAmountObj = raw.accountAmount as { value?: number; currency?: { name?: string } } | undefined;
+    const brandObj = raw.brand as { name?: string } | undefined;
+    const merchantObj = raw.merchant as { name?: string } | undefined;
+    const spendingCatObj = raw.spendingCategory as { name?: string } | undefined;
+    const catObj = raw.category as { name?: string } | undefined;
+
+    const op: BankOperation = {
+      id: `tbank:${actualId}`,
+      bank: "tbank",
+      bankAccountId: String(raw.account || accountId),
+      operationTime: opTime,
+      status: String(raw.status || "OK"),
+      type: String(raw.type || ""),
+      group: raw.group ? String(raw.group) : undefined,
+      amount: amountObj?.value !== undefined ? Number(amountObj.value) : 0,
+      currency: amountObj?.currency?.name ? String(amountObj.currency.name) : "RUB",
+      accountAmount: accountAmountObj?.value !== undefined ? Number(accountAmountObj.value) : undefined,
+      accountCurrency: accountAmountObj?.currency?.name ? String(accountAmountObj.currency.name) : undefined,
+      description: String(raw.description || brandObj?.name || merchantObj?.name || ""),
+      category: spendingCatObj?.name ? String(spendingCatObj.name) : (catObj?.name ? String(catObj.name) : undefined),
+      mcc: raw.mcc !== undefined && raw.mcc !== null ? Number(raw.mcc) : null,
+      isInner: Boolean(raw.isInner),
+      innerCounterpartId: raw.senderAgreement ? String(raw.senderAgreement) : null,
+      source: JSON.stringify(raw),
+    };
+
+    operations.push(op);
+  }
+
+  return ok(operations);
 }

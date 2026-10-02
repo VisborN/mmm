@@ -243,36 +243,175 @@ export const SettingsView = observer(() => {
                             </div>
                         )}
 
-                        {authStore.accounts.length > 0 && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px' }}>
-                                {authStore.accounts.map((acc) => (
-                                    <div
-                                        key={acc.id}
-                                        style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '10px 14px',
-                                            background: 'rgba(255, 255, 255, 0.04)',
-                                            borderRadius: 'var(--radius-sm)',
-                                            fontSize: '13px',
-                                        }}
-                                    >
-                                        <div>
-                                            <div style={{ fontWeight: 600 }}>{acc.name || acc.accountType}</div>
-                                            {acc.accountType && (
-                                                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                                                    {acc.accountType}
-                                                </div>
-                                            )}
-                                        </div>
-                                        <div style={{ fontWeight: 700, fontSize: '14px' }}>
-                                            {acc.moneyAmount && typeof acc.moneyAmount.value === 'number'
-                                                ? `${acc.moneyAmount.value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${acc.moneyAmount.currency?.name === 'RUB' ? '₽' : acc.moneyAmount.currency?.name || ''}`
-                                                : '—'}
-                                        </div>
+                        {/* Synchronization Controls & Progress */}
+                        <div style={{ marginTop: '14px', marginBottom: '14px', padding: '12px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+                            <div style={{ fontWeight: 600, fontSize: '13px', marginBottom: '8px' }}>Синхронизация операций</div>
+                            
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: authStore.isSyncing || authStore.syncProgress ? '10px' : '0' }}>
+                                <button
+                                    className="btn btn-primary"
+                                    disabled={authStore.isSyncing || authStore.isLoadingBalance}
+                                    onClick={() => store.syncTBankRecent()}
+                                    style={{ fontSize: '12px', padding: '6px 12px', background: '#ffdd2d', color: '#333', fontWeight: 600 }}
+                                    title="Загрузить операции за последний месяц (35 дней) и обновить статусы"
+                                >
+                                    {authStore.isSyncing ? 'Синхронизация...' : 'Обновить операции'}
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    disabled={authStore.isSyncing || authStore.isLoadingBalance}
+                                    onClick={() => {
+                                        if (window.confirm('Запустить полную загрузку операций во всю глубину до 2010 года? Запросы будут отправляться с интервалом в 1 сек.')) {
+                                            store.syncTBankFull();
+                                        }
+                                    }}
+                                    style={{ fontSize: '12px', padding: '6px 12px' }}
+                                    title="Помесячная загрузка истории в прошлое до 2010 года с задержкой 1 сек"
+                                >
+                                    Полная загрузка (до 2010)
+                                </button>
+                                <button
+                                    className="btn btn-secondary"
+                                    disabled={authStore.isSyncing}
+                                    onClick={() => {
+                                        if (window.confirm('Очистить все локальные операции Т-Банка из таблицы bank_operations?')) {
+                                            store.resetTBankOperations();
+                                        }
+                                    }}
+                                    style={{ fontSize: '12px', padding: '6px 12px', color: 'var(--danger-color)' }}
+                                    title="Удалить операции этого банка из локальной таблицы"
+                                >
+                                    Очистить операции
+                                </button>
+                            </div>
+
+                            {/* Progress bar */}
+                            {authStore.isSyncing && (
+                                <div style={{ marginTop: '10px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', marginBottom: '4px' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>{authStore.syncProgress}</span>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            style={{ padding: '2px 8px', fontSize: '11px', color: 'var(--danger-color)' }}
+                                            onClick={() => authStore.cancelSync()}
+                                        >
+                                            Отмена
+                                        </button>
                                     </div>
-                                ))}
+                                    <div style={{ height: '6px', width: '100%', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '3px', overflow: 'hidden' }}>
+                                        <div
+                                            style={{
+                                                height: '100%',
+                                                width: `${Math.max(5, authStore.syncPercent)}%`,
+                                                background: '#ffdd2d',
+                                                transition: 'width 0.3s ease',
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            {!authStore.isSyncing && authStore.syncProgress && (
+                                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--success-color)' }}>
+                                    ✓ {authStore.syncProgress}
+                                </div>
+                            )}
+
+                            {authStore.syncError && (
+                                <div style={{ marginTop: '8px', fontSize: '12px', color: 'var(--danger-color)' }}>
+                                    ✗ Ошибка синхронизации: {authStore.syncError}
+                                </div>
+                            )}
+                        </div>
+
+                        {authStore.accounts.length > 0 && (
+                            <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '8px' }}>
+                                    Счета Т-Банка и привязка:
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {authStore.accounts.map((acc) => {
+                                        const mappedName = store.bankAccountMapping.get(acc.id) || store.bankAccountMapping.get(`tbank:${acc.id}`);
+                                        return (
+                                            <div
+                                                key={acc.id}
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '6px',
+                                                    padding: '10px 14px',
+                                                    background: 'rgba(255, 255, 255, 0.04)',
+                                                    borderRadius: 'var(--radius-sm)',
+                                                    fontSize: '13px',
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div>
+                                                        <div style={{ fontWeight: 600 }}>{acc.name || acc.accountType}</div>
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                                            ID: {acc.id} {acc.accountType ? `• ${acc.accountType}` : ''}
+                                                        </div>
+                                                    </div>
+                                                    <div style={{ fontWeight: 700, fontSize: '14px' }}>
+                                                        {acc.moneyAmount && typeof acc.moneyAmount.value === 'number'
+                                                            ? `${acc.moneyAmount.value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${acc.moneyAmount.currency?.name === 'RUB' ? '₽' : acc.moneyAmount.currency?.name || ''}`
+                                                            : '—'}
+                                                    </div>
+                                                </div>
+
+                                                {/* Mapping Status */}
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '6px', marginTop: '2px' }}>
+                                                    {mappedName ? (
+                                                        <span style={{ fontSize: '12px', color: 'var(--success-color)' }}>
+                                                            ✓ Связан со счётом: <strong>{mappedName}</strong>
+                                                        </span>
+                                                    ) : (
+                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', width: '100%', flexWrap: 'wrap' }}>
+                                                            <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                                                Не привязан к счёту
+                                                            </span>
+                                                            <select
+                                                                className="form-input"
+                                                                style={{ fontSize: '11px', padding: '2px 6px', height: '24px', flex: 1, minWidth: '120px' }}
+                                                                defaultValue=""
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val) {
+                                                                        store.linkBankAccount(val, acc.id);
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <option value="" disabled>Привязать к счёту...</option>
+                                                                {store.accounts.map((a) => (
+                                                                    <option key={a.id} value={a.name}>{a.name}</option>
+                                                                ))}
+                                                            </select>
+                                                            <button
+                                                                type="button"
+                                                                className="btn btn-secondary"
+                                                                style={{ padding: '2px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                                                                onClick={() => {
+                                                                    const accName = prompt('Название нового счёта в MMM:', acc.name || 'Т-Банк');
+                                                                    if (accName) {
+                                                                        store.linkBankAccount(
+                                                                            accName,
+                                                                            acc.id,
+                                                                            String(acc.moneyAmount?.value || '0'),
+                                                                            acc.moneyAmount?.currency?.name || 'RUB'
+                                                                        );
+                                                                    }
+                                                                }}
+                                                            >
+                                                                + Создать счёт
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         )}
                     </div>

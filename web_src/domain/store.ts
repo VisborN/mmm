@@ -6,6 +6,7 @@ import { get, set, clear as clearKeyval } from "idb-keyval";
 import { googleDriveService } from "../infrastructure/google_drive";
 import { uuidv7 } from "./uuidv7";
 import { authStore } from "../auth_store";
+import { buildAccountMapping, linkBankAccountToMmmAccount } from "./bank_sync_service";
 
 declare const __WORKER_URL__: string;
 
@@ -486,6 +487,43 @@ export class AppStore {
                 this.isLoading = false;
             });
         }
+    }
+
+    get bankAccountMapping(): Map<string, string> {
+        return buildAccountMapping(this.transactions);
+    }
+
+    async linkBankAccount(accountName: string, bankAccountId: string, initialBalance?: string, initialCurrency?: string): Promise<void> {
+        const res = await linkBankAccountToMmmAccount(accountName, bankAccountId, this.transactions, initialBalance, initialCurrency);
+        if (res.error) {
+            runInAction(() => {
+                this.error = res.error;
+            });
+            return;
+        }
+        await this.loadData();
+        this.recalculateBalances();
+    }
+
+    async syncTBankRecent(): Promise<void> {
+        await authStore.syncRecentOperations(async () => {
+            await this.loadData();
+            this.recalculateBalances();
+        });
+    }
+
+    async syncTBankFull(): Promise<void> {
+        await authStore.syncFullHistory(async () => {
+            await this.loadData();
+            this.recalculateBalances();
+        });
+    }
+
+    async resetTBankOperations(): Promise<void> {
+        await authStore.resetBankOperations(async () => {
+            await this.loadData();
+            this.recalculateBalances();
+        });
     }
 }
 

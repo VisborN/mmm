@@ -60,11 +60,14 @@ export class GoogleSyncService {
                         fileId = filesRes.data[0].id;
                     }
 
-                    // Do not write id field to disk
+                    // Do not write id field to disk; format bankOperationIds as string for CSV
                     const txsToExport = txs.map(t => {
                         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                        const { id, ...rest } = t as unknown as { id?: number };
-                        return rest;
+                        const { id, bankOperationIds, ...rest } = t as unknown as { id?: number; bankOperationIds?: string[] | null };
+                        return {
+                            ...rest,
+                            bankOperationIds: bankOperationIds && bankOperationIds.length > 0 ? bankOperationIds.join(';') : ''
+                        };
                     });
                     const csvContent = "\uFEFF" + Papa.unparse(txsToExport);
 
@@ -131,6 +134,9 @@ export class GoogleSyncService {
                         exchangeRate: t.exchangeRate !== null && t.exchangeRate !== undefined && t.exchangeRate !== '' ? parseFloat(t.exchangeRate) : null,
                         transferReceiveAccountName: t.transferReceiveAccountName || null,
                         transferReceiveAmountAccountCurrency: t.transferReceiveAmountAccountCurrency !== null && t.transferReceiveAmountAccountCurrency !== undefined ? String(t.transferReceiveAmountAccountCurrency) : null,
+                        bankOperationIds: typeof t.bankOperationIds === 'string' && t.bankOperationIds.trim() !== ''
+                            ? t.bankOperationIds.split(';').map((s: string) => s.trim()).filter(Boolean)
+                            : (Array.isArray(t.bankOperationIds) ? t.bankOperationIds : undefined),
                     }));
 
                     completed++;

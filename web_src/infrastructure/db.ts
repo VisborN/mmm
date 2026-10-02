@@ -1,8 +1,8 @@
 
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Account, Transaction } from '../domain/types';
+import { Account, BankOperation, Transaction } from '../domain/types';
 
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 export interface MoneyAppDB extends DBSchema {
     transactions: {
@@ -14,6 +14,11 @@ export interface MoneyAppDB extends DBSchema {
         key: number;
         value: Account;
     };
+    bank_operations: {
+        key: string;
+        value: BankOperation;
+        indexes: { 'by-bank': string; 'by-time': number; 'by-account': string };
+    };
 }
 
 let dbPromise: Promise<IDBPDatabase<MoneyAppDB>> | null = null;
@@ -22,7 +27,7 @@ export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
     if (!dbPromise) {
         dbPromise = openDB<MoneyAppDB>('money-management-app', DB_VERSION, {
             upgrade(db, oldVersion) {
-                if (oldVersion > 0 && oldVersion < DB_VERSION) {
+                if (oldVersion > 0 && oldVersion < 5) {
                     const existingStores = Array.from(db.objectStoreNames);
                     for (const store of existingStores) {
                         db.deleteObjectStore(store);
@@ -35,6 +40,12 @@ export function getDB(): Promise<IDBPDatabase<MoneyAppDB>> {
                 }
                 if (!db.objectStoreNames.contains('accounts')) {
                     db.createObjectStore('accounts', { keyPath: 'id', autoIncrement: true });
+                }
+                if (!db.objectStoreNames.contains('bank_operations')) {
+                    const bankStore = db.createObjectStore('bank_operations', { keyPath: 'id' });
+                    bankStore.createIndex('by-bank', 'bank');
+                    bankStore.createIndex('by-time', 'operationTime');
+                    bankStore.createIndex('by-account', 'bankAccountId');
                 }
             },
         });

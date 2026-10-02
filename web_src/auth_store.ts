@@ -8,6 +8,7 @@ import {
   getTBankAccounts,
 } from "./infrastructure/tbank";
 import { TinkoffOperation } from "./domain/tinkoff_operation";
+import { bankSyncService } from "./domain/bank_sync_service";
 
 export enum LoginStep {
   IDLE = "IDLE",
@@ -32,6 +33,11 @@ export class AuthStore {
   totalBalance: number | null = null;
   isLoadingBalance: boolean = false;
   balanceError: string | null = null;
+  isSyncing: boolean = false;
+  syncProgress: string = "";
+  syncPercent: number = 0;
+  syncError: string | null = null;
+  private abortController: { aborted: boolean } | null = null;
 
   // Auth flow metadata
   maskedPhone: string | null = null;
@@ -363,10 +369,139 @@ export class AuthStore {
   }
 
   /**
+   * Syncs recent operations (last 35 days) for all accounts
+   */
+  async syncRecentOperations(onSuccess?: () => void) {
+    if (this.isSyncing) return;
+    if (this.accounts.length === 0) {
+      await this.loadBalance();
+      if (this.accounts.length === 0) {
+        runInAction(() => {
+          this.syncError = "Нет счетов для синхронизации";
+        });
+        return;
+      }
+    }
+
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "Синхронизация последних операций...";
+      this.syncPercent = 10;
+      this.syncError = null;
+    });
+
+    const accountIds = this.accounts.map((a) => a.id);
+    const syncRes = await bankSyncService.syncIncremental(accountIds);
+
+    runInAction(() => {
+      this.isSyncing = false;
+      this.syncPercent = 100;
+      if (syncRes.error !== null) {
+        this.syncError = syncRes.error.message;
+      } else {
+        this.syncProgress = `Синхронизировано: ${syncRes.data.syncedOpsCount} операций (+${syncRes.data.createdTxCount} новых, ${syncRes.data.updatedTxCount} обновлено)`;
+      }
+    });
+
+    if (syncRes.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+
+  /**
+   * Starts full historical sync back to 2010 month by month
+   */
+  async syncFullHistory(onSuccess?: () => void) {
+    if (this.isSyncing) return;
+    if (this.accounts.length === 0) {
+      await this.loadBalance();
+      if (this.accounts.length === 0) {
+        runInAction(() => {
+          this.syncError = "Нет счетов для синхронизации";
+        });
+        return;
+      }
+    }
+
+    const abortSignal = { aborted: false };
+    this.abortController = abortSignal;
+
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "Запуск полной загрузки операций...";
+      this.syncPercent = 0;
+      this.syncError = null;
+    });
+
+    const accountIds = this.accounts.map((a) => a.id);
+    const syncRes = await bankSyncService.syncFullHistory(accountIds, {
+      onProgress: (msg, percent) => {
+        runInAction(() => {
+          this.syncProgress = msg;
+          if (percent !== undefined) this.syncPercent = percent;
+        });
+      },
+      shouldAbort: () => abortSignal.aborted,
+    });
+
+    runInAction(() => {
+      this.isSyncing = false;
+      this.abortController = null;
+      if (syncRes.error !== null) {
+        this.syncError = syncRes.error.message;
+      } else {
+        this.syncPercent = 100;
+        this.syncProgress = `Полная загрузка завершена: ${syncRes.data.syncedOpsCount} операций`;
+      }
+    });
+
+    if (syncRes.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+
+  /**
+   * Cancels in-progress sync
+   */
+  cancelSync() {
+    if (this.abortController) {
+      this.abortController.aborted = true;
+      runInAction(() => {
+        this.syncProgress = "Отмена синхронизации...";
+      });
+    }
+  }
+
+  /**
+   * Resets local bank operations for T-Bank
+   */
+  async resetBankOperations(onSuccess?: () => void) {
+    runInAction(() => {
+      this.isSyncing = true;
+      this.syncProgress = "Очистка локальных операций Т-Банка...";
+      this.syncError = null;
+    });
+
+    const res = await bankSyncService.resetBankOperations("tbank");
+
+    runInAction(() => {
+      this.isSyncing = false;
+      if (res.error !== null) {
+        this.syncError = res.error.message;
+      } else {
+        this.syncProgress = "Операции Т-Банка очищены из локальной базы";
+      }
+    });
+
+    if (res.error === null && onSuccess) {
+      onSuccess();
+    }
+  }
+
+  /**
    * Stub for legacy operations
    */
   async loadOperations() {
-    // In current iteration operations are not requested, kept for type compatibility
     return;
   }
 }
